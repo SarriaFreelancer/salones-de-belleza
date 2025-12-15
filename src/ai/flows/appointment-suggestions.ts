@@ -49,30 +49,43 @@ const prompt = ai.definePrompt({
   output: {schema: AppointmentSuggestionsOutputSchema},
   prompt: `You are an AI assistant helping to schedule appointments for a beauty salon.
 
-  Given the following information, suggest up to 5 optimal appointment times and stylist assignments, considering service duration and stylist availability. Ensure no scheduling conflicts occur with existing appointments.
+  Your task is to suggest up to 5 optimal appointment times and assign a suitable stylist.
 
-  Service: {{{service}}}
-  Duration: {{{duration}}} minutes
-  Preferred Date: {{{preferredDate}}}
+  You must adhere to the following constraints:
+  1.  The suggested appointment must fit completely within a stylist's availability slot.
+  2.  The suggested appointment must NOT overlap with any existing appointments for that stylist.
+  3.  The appointment duration is fixed and cannot be changed.
 
-  Stylist Availability for the preferred date:
+  Here is the information for the appointment request:
+  - Service: {{{service}}}
+  - Duration: {{{duration}}} minutes
+  - Preferred Date: {{{preferredDate}}}
+
+  Here is the schedule information for the preferred date:
+
+  Stylist Availability:
   {{#each stylistAvailability}}
     {{#if availableTimes}}
-      Stylist ID: {{{stylistId}}}
-      Available Times:
-      {{#each availableTimes}}
-        Start: {{{start}}}, End: {{{end}}}
-      {{/each}}
+      - Stylist ID: {{{stylistId}}}
+        Available Times:
+        {{#each availableTimes}}
+          - From: {{{start}}} to {{{end}}}
+        {{/each}}
+    {{else}}
+      - Stylist ID: {{{stylistId}}} is not available on this day.
     {{/if}}
   {{/each}}
 
-  Existing Appointments on the preferred date:
-  {{#each existingAppointments}}
-  Stylist ID: {{{stylistId}}}, Start: {{{start}}}, End: {{{end}}}
-  {{/each}}
+  Existing Appointments (Booked Slots):
+  {{#if existingAppointments}}
+    {{#each existingAppointments}}
+    - Stylist ID: {{{stylistId}}}, Booked from: {{{start}}} to {{{end}}}
+    {{/each}}
+  {{else}}
+    - No appointments are currently booked for this day.
+  {{/if}}
 
-  Suggest appointment times and stylist assignments that fit within the available time slots and avoid conflicts with existing appointments.
-  Return the suggestions in the format specified in the output schema. If no slots are available, return an empty array of suggestions.
+  Based on all this information, find available slots and suggest up to 5 valid appointment times. If there are no available slots that meet all the criteria, return an empty array for the suggestions.
   `, 
 });
 
