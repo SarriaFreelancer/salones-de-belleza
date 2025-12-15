@@ -31,7 +31,7 @@ const formSchema = z.object({
 });
 
 interface NewStylistDialogProps {
-  onStylistSaved: (stylist: Stylist) => void;
+  onStylistSaved: (stylist: Stylist | Omit<Stylist, 'id'>) => void;
   stylistToEdit?: Stylist | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -71,14 +71,15 @@ export default function NewStylistDialog({
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
 
-    setTimeout(() => {
-      const stylistData: Stylist = {
-        id: isEditMode && stylistToEdit ? stylistToEdit.id : String(Date.now()),
-        availability: isEditMode && stylistToEdit ? stylistToEdit.availability : {},
-        ...values,
-      };
+    const stylistData: Stylist = {
+      id: isEditMode && stylistToEdit ? stylistToEdit.id : String(Date.now()),
+      availability: isEditMode && stylistToEdit ? stylistToEdit.availability : {},
+      ...values,
+    };
 
-      onStylistSaved(stylistData);
+    onStylistSaved(isEditMode ? stylistData : { ...values, availability: {} });
+
+    setTimeout(() => {
       setIsLoading(false);
       onOpenChange(false);
     }, 500);

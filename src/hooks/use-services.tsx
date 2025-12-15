@@ -1,41 +1,51 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { services as initialServices } from '@/lib/data';
+import React, { createContext, useContext, ReactNode } from 'react';
 import type { Service } from '@/lib/types';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 
 interface ServicesContextType {
   services: Service[];
-  addService: (service: Service) => void;
+  addService: (service: Omit<Service, 'id'>) => void;
   updateService: (updatedService: Service) => void;
   deleteService: (serviceId: string) => void;
+  isLoading: boolean;
 }
 
 const ServicesContext = createContext<ServicesContextType | undefined>(undefined);
 
 export const ServicesProvider = ({ children }: { children: ReactNode }) => {
-  const [services, setServices] = useState<Service[]>(initialServices);
+  const firestore = useFirestore();
 
-  const addService = (service: Service) => {
-    setServices((prevServices) => [...prevServices, service]);
+  const servicesCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'services');
+  }, [firestore]);
+
+  const { data: services, isLoading } = useCollection<Service>(servicesCollection);
+
+  const addService = (service: Omit<Service, 'id'>) => {
+    if (!servicesCollection) return;
+    addDocumentNonBlocking(servicesCollection, service);
   };
 
   const updateService = (updatedService: Service) => {
-    setServices((prevServices) =>
-      prevServices.map((service) =>
-        service.id === updatedService.id ? updatedService : service
-      )
-    );
+    if (!firestore) return;
+    const serviceDoc = doc(firestore, 'services', updatedService.id);
+    setDocumentNonBlocking(serviceDoc, updatedService, { merge: true });
   };
 
   const deleteService = (serviceId: string) => {
-    setServices((prevServices) =>
-      prevServices.filter((service) => service.id !== serviceId)
-    );
+    if (!firestore) return;
+    const serviceDoc = doc(firestore, 'services', serviceId);
+    deleteDocumentNonBlocking(serviceDoc);
   };
 
   return (
-    <ServicesContext.Provider value={{ services, addService, updateService, deleteService }}>
+    <ServicesContext.Provider value={{ services: services || [], addService, updateService, deleteService, isLoading }}>
       {children}
     </ServicesContext.Provider>
   );

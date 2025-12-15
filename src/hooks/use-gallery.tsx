@@ -1,41 +1,52 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { galleryImages as initialGalleryImages } from '@/lib/data';
+import React, { createContext, useContext, ReactNode } from 'react';
 import type { GalleryImage } from '@/lib/types';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+
 
 interface GalleryContextType {
   galleryImages: GalleryImage[];
-  addImage: (image: GalleryImage) => void;
+  addImage: (image: Omit<GalleryImage, 'id'>) => void;
   updateImage: (updatedImage: GalleryImage) => void;
   deleteImage: (imageId: string) => void;
+  isLoading: boolean;
 }
 
 const GalleryContext = createContext<GalleryContextType | undefined>(undefined);
 
 export const GalleryProvider = ({ children }: { children: ReactNode }) => {
-  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>(initialGalleryImages);
+  const firestore = useFirestore();
 
-  const addImage = (image: GalleryImage) => {
-    setGalleryImages((prevImages) => [...prevImages, image]);
+  const galleryCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'gallery');
+  }, [firestore]);
+
+  const { data: galleryImages, isLoading } = useCollection<GalleryImage>(galleryCollection);
+
+  const addImage = (image: Omit<GalleryImage, 'id'>) => {
+    if (!galleryCollection) return;
+    addDocumentNonBlocking(galleryCollection, image);
   };
 
   const updateImage = (updatedImage: GalleryImage) => {
-    setGalleryImages((prevImages) =>
-      prevImages.map((image) =>
-        image.id === updatedImage.id ? updatedImage : image
-      )
-    );
+    if (!firestore) return;
+    const imageDoc = doc(firestore, 'gallery', updatedImage.id);
+    setDocumentNonBlocking(imageDoc, updatedImage, { merge: true });
   };
 
   const deleteImage = (imageId: string) => {
-    setGalleryImages((prevImages) =>
-      prevImages.filter((image) => image.id !== imageId)
-    );
+    if (!firestore) return;
+    const imageDoc = doc(firestore, 'gallery', imageId);
+    deleteDocumentNonBlocking(imageDoc);
   };
 
   return (
-    <GalleryContext.Provider value={{ galleryImages, addImage, updateImage, deleteImage }}>
+    <GalleryContext.Provider value={{ galleryImages: galleryImages || [], addImage, updateImage, deleteImage, isLoading }}>
       {children}
     </GalleryContext.Provider>
   );

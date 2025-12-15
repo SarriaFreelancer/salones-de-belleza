@@ -1,41 +1,51 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { stylists as initialStylists } from '@/lib/data';
+import React, { createContext, useContext, ReactNode } from 'react';
 import type { Stylist } from '@/lib/types';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 
 interface StylistsContextType {
   stylists: Stylist[];
-  addStylist: (stylist: Stylist) => void;
+  addStylist: (stylist: Omit<Stylist, 'id'>) => void;
   updateStylist: (updatedStylist: Stylist) => void;
   deleteStylist: (stylistId: string) => void;
+  isLoading: boolean;
 }
 
 const StylistsContext = createContext<StylistsContextType | undefined>(undefined);
 
 export const StylistsProvider = ({ children }: { children: ReactNode }) => {
-  const [stylists, setStylists] = useState<Stylist[]>(initialStylists);
+  const firestore = useFirestore();
+  
+  const stylistsCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'stylists');
+  }, [firestore]);
+  
+  const { data: stylists, isLoading } = useCollection<Stylist>(stylistsCollection);
 
-  const addStylist = (stylist: Stylist) => {
-    setStylists((prevStylists) => [...prevStylists, stylist]);
+  const addStylist = (stylist: Omit<Stylist, 'id'>) => {
+    if (!stylistsCollection) return;
+    addDocumentNonBlocking(stylistsCollection, stylist);
   };
 
   const updateStylist = (updatedStylist: Stylist) => {
-    setStylists((prevStylists) =>
-      prevStylists.map((stylist) =>
-        stylist.id === updatedStylist.id ? updatedStylist : stylist
-      )
-    );
+    if (!firestore) return;
+    const stylistDoc = doc(firestore, 'stylists', updatedStylist.id);
+    setDocumentNonBlocking(stylistDoc, updatedStylist, { merge: true });
   };
 
   const deleteStylist = (stylistId: string) => {
-    setStylists((prevStylists) =>
-      prevStylists.filter((stylist) => stylist.id !== stylistId)
-    );
+     if (!firestore) return;
+    const stylistDoc = doc(firestore, 'stylists', stylistId);
+    deleteDocumentNonBlocking(stylistDoc);
   };
 
   return (
-    <StylistsContext.Provider value={{ stylists, addStylist, updateStylist, deleteStylist }}>
+    <StylistsContext.Provider value={{ stylists: stylists || [], addStylist, updateStylist, deleteStylist, isLoading }}>
       {children}
     </StylistsContext.Provider>
   );

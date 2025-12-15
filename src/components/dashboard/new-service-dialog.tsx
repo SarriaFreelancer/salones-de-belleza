@@ -34,7 +34,7 @@ const formSchema = z.object({
 });
 
 interface NewServiceDialogProps {
-  onServiceSaved: (service: Service) => void;
+  onServiceSaved: (service: Service | Omit<Service, 'id'>) => void;
   serviceToEdit?: Service | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -75,14 +75,14 @@ export default function NewServiceDialog({
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      const serviceData: Service = {
-        id: isEditMode && serviceToEdit ? serviceToEdit.id : String(Date.now()),
-        ...values,
-      };
+    const serviceData = {
+      id: isEditMode && serviceToEdit ? serviceToEdit.id : String(Date.now()),
+      ...values,
+    };
+    
+    onServiceSaved(isEditMode ? serviceData : values);
 
-      onServiceSaved(serviceData);
+    setTimeout(() => {
       setIsLoading(false);
       onOpenChange(false);
     }, 500);

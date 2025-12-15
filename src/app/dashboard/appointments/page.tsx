@@ -23,9 +23,8 @@ import {
   MoreHorizontal,
   PlusCircle,
 } from 'lucide-react';
-import { appointments as initialAppointments } from '@/lib/data';
 import type { Appointment } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, toDate } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -40,23 +39,44 @@ import { cn } from '@/lib/utils';
 import NewAppointmentDialog from '@/components/dashboard/new-appointment-dialog';
 import { useStylists } from '@/hooks/use-stylists';
 import { useServices } from '@/hooks/use-services';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, Timestamp } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase } from '@/firebase';
 
 function AppointmentsPage() {
-  const [date, setDate] = React.useState<Date | undefined>(undefined);
-  const [stylistFilter, setStylistFilter] = React.useState<string>('all');
-  const [serviceFilter, setServiceFilter] = React.useState<string>('all');
-  const [appointmentList, setAppointmentList] = React.useState<Appointment[]>(initialAppointments);
-  const { stylists } = useStylists();
-  const { services } = useServices();
-  
+  const [date, setDate] = React.useState<Date | undefined>();
   React.useEffect(() => {
     setDate(new Date());
   }, []);
+  const [stylistFilter, setStylistFilter] = React.useState<string>('all');
+  const [serviceFilter, setServiceFilter] = React.useState<string>('all');
+  const { stylists } = useStylists();
+  const { services } = useServices();
+  const firestore = useFirestore();
+  
+  const appointmentsCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'admin/appointments/appointments');
+  }, [firestore]);
+  
+  const { data: appointments, isLoading } = useCollection<Appointment>(appointmentsCollection);
 
-  const filteredAppointments = appointmentList
+  const handleAppointmentCreated = () => {
+    // No need to manually update state, useCollection handles it
+  };
+  
+  const filteredAppointments = (appointments || [])
+    .map(appointment => {
+        // Convert Firestore Timestamps to JS Date objects
+        return {
+            ...appointment,
+            start: appointment.start instanceof Timestamp ? appointment.start.toDate() : appointment.start,
+            end: appointment.end instanceof Timestamp ? appointment.end.toDate() : appointment.end,
+        };
+    })
     .filter((appointment) => {
       if (!date) return true;
-      return appointment.start.toDateString() === date.toDateString();
+      return (appointment.start as Date).toDateString() === date.toDateString();
     })
     .filter((appointment) => {
       if (stylistFilter === 'all') return true;
@@ -66,10 +86,6 @@ function AppointmentsPage() {
       if (serviceFilter === 'all') return true;
       return appointment.serviceId === serviceFilter;
     });
-
-  const handleAppointmentCreated = (newAppointment: Appointment) => {
-    setAppointmentList(prev => [...prev, newAppointment]);
-  }
 
   return (
     <div className="space-y-6">
@@ -125,7 +141,7 @@ function AppointmentsPage() {
             </SelectContent>
           </Select>
         </div>
-        <NewAppointmentDialog onAppointmentCreated={handleAppointmentCreated} appointments={appointmentList}>
+        <NewAppointmentDialog onAppointmentCreated={handleAppointmentCreated} appointments={appointments || []}>
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" />
             Agendar Cita
@@ -148,7 +164,13 @@ function AppointmentsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredAppointments.length > 0 ? (
+            {isLoading ? (
+                <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                    Cargando citas...
+                    </TableCell>
+                </TableRow>
+            ) : filteredAppointments.length > 0 ? (
               filteredAppointments.map((appointment) => {
                 const service = services.find(s => s.id === appointment.serviceId);
                 const stylist = stylists.find(s => s.id === appointment.stylistId);
@@ -158,7 +180,7 @@ function AppointmentsPage() {
                     <TableCell>{service?.name || 'N/A'}</TableCell>
                     <TableCell className="hidden md:table-cell">{stylist?.name || 'N/A'}</TableCell>
                     <TableCell>
-                      {format(appointment.start, 'Pp', { locale: es })}
+                      {format(appointment.start as Date, 'Pp', { locale: es })}
                     </TableCell>
                     <TableCell>
                       <Badge

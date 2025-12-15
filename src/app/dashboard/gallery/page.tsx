@@ -27,6 +27,7 @@ import { useGallery } from '@/hooks/use-gallery';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import NewGalleryImageDialog from '@/components/dashboard/new-gallery-image-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type DialogState = 
   | { type: 'new' }
@@ -36,12 +37,12 @@ type DialogState =
 
 
 export default function GalleryPage() {
-  const { galleryImages, addImage, updateImage, deleteImage } = useGallery();
+  const { galleryImages, addImage, updateImage, deleteImage, isLoading } = useGallery();
   const [dialogState, setDialogState] = React.useState<DialogState>(null);
   const { toast } = useToast();
 
-  const handleAddOrUpdateImage = (image: GalleryImage) => {
-    if (dialogState?.type === 'edit') {
+  const handleAddOrUpdateImage = (image: GalleryImage | Omit<GalleryImage, 'id'>) => {
+    if ('id' in image) {
       updateImage(image);
       toast({
         title: '¡Imagen Actualizada!',
@@ -81,45 +82,53 @@ export default function GalleryPage() {
               Añadir Imagen
             </Button>
         </div>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {galleryImages.map((image) => (
-            <Card key={image.id} className="group relative overflow-hidden">
-                <Image
-                    src={image.src}
-                    alt={image.alt}
-                    width={400}
-                    height={400}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                    data-ai-hint={image.hint}
-                />
-              <div className="absolute top-2 right-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="secondary" size="icon" className="h-8 w-8">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setDialogState({ type: 'edit', image })}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      <span>Editar</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setDialogState({ type: 'delete', image })}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      <span>Eliminar</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-                <p className="text-xs text-white truncate">{image.alt}</p>
-              </div>
-            </Card>
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-48 w-full" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {galleryImages.map((image) => (
+              <Card key={image.id} className="group relative overflow-hidden">
+                  <Image
+                      src={image.src}
+                      alt={image.alt}
+                      width={400}
+                      height={400}
+                      className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                      data-ai-hint={image.hint}
+                  />
+                <div className="absolute top-2 right-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setDialogState({ type: 'edit', image })}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        <span>Editar</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setDialogState({ type: 'delete', image })}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <span>Eliminar</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                  <p className="text-xs text-white truncate">{image.alt}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
       
       <NewGalleryImageDialog

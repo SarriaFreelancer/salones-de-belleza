@@ -48,7 +48,7 @@ import {
   Check,
   ChevronsUpDown,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, toDate } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import type { Appointment, DayOfWeek } from '@/lib/types';
@@ -57,6 +57,10 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
+import { addDocumentNonBlocking } from '@/firebase';
+import { collection, Timestamp } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+
 
 const formSchema = z.object({
   serviceIds: z.array(z.string()).min(1, 'Debes seleccionar al menos un servicio.'),
@@ -91,6 +95,7 @@ export default function NewAppointmentDialog({
   const { toast } = useToast();
   const { services } = useServices();
   const { stylists } = useStylists();
+  const firestore = useFirestore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -115,7 +120,7 @@ export default function NewAppointmentDialog({
     }
   };
 
-  const findSuggestions = async (values: z.infer<typeof formSchema>) => {
+  const findSuggestions = async (values: z.infer<typeof formSchema>>) => {
     setIsLoading(true);
     setSuggestions([]);
     
@@ -135,15 +140,20 @@ export default function NewAppointmentDialog({
 
     const formattedDate = format(values.preferredDate, 'yyyy-MM-dd');
     const existingAppointmentsForDate = appointments
-      .filter((a) => format(a.start, 'yyyy-MM-dd') === formattedDate)
-      .map((a) => ({
-        stylistId: a.stylistId,
-        start: format(a.start, 'HH:mm'),
-        end: format(a.end, 'HH:mm'),
-      }));
-
-    // Correctly get the day of the week, being mindful of timezones.
-    // getDay() returns 0 for Sunday, 1 for Monday, etc.
+      .filter((a) => {
+          const appDate = a.start instanceof Timestamp ? a.start.toDate() : a.start;
+          return format(appDate, 'yyyy-MM-dd') === formattedDate
+        })
+      .map((a) => {
+        const startDate = a.start instanceof Timestamp ? a.start.toDate() : a.start;
+        const endDate = a.end instanceof Timestamp ? a.end.toDate() : a.end;
+        return {
+          stylistId: a.stylistId,
+          start: format(startDate, 'HH:mm'),
+          end: format(endDate, 'HH:mm'),
+        }
+      });
+      
     const dayIndex = values.preferredDate.getDay();
     const days: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayOfWeek = days[dayIndex];
@@ -184,6 +194,7 @@ export default function NewAppointmentDialog({
   };
 
   const selectSuggestion = (suggestion: Suggestion) => {
+    if (!firestore) return;
     const values = form.getValues();
     const selectedServices = services.filter(s => values.serviceIds.includes(s.id));
     const serviceId = selectedServices.length > 0 ? selectedServices[0].id : '';
@@ -196,24 +207,30 @@ export default function NewAppointmentDialog({
     const endDate = new Date(values.preferredDate);
     endDate.setHours(endHours, endMinutes, 0, 0);
 
-    const newAppointment: Appointment = {
-      id: String(Date.now()),
+    const newAppointment: Omit<Appointment, 'id'> = {
       customerName: values.customerName.trim(),
       serviceId: serviceId, // Simplified for now
       stylistId: suggestion.stylistId,
-      start: startDate,
-      end: endDate,
+      start: Timestamp.fromDate(startDate),
+      end: Timestamp.fromDate(endDate),
       status: 'scheduled',
     };
+    
+    const appointmentsCollection = collection(firestore, 'admin/appointments/appointments');
+    addDocumentNonBlocking(appointmentsCollection, newAppointment);
+    
+    const customerAppointmentsCollection = collection(firestore, 'customers', 'mock_customer_id', 'appointments');
+    addDocumentNonBlocking(customerAppointmentsCollection, newAppointment);
 
-    onAppointmentCreated(newAppointment);
+    const stylistAppointmentsCollection = collection(firestore, 'stylists', suggestion.stylistId, 'appointments');
+    addDocumentNonBlocking(stylistAppointmentsCollection, newAppointment);
 
     toast({
       title: '¡Cita Agendada!',
       description: `Se ha agendado a ${
         newAppointment.customerName
       } el ${format(
-        newAppointment.start,
+        startDate,
         "eeee, d 'de' MMMM 'a las' HH:mm",
         { locale: es }
       )}.`,

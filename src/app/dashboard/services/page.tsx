@@ -31,6 +31,7 @@ import { Flower2, MoreVertical, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import NewServiceDialog from '@/components/dashboard/new-service-dialog';
 import { useServices } from '@/hooks/use-services';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type DialogState =
   | { type: 'new' }
@@ -40,12 +41,12 @@ type DialogState =
 
 
 export default function ServicesPage() {
-  const { services, addService, updateService, deleteService } = useServices();
+  const { services, addService, updateService, deleteService, isLoading } = useServices();
   const [dialogState, setDialogState] = React.useState<DialogState>(null);
   const { toast } = useToast();
 
-  const handleAddOrUpdateService = (service: Service) => {
-    if (dialogState?.type === 'edit') {
+  const handleAddOrUpdateService = (service: Service | Omit<Service, 'id'>) => {
+    if ('id' in service) {
       updateService(service);
       toast({
         title: '¡Servicio Actualizado!',
@@ -55,7 +56,7 @@ export default function ServicesPage() {
       addService(service);
       toast({
         title: '¡Servicio Creado!',
-        description: `El servicio "${service.name}" ha sido añadido correctamente.`,
+        description: `El nuevo servicio ha sido añadido correctamente.`,
       });
     }
     setDialogState(null);
@@ -85,53 +86,61 @@ export default function ServicesPage() {
               Añadir Servicio
             </Button>
         </div>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {services.map((service) => (
-            <Card key={service.id} className="flex flex-col relative">
-              <div className="absolute top-2 right-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setDialogState({ type: 'edit', service })}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      <span>Editar</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setDialogState({ type: 'delete', service })}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      <span>Eliminar</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <CardTitle className="font-headline text-xl pr-8">
-                    {service.name}
-                  </CardTitle>
-                  <Flower2 className="h-5 w-5 text-primary" />
+        {isLoading ? (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-60 w-full" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {services.map((service) => (
+              <Card key={service.id} className="flex flex-col relative">
+                <div className="absolute top-2 right-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setDialogState({ type: 'edit', service })}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        <span>Editar</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setDialogState({ type: 'delete', service })}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <span>Eliminar</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-                <CardDescription>{service.duration} min</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                <p className="text-sm text-muted-foreground">
-                  {service.description}
-                </p>
-              </CardContent>
-              <CardFooter>
-                <div className="text-lg font-semibold text-foreground">
-                  ${service.price.toFixed(2)}
-                </div>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="font-headline text-xl pr-8">
+                      {service.name}
+                    </CardTitle>
+                    <Flower2 className="h-5 w-5 text-primary" />
+                  </div>
+                  <CardDescription>{service.duration} min</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <p className="text-sm text-muted-foreground">
+                    {service.description}
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <div className="text-lg font-semibold text-foreground">
+                    ${service.price.toFixed(2)}
+                  </div>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
       
       <NewServiceDialog

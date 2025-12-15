@@ -1,8 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { appointments, services } from '@/lib/data';
-import type { Stylist } from '@/lib/types';
+import type { Stylist, Appointment } from '@/lib/types';
 import {
   Card,
   CardContent,
@@ -34,10 +33,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Clock, CalendarCog, MoreVertical, Edit, Trash2, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import AvailabilityEditor from '@/components/dashboard/availability-editor';
 import { useStylists } from '@/hooks/use-stylists';
 import NewStylistDialog from '@/components/dashboard/new-stylist-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useServices } from '@/hooks/use-services';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, Timestamp } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase } from '@/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type DialogState = 
   | { type: 'new' }
@@ -48,9 +53,18 @@ type DialogState =
 
 function StylistsPage() {
   const [today, setToday] = React.useState<Date | null>(null);
-  const { stylists, addStylist, updateStylist, deleteStylist } = useStylists();
+  const { stylists, addStylist, updateStylist, deleteStylist, isLoading: isLoadingStylists } = useStylists();
+  const { services } = useServices();
   const [dialogState, setDialogState] = React.useState<DialogState>(null);
   const { toast } = useToast();
+  const firestore = useFirestore();
+
+  const appointmentsCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'admin/appointments/appointments');
+  }, [firestore]);
+
+  const { data: appointments } = useCollection<Appointment>(appointmentsCollection);
 
   React.useEffect(() => {
     setToday(new Date());
@@ -61,8 +75,8 @@ function StylistsPage() {
     setDialogState(null);
   };
 
-  const handleAddOrUpdateStylist = (stylist: Stylist) => {
-    if (dialogState?.type === 'edit') {
+  const handleAddOrUpdateStylist = (stylist: Stylist | Omit<Stylist, 'id'>) => {
+    if ('id' in stylist) {
       updateStylist(stylist);
       toast({
         title: 'Estilista Actualizado',
@@ -72,7 +86,7 @@ function StylistsPage() {
       addStylist(stylist);
       toast({
         title: 'Estilista Añadido',
-        description: `El estilista "${stylist.name}" ha sido añadido al equipo.`,
+        description: `El estilista ha sido añadido al equipo.`,
       });
     }
     setDialogState(null);
@@ -93,10 +107,18 @@ function StylistsPage() {
   const stylistToDelete = dialogState?.type === 'delete' ? dialogState.stylist : null;
   const stylistForAvailability = dialogState?.type === 'availability' ? dialogState.stylist : null;
 
-  if (!today) {
+  if (!today || isLoadingStylists) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p>Cargando estilistas...</p>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-10 w-36" />
+        </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-72 w-full" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -113,12 +135,18 @@ function StylistsPage() {
         </div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {stylists.map((stylist) => {
-            const todaysAppointments = appointments.filter(
-              (a) =>
-                a.stylistId === stylist.id &&
-                a.start.toDateString() === today.toDateString() &&
-                a.status !== 'cancelled'
-            ).sort((a,b) => a.start.getTime() - b.start.getTime());
+             const todaysAppointments = (appointments || [])
+              .map(appointment => ({
+                ...appointment,
+                start: appointment.start instanceof Timestamp ? appointment.start.toDate() : appointment.start,
+                end: appointment.end instanceof Timestamp ? appointment.end.toDate() : appointment.end,
+              }))
+              .filter(
+                (a) =>
+                  a.stylistId === stylist.id &&
+                  (a.start as Date).toDateString() === today.toDateString() &&
+                  a.status !== 'cancelled'
+              ).sort((a,b) => (a.start as Date).getTime() - (b.start as Date).getTime());
 
             return (
               <Card key={stylist.id} className="relative">
@@ -178,7 +206,7 @@ function StylistsPage() {
                             <div className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
                                 <span>
-                                {format(appointment.start, 'HH:mm')} - {format(appointment.end, 'HH:mm')}
+                                {format(appointment.start as Date, 'HH:mm')} - {format(appointment.end as Date, 'HH:mm')}
                                 </span>
                             </div>
                           </div>

@@ -9,14 +9,6 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -31,12 +23,15 @@ import {
   CircleDollarSign,
   Clock,
 } from 'lucide-react';
-import { appointments, services } from '@/lib/data';
+import { type Appointment } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useStylists } from '@/hooks/use-stylists';
+import { useServices } from '@/hooks/use-services';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, Timestamp } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase } from '@/firebase';
 
 const chartData = [
   { date: 'Lunes', appointments: 5 },
@@ -58,12 +53,21 @@ const chartConfig = {
 function DashboardPage() {
   const [today, setToday] = React.useState<Date | null>(null);
   const { stylists } = useStylists();
+  const { services } = useServices();
+  const firestore = useFirestore();
+
+  const appointmentsCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'admin/appointments/appointments');
+  }, [firestore]);
+  
+  const { data: appointments } = useCollection<Appointment>(appointmentsCollection);
 
   React.useEffect(() => {
     setToday(new Date());
   }, []);
 
-  if (!today) {
+  if (!today || !appointments) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p>Cargando dashboard...</p>
@@ -71,8 +75,14 @@ function DashboardPage() {
     );
   }
 
-  const todaysAppointments = appointments.filter(
-    (a) => a.start.toDateString() === today.toDateString() && a.status !== 'cancelled'
+  const processedAppointments = (appointments || []).map(appointment => ({
+      ...appointment,
+      start: appointment.start instanceof Timestamp ? appointment.start.toDate() : appointment.start,
+      end: appointment.end instanceof Timestamp ? appointment.end.toDate() : appointment.end,
+  }));
+
+  const todaysAppointments = processedAppointments.filter(
+    (a) => (a.start as Date).toDateString() === today.toDateString() && a.status !== 'cancelled'
   );
   const dailyRevenue = todaysAppointments.reduce((total, app) => {
     const service = services.find((s) => s.id === app.serviceId);
@@ -104,7 +114,7 @@ function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{todaysAppointments.length}</div>
             <p className="text-xs text-muted-foreground">
-              {appointments.filter(a => a.status === 'confirmed').length} confirmadas
+              {processedAppointments.filter(a => a.status === 'confirmed').length} confirmadas
             </p>
           </CardContent>
         </Card>
@@ -170,7 +180,7 @@ function DashboardPage() {
             {todaysAppointments.length > 0 ? (
               <div className="space-y-4">
                 {todaysAppointments
-                  .sort((a, b) => a.start.getTime() - b.start.getTime())
+                  .sort((a, b) => (a.start as Date).getTime() - (b.start as Date).getTime())
                   .slice(0, 4)
                   .map((appointment) => {
                     const stylist = stylists.find(
@@ -200,7 +210,7 @@ function DashboardPage() {
                         </div>
                         <div className="ml-auto font-medium text-sm flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {format(appointment.start, 'HH:mm')}
+                          {format(appointment.start as Date, 'HH:mm')}
                         </div>
                       </div>
                     );

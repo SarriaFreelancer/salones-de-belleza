@@ -32,7 +32,7 @@ const formSchema = z.object({
 });
 
 interface NewGalleryImageDialogProps {
-  onImageSaved: (image: GalleryImage) => void;
+  onImageSaved: (image: GalleryImage | Omit<GalleryImage, 'id'>) => void;
   imageToEdit?: GalleryImage | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -71,14 +71,14 @@ export default function NewGalleryImageDialog({
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      const imageData: GalleryImage = {
-        id: isEditMode && imageToEdit ? imageToEdit.id : String(Date.now()),
-        ...values,
-      };
+    const imageData: GalleryImage = {
+      id: isEditMode && imageToEdit ? imageToEdit.id : String(Date.now()),
+      ...values,
+    };
+    
+    onImageSaved(isEditMode ? imageData : values);
 
-      onImageSaved(imageData);
+    setTimeout(() => {
       setIsLoading(false);
       onOpenChange(false);
     }, 500);
