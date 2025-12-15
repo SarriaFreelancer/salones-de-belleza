@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useCallback } from 'react';
-import { Auth, User, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { Auth, User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth as useFirebaseAuth, useUser } from '@/firebase';
 import { useToast } from './use-toast';
 
@@ -23,7 +23,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
       return true;
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found') {
+        // If user does not exist, create a new one
+        try {
+          await createUserWithEmailAndPassword(auth, email, pass);
+          return true;
+        } catch (creationError) {
+          console.error("Firebase user creation error:", creationError);
+          return false;
+        }
+      }
       console.error("Firebase login error:", error);
       return false;
     }
