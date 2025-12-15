@@ -239,15 +239,17 @@ export default function HomePage() {
           </div>
         </section>
       </main>
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">&copy; 2024 Divas AyA. Todos los derechos reservados.</p>
-        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/login">
-              Admin Login
-            </Link>
-          </Button>
-        </nav>
+      <footer className="w-full shrink-0 border-t py-6 px-4 md:px-6">
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
+          <p className="flex-1 text-center text-xs text-muted-foreground sm:text-left">
+            &copy; 2024 Divas AyA. Todos los derechos reservados.
+          </p>
+          <nav className="flex gap-4 sm:gap-6">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/login">Admin Login</Link>
+            </Button>
+          </nav>
+        </div>
       </footer>
     </div>
   );
