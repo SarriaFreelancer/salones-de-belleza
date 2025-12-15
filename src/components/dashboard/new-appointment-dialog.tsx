@@ -37,7 +37,7 @@ import { Loader2, Sparkles, Calendar as CalendarIcon, Clock, User } from 'lucide
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import type { Appointment, Service, Stylist } from '@/lib/types';
+import type { Appointment } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
@@ -191,7 +191,7 @@ export default function NewAppointmentDialog({ children, onAppointmentCreated }:
             <Sparkles className="text-primary" /> Asistente de Citas IA
           </DialogTitle>
           <DialogDescription>
-            Encuentra el momento perfecto para tu próxima cita.
+            Encuentra el momento perfecto para la próxima cita del cliente.
           </DialogDescription>
         </DialogHeader>
 
