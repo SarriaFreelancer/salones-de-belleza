@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   SidebarProvider,
   Sidebar,
@@ -22,11 +22,11 @@ import {
   Scissors,
   Users,
   LogOut,
-  Flower2,
   ExternalLink,
 } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function DashboardLayout({
   children,
@@ -34,6 +34,27 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (user === null) {
+      router.push('/login');
+    }
+  }, [user, router]);
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+  
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Redirigiendo al login...</p>
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -105,13 +126,13 @@ export default function DashboardLayout({
            <div className="flex items-center gap-3">
               <Avatar className="size-8">
                 <AvatarImage src="https://picsum.photos/seed/admin/100/100" alt="Admin" data-ai-hint="woman portrait" />
-                <AvatarFallback>A</AvatarFallback>
+                <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-                <p className="text-sm font-medium text-sidebar-foreground">Admin</p>
-                <p className="text-xs text-muted-foreground">admin@divas.com</p>
+                <p className="text-sm font-medium text-sidebar-foreground">{user?.name}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
-              <Button variant="ghost" size="icon" className="ml-auto group-data-[collapsible=icon]:hidden">
+              <Button variant="ghost" size="icon" className="ml-auto group-data-[collapsible=icon]:hidden" onClick={handleLogout}>
                 <LogOut />
               </Button>
             </div>

@@ -1,4 +1,5 @@
 
+'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import ClientOnly from '@/components/client-only';
@@ -209,7 +210,7 @@ function HomePageContent() {
         <p className="text-xs text-muted-foreground">&copy; 2024 Divas AyA. Todos los derechos reservados.</p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
           <Button variant="outline" size="sm" asChild>
-            <Link href="/dashboard">
+            <Link href="/login">
               Admin Login
             </Link>
           </Button>
@@ -227,5 +228,3 @@ export default function HomePage() {
     </ClientOnly>
   );
 }
-
-    
