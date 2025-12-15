@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import {
   Card,
   CardContent,
@@ -54,7 +55,29 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export default function DashboardPage() {
-  const today = new Date();
+  const [today, setToday] = React.useState<Date | null>(null);
+
+  React.useEffect(() => {
+    setToday(new Date());
+  }, []);
+
+  if (!today) {
+    // Render a loading state or skeleton until the date is set on the client
+    return (
+        <div className="grid gap-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Card><CardHeader><CardTitle>Cargando...</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">-</div></CardContent></Card>
+                <Card><CardHeader><CardTitle>Cargando...</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">-</div></CardContent></Card>
+                <Card><CardHeader><CardTitle>Cargando...</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">-</div></CardContent></Card>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                <Card className="lg:col-span-4"><CardHeader><CardTitle>Cargando...</CardTitle></CardHeader><CardContent><div className="h-[250px] w-full"></div></CardContent></Card>
+                <Card className="lg:col-span-3"><CardHeader><CardTitle>Cargando...</CardTitle></CardHeader><CardContent><div className="h-full"></div></CardContent></Card>
+            </div>
+      </div>
+    );
+  }
+
   const todaysAppointments = appointments.filter(
     (a) => a.start.toDateString() === today.toDateString() && a.status !== 'cancelled'
   );

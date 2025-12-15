@@ -49,6 +49,7 @@ export default function AppointmentsPage() {
   const [appointmentList, setAppointmentList] = React.useState<Appointment[]>(appointments);
 
   React.useEffect(() => {
+    // Set initial date on client-side to avoid hydration mismatch
     setDate(new Date());
   }, []);
 

@@ -1,3 +1,6 @@
+'use client';
+
+import * as React from 'react';
 import { stylists, appointments, services } from '@/lib/data';
 import {
   Card,
@@ -11,7 +14,32 @@ import { Clock } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function StylistsPage() {
-  const today = new Date();
+  const [today, setToday] = React.useState<Date | null>(null);
+
+  React.useEffect(() => {
+    setToday(new Date());
+  }, []);
+
+  if (!today) {
+    return (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {stylists.map(stylist => (
+                <Card key={stylist.id}>
+                    <CardHeader className="flex flex-row items-center gap-4 space-y-0">
+                         <Avatar className="h-16 w-16 border-2 border-primary">
+                            <AvatarImage src={stylist.avatarUrl} alt={stylist.name} data-ai-hint="woman portrait" />
+                            <AvatarFallback>{stylist.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <CardTitle className="font-headline text-xl">Cargando...</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">Cargando citas...</p>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
