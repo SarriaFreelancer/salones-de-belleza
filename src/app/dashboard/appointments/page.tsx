@@ -58,7 +58,7 @@ function AppointmentsPage() {
   
   const appointmentsCollection = useMemoFirebase(() => {
     if (!firestore) return null;
-    return collection(firestore, 'admin/appointments/appointments');
+    return collection(firestore, 'admin/appointments');
   }, [firestore]);
   
   const { data: appointments, isLoading } = useCollection<Appointment>(appointmentsCollection);

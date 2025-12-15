@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
         // We use a non-blocking set to create the role document.
         // The empty object {} is because we only care about the document's existence.
-        setDocumentNonBlocking(adminRoleDoc, {}, { merge: false });
+        setDocumentNonBlocking(adminRoleDoc, {}, {});
       }
     } catch (error: any) {
       // Re-throw all creation errors to be handled by the UI

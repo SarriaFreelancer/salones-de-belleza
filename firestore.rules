@@ -189,12 +189,12 @@ service cloud.firestore {
     /**
      * @description A centralized collection of all appointments, intended for use
      *              by the admin dashboard. Access is strictly limited to admins.
-     * @path /admin/appointments/appointments/{appointmentId}
+     * @path /admin/appointments/{appointmentId}
      * @allow (list) An admin user lists all appointments for the dashboard.
      * @deny (get) Any non-admin user tries to read an appointment from this collection.
      * @principle Enforces a strictly admin-only access pattern for a sensitive data collection.
      */
-    match /admin/appointments/appointments/{appointmentId} {
+    match /admin/appointments/{appointmentId} {
       allow get: if isAdmin();
       allow list: if isAdmin();
       allow create: if isAdmin();
@@ -207,16 +207,11 @@ service cloud.firestore {
      *              collection grants a user admin privileges throughout the app.
      *              Only existing admins can modify this collection.
      * @path /roles_admin/{uid}
-     * @allow (create) An admin (auth.uid: 'admin1') makes another user ('user123') an admin.
-     * @deny (delete) A non-admin user ('user123') tries to remove an admin's role.
-     * @principle Secures a critical administrative collection, allowing only admins to manage other admins.
-     */
-    match /roles_admin/{uid} {
-      allow get: if isAdmin();
-      allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && isExistingDoc();
-      allow delete: if isAdmin() && isExistingDoc();
+     * @allow (get) if isAdmin();
+     * @allow list: if isAdmin();
+     * @allow create: if isAdmin() || !exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+     * @allow update: if isAdmin() && isExistingDoc();
+     * @allow delete: if isAdmin() && isExistingDoc();
     }
   }
 }

@@ -57,7 +57,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
-import { addDocumentNonBlocking } from '@/firebase';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, Timestamp } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
@@ -218,7 +218,7 @@ export default function NewAppointmentDialog({
       status: 'scheduled',
     };
     
-    const appointmentsCollection = collection(firestore, 'admin', 'appointments', 'appointments');
+    const appointmentsCollection = collection(firestore, 'admin/appointments');
     addDocumentNonBlocking(appointmentsCollection, newAppointment);
     
     // This is a mock customer id, in a real app you would get this from the logged in user
