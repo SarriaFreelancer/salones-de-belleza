@@ -61,7 +61,7 @@ export default function NewGalleryImageDialog({
       form.reset(imageToEdit);
     } else if (open && !imageToEdit) {
       form.reset({
-        src: `https://picsum.photos/seed/gallery${Math.floor(Math.random() * 1000)}/600/400`,
+        src: `https://picsum.photos/seed/gallery${Date.now()}/600/400`,
         alt: '',
         hint: '',
       });
