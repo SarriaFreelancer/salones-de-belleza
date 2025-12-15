@@ -43,31 +43,32 @@ export default function LoginPage() {
       });
       // The useEffect will handle the redirect
     } catch (loginError: any) {
+      // Check if it is the first time and the user needs to be created.
       if (loginError.code === 'auth/invalid-credential' || loginError.code === 'auth/user-not-found') {
-        // User doesn't exist, so try to create the first admin account.
         try {
           await signupAndAssignAdminRole(email, password);
           toast({
             title: '¡Cuenta de Administrador Creada!',
             description: 'Bienvenido. Tu cuenta de administrador ha sido creada.',
           });
-          // After successful signup, the onAuthStateChanged listener will handle auth state
-          // and the useEffect will redirect.
+          // After signup, the user state will change, and the useEffect will trigger the redirect.
         } catch (signupError: any) {
-          setError(`Error de registro: ${signupError.message}`);
+          const errorMessage = signupError.message || 'Ocurrió un error desconocido durante el registro.';
+          setError(`Error de registro: ${errorMessage}`);
           toast({
             variant: 'destructive',
             title: 'Error de Registro',
-            description: signupError.message,
+            description: errorMessage,
           });
         }
       } else {
         // Handle other login errors (e.g., wrong password, network error)
-        setError(loginError.message || 'Error al iniciar sesión.');
+        const errorMessage = loginError.message || 'Error al iniciar sesión.';
+        setError(errorMessage);
         toast({
           variant: 'destructive',
           title: 'Error de Inicio de Sesión',
-          description: loginError.message || 'Error desconocido.',
+          description: errorMessage,
         });
       }
     } finally {
