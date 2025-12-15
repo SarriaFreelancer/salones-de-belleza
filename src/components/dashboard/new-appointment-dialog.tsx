@@ -48,7 +48,7 @@ import {
   Check,
   ChevronsUpDown,
 } from 'lucide-react';
-import { format, toDate } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import type { Appointment, DayOfWeek } from '@/lib/types';
@@ -70,6 +70,8 @@ const formSchema = z.object({
   customerName: z.string().min(2, 'El nombre del cliente es requerido.'),
   customerEmail: z.string().email('El correo electrónico no es válido.').optional().or(z.literal('')),
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 type Suggestion = {
   stylistId: string;
@@ -97,7 +99,7 @@ export default function NewAppointmentDialog({
   const { stylists } = useStylists();
   const firestore = useFirestore();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       serviceIds: [],
@@ -120,7 +122,7 @@ export default function NewAppointmentDialog({
     }
   };
 
-  const findSuggestions = async (values: z.infer<typeof formSchema>>) => {
+  const findSuggestions = async (values: FormValues) => {
     setIsLoading(true);
     setSuggestions([]);
     
@@ -216,9 +218,10 @@ export default function NewAppointmentDialog({
       status: 'scheduled',
     };
     
-    const appointmentsCollection = collection(firestore, 'admin/appointments/appointments');
+    const appointmentsCollection = collection(firestore, 'admin', 'appointments', 'appointments');
     addDocumentNonBlocking(appointmentsCollection, newAppointment);
     
+    // This is a mock customer id, in a real app you would get this from the logged in user
     const customerAppointmentsCollection = collection(firestore, 'customers', 'mock_customer_id', 'appointments');
     addDocumentNonBlocking(customerAppointmentsCollection, newAppointment);
 
