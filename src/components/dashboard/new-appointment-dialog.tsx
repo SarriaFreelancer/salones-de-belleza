@@ -91,6 +91,8 @@ export default function NewAppointmentDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       serviceIds: [],
+      customerName: '',
+      customerEmail: '',
     },
   });
 
