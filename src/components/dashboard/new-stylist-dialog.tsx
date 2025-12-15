@@ -63,7 +63,7 @@ export default function NewStylistDialog({
     } else if (open && !isEditMode) {
       form.reset({
         name: '',
-        avatarUrl: `https://picsum.photos/seed/stylist${Date.now()}/100/100`,
+        avatarUrl: `https://picsum.photos/seed/stylist${Math.floor(Math.random() * 1000)}/100/100`,
       });
     }
   }, [stylistToEdit, open, form, isEditMode]);
