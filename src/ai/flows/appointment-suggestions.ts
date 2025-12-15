@@ -35,7 +35,7 @@ const AppointmentSuggestionsOutputSchema = z.object({
     stylistId: z.string().describe('The unique identifier of the suggested stylist.'),
     startTime: z.string().describe('The suggested start time for the appointment in HH:mm format.'),
     endTime: z.string().describe('The suggested end time for the appointment in HH:mm format.'),
-  })).describe('A list of suggested appointment times and stylist assignments.'),
+  })).describe('A list of suggested appointment times and stylist assignments. This should be an empty array if no slots are available.'),
 });
 export type AppointmentSuggestionsOutput = z.infer<typeof AppointmentSuggestionsOutputSchema>;
 
@@ -49,12 +49,13 @@ const prompt = ai.definePrompt({
   output: {schema: AppointmentSuggestionsOutputSchema},
   prompt: `You are an AI assistant helping to schedule appointments for a beauty salon.
 
-  Your task is to suggest up to 5 optimal appointment times and assign a suitable stylist.
+  Your task is to suggest up to 5 optimal appointment times and assign a suitable stylist based on their availability and existing schedule.
 
   You must adhere to the following constraints:
   1.  The suggested appointment must fit completely within a stylist's availability slot.
   2.  The suggested appointment must NOT overlap with any existing appointments for that stylist.
   3.  The appointment duration is fixed and cannot be changed.
+  4.  Calculate the end time based on the start time and the duration.
 
   Here is the information for the appointment request:
   - Service: {{{service}}}
@@ -67,7 +68,7 @@ const prompt = ai.definePrompt({
   {{#each stylistAvailability}}
     {{#if availableTimes}}
       - Stylist ID: {{{stylistId}}}
-        Available Times:
+        Available Times for this day:
         {{#each availableTimes}}
           - From: {{{start}}} to {{{end}}}
         {{/each}}
@@ -85,7 +86,7 @@ const prompt = ai.definePrompt({
     - No appointments are currently booked for this day.
   {{/if}}
 
-  Based on all this information, find available slots and suggest up to 5 valid appointment times. If there are no available slots that meet all the criteria, return an empty array for the suggestions.
+  Based on all this information, find available slots and suggest up to 5 valid appointment times. If there are no available slots that meet all the criteria, you MUST return an empty array for the suggestions field.
   `, 
 });
 
@@ -97,6 +98,7 @@ const suggestAppointmentFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    // Ensure the output is never null, default to empty suggestions array
+    return output ?? { suggestions: [] };
   }
 );

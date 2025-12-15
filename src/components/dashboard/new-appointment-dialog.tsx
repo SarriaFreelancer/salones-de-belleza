@@ -142,7 +142,11 @@ export default function NewAppointmentDialog({
         end: format(a.end, 'HH:mm'),
       }));
 
-    const dayOfWeek = format(values.preferredDate, 'eeee', { locale: es }).toLowerCase() as DayOfWeek;
+    // Correctly get the day of the week, being mindful of timezones.
+    // getDay() returns 0 for Sunday, 1 for Monday, etc.
+    const dayIndex = values.preferredDate.getDay();
+    const days: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayOfWeek = days[dayIndex];
 
     try {
       const result = await suggestAppointment({
@@ -156,7 +160,7 @@ export default function NewAppointmentDialog({
         existingAppointments: existingAppointmentsForDate,
       });
 
-      if (result.suggestions && result.suggestions.length > 0) {
+      if (result && result.suggestions && result.suggestions.length > 0) {
         setSuggestions(result.suggestions);
         setStep(2);
       } else {
