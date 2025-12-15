@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -37,17 +36,23 @@ const formSchema = z.object({
 });
 
 interface NewServiceDialogProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   onServiceCreated: (service: Service) => void;
+  serviceToEdit?: Service | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export default function NewServiceDialog({
   children,
   onServiceCreated,
+  serviceToEdit,
+  open,
+  onOpenChange,
 }: NewServiceDialogProps) {
-  const [open, setOpen] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
+  const isEditMode = !!serviceToEdit;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -59,11 +64,24 @@ export default function NewServiceDialog({
     },
   });
 
+  React.useEffect(() => {
+    if (serviceToEdit) {
+      form.reset(serviceToEdit);
+    } else {
+      form.reset({
+        name: '',
+        description: '',
+        price: 0,
+        duration: 30,
+      });
+    }
+  }, [serviceToEdit, form]);
+
   const handleOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen);
     if (!isOpen) {
       form.reset();
     }
+    onOpenChange(isOpen);
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
@@ -71,15 +89,15 @@ export default function NewServiceDialog({
 
     // Simulate API call
     setTimeout(() => {
-      const newService: Service = {
-        id: String(Date.now()),
+      const serviceData: Service = {
+        id: isEditMode ? serviceToEdit.id : String(Date.now()),
         ...values,
       };
 
-      onServiceCreated(newService);
+      onServiceCreated(serviceData);
       toast({
-        title: '¡Servicio Creado!',
-        description: `El servicio "${newService.name}" ha sido añadido correctamente.`,
+        title: isEditMode ? '¡Servicio Actualizado!' : '¡Servicio Creado!',
+        description: `El servicio "${serviceData.name}" ha sido ${isEditMode ? 'actualizado' : 'añadido'} correctamente.`,
       });
 
       setIsLoading(false);
@@ -89,12 +107,12 @@ export default function NewServiceDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Añadir Nuevo Servicio</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Editar Servicio' : 'Añadir Nuevo Servicio'}</DialogTitle>
           <DialogDescription>
-            Completa los detalles para crear un nuevo servicio.
+            {isEditMode ? 'Modifica los detalles del servicio.' : 'Completa los detalles para crear un nuevo servicio.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -136,7 +154,7 @@ export default function NewServiceDialog({
                     <FormItem>
                     <FormLabel>Precio ($)</FormLabel>
                     <FormControl>
-                        <Input type="number" placeholder="25.00" {...field} />
+                        <Input type="number" step="0.01" placeholder="25.00" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -149,7 +167,7 @@ export default function NewServiceDialog({
                     <FormItem>
                     <FormLabel>Duración (min)</FormLabel>
                     <FormControl>
-                        <Input type="number" placeholder="60" {...field} />
+                        <Input type="number" step="5" placeholder="60" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -167,7 +185,7 @@ export default function NewServiceDialog({
                     Guardando...
                   </>
                 ) : (
-                  'Guardar Servicio'
+                  isEditMode ? 'Guardar Cambios' : 'Guardar Servicio'
                 )}
               </Button>
             </DialogFooter>
