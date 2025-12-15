@@ -23,7 +23,7 @@ import {
   MoreHorizontal,
   PlusCircle,
 } from 'lucide-react';
-import { appointments, services } from '@/lib/data';
+import { appointments as initialAppointments } from '@/lib/data';
 import type { Appointment } from '@/lib/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -39,13 +39,15 @@ import {
 import { cn } from '@/lib/utils';
 import NewAppointmentDialog from '@/components/dashboard/new-appointment-dialog';
 import { useStylists } from '@/hooks/use-stylists';
+import { useServices } from '@/hooks/use-services';
 
 function AppointmentsPage() {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [stylistFilter, setStylistFilter] = React.useState<string>('all');
   const [serviceFilter, setServiceFilter] = React.useState<string>('all');
-  const [appointmentList, setAppointmentList] = React.useState<Appointment[]>(appointments);
+  const [appointmentList, setAppointmentList] = React.useState<Appointment[]>(initialAppointments);
   const { stylists } = useStylists();
+  const { services } = useServices();
 
   const filteredAppointments = appointmentList
     .filter((appointment) => {
@@ -119,7 +121,7 @@ function AppointmentsPage() {
             </SelectContent>
           </Select>
         </div>
-        <NewAppointmentDialog onAppointmentCreated={handleAppointmentCreated}>
+        <NewAppointmentDialog onAppointmentCreated={handleAppointmentCreated} appointments={appointmentList}>
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" />
             Agendar Cita

@@ -38,7 +38,6 @@ import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { appointments } from '@/lib/data';
 import { suggestAppointment } from '@/ai/flows/appointment-suggestions';
 import {
   Loader2,
@@ -77,11 +76,13 @@ type Suggestion = {
 interface NewAppointmentDialogProps {
   children: React.ReactNode;
   onAppointmentCreated: (appointment: Appointment) => void;
+  appointments: Appointment[];
 }
 
 export default function NewAppointmentDialog({
   children,
   onAppointmentCreated,
+  appointments,
 }: NewAppointmentDialogProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
