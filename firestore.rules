@@ -126,8 +126,8 @@ service cloud.firestore {
      * @principle Combines public read access with owner-only writes for profile management.
      */
     match /stylists/{stylistId} {
-      allow get: if isSignedIn() || isAdmin();
-      allow list: if isSignedIn() || isAdmin();
+      allow get: if true;
+      allow list: if true;
       allow create: if (isOwner(stylistId) || isAdmin()) && request.resource.data.id == stylistId;
       allow update: if (isOwnerOfExistingDoc(stylistId) || isAdmin()) && request.resource.data.id == resource.data.id;
       allow delete: if isAdmin() && isExistingDoc();
