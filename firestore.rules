@@ -194,7 +194,7 @@ service cloud.firestore {
      * @deny (get) Any non-admin user tries to read an appointment from this collection.
      * @principle Enforces a strictly admin-only access pattern for a sensitive data collection.
      */
-    match /admin/appointments/{appointmentId} {
+    match /admin_appointments/{appointmentId} {
       allow read, write: if isAdmin();
     }
 
