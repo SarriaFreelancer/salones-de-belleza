@@ -10,10 +10,52 @@ export const services: Service[] = [
 ];
 
 export const stylists: Stylist[] = [
-  { id: '1', name: 'Ana', avatarUrl: 'https://picsum.photos/seed/stylist1/100/100', availability: [{ start: '09:00', end: '13:00' }, { start: '14:00', end: '18:00' }] },
-  { id: '2', name: 'Sofía', avatarUrl: 'https://picsum.photos/seed/stylist2/100/100', availability: [{ start: '09:00', end: '17:00' }] },
-  { id: '3', name: 'Carla', avatarUrl: 'https://picsum.photos/seed/stylist3/100/100', availability: [{ start: '10:00', end: '14:00' }, { start: '15:00', end: '19:00' }] },
-  { id: '4', name: 'Lucía', avatarUrl: 'https://picsum.photos/seed/stylist4/100/100', availability: [{ start: '09:00', end: '13:00' }, { start: '14:00', end: '18:00' }] },
+  { 
+    id: '1', 
+    name: 'Ana', 
+    avatarUrl: 'https://picsum.photos/seed/stylist1/100/100', 
+    availability: {
+      monday: [{ start: '09:00', end: '13:00' }, { start: '14:00', end: '18:00' }],
+      tuesday: [{ start: '09:00', end: '13:00' }, { start: '14:00', end: '18:00' }],
+      wednesday: [{ start: '09:00', end: '13:00' }, { start: '14:00', end: '18:00' }],
+      thursday: [{ start: '09:00', end: '13:00' }, { start: '14:00', end: '18:00' }],
+      friday: [{ start: '10:00', end: '19:00' }],
+      saturday: [{ start: '10:00', end: '16:00' }],
+    } 
+  },
+  { 
+    id: '2', 
+    name: 'Sofía', 
+    avatarUrl: 'https://picsum.photos/seed/stylist2/100/100', 
+    availability: {
+      monday: [{ start: '09:00', end: '17:00' }],
+      tuesday: [{ start: '09:00', end: '17:00' }],
+      wednesday: [{ start: '09:00', end: '17:00' }],
+      thursday: [{ start: '09:00', end: '17:00' }],
+      friday: [{ start: '09:00', end: '17:00' }],
+    } 
+  },
+  { 
+    id: '3', 
+    name: 'Carla', 
+    avatarUrl: 'https://picsum.photos/seed/stylist3/100/100', 
+    availability: {
+      wednesday: [{ start: '10:00', end: '14:00' }, { start: '15:00', end: '19:00' }],
+      thursday: [{ start: '10:00', end: '14:00' }, { start: '15:00', end: '19:00' }],
+      friday: [{ start: '10:00', end: '14:00' }, { start: '15:00', end: '19:00' }],
+      saturday: [{ start: '10:00', end: '18:00' }],
+    } 
+  },
+  { 
+    id: '4', 
+    name: 'Lucía', 
+    avatarUrl: 'https://picsum.photos/seed/stylist4/100/100', 
+    availability: {
+      monday: [{ start: '09:00', end: '13:00' }, { start: '14:00', end: '18:00' }],
+      tuesday: [{ start: '09:00', end: '13:00' }, { start: '14:00', end: '18:00' }],
+      saturday: [{ start: '09:00', end: '15:00' }],
+    } 
+  },
 ];
 
 const today = new Date();

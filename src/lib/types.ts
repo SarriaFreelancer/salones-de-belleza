@@ -6,14 +6,18 @@ export interface Service {
   duration: number; // in minutes
 }
 
+export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
+export interface AvailabilitySlot {
+  start: string; // "HH:mm"
+  end: string;   // "HH:mm"
+}
+
 export interface Stylist {
   id: string;
   name: string;
   avatarUrl: string;
-  availability: {
-    start: string; // "HH:mm"
-    end: string;   // "HH:mm"
-  }[];
+  availability: Partial<Record<DayOfWeek, AvailabilitySlot[]>>;
 }
 
 export interface Appointment {
