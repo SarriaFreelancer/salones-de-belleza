@@ -53,10 +53,6 @@ export default function ServicesPage() {
     setEditingService(service);
   };
 
-  const closeEditDialog = () => {
-    setEditingService(null);
-  };
-
   const handleDeleteClick = (service: Service) => {
     setServiceToDelete(service);
   };
@@ -136,16 +132,20 @@ export default function ServicesPage() {
           ))}
         </div>
       </div>
-      {editingService && (
-        <NewServiceDialog
-          open={!!editingService}
-          onOpenChange={(isOpen) => !isOpen && closeEditDialog()}
-          serviceToEdit={editingService}
-          onServiceCreated={handleServiceUpdated}
-        >
-          {/* Trigger is not rendered as dialog is controlled */}
-        </NewServiceDialog>
-      )}
+      
+      <NewServiceDialog
+        open={!!editingService}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setEditingService(null);
+          }
+        }}
+        serviceToEdit={editingService}
+        onServiceCreated={handleServiceUpdated}
+      >
+        {/* Trigger is not rendered as dialog is controlled */}
+      </NewServiceDialog>
+
       <AlertDialog open={!!serviceToDelete} onOpenChange={(isOpen) => !isOpen && setServiceToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
