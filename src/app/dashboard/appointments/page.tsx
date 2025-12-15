@@ -41,12 +41,16 @@ import { cn } from '@/lib/utils';
 import NewAppointmentDialog from '@/components/dashboard/new-appointment-dialog';
 
 export default function AppointmentsPage() {
-  const [date, setDate] = React.useState<Date | undefined>(new Date());
+  const [date, setDate] = React.useState<Date | undefined>();
   const [stylistFilter, setStylistFilter] = React.useState<string>('all');
   const [serviceFilter, setServiceFilter] = React.useState<string>('all');
   const [isNewAppointmentDialogOpen, setIsNewAppointmentDialogOpen] = React.useState(false);
   
   const [appointmentList, setAppointmentList] = React.useState<Appointment[]>(appointments);
+
+  React.useEffect(() => {
+    setDate(new Date());
+  }, []);
 
   const filteredAppointments = appointmentList
     .filter((appointment) => {
