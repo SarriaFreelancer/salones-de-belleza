@@ -36,6 +36,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import ClientOnly from '@/components/client-only';
 
 const chartData = [
   { date: 'Lunes', appointments: 5 },
@@ -54,7 +55,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const [today, setToday] = React.useState<Date | null>(null);
 
   React.useEffect(() => {
@@ -224,4 +225,13 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+}
+
+
+export default function DashboardPage() {
+    return (
+        <ClientOnly>
+            <DashboardPageContent />
+        </ClientOnly>
+    )
 }

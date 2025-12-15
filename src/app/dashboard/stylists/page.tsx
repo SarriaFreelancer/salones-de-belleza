@@ -12,8 +12,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Clock } from 'lucide-react';
 import { format } from 'date-fns';
+import ClientOnly from '@/components/client-only';
 
-export default function StylistsPage() {
+function StylistsPageContent() {
   const [today, setToday] = React.useState<Date | null>(null);
 
   React.useEffect(() => {
@@ -100,4 +101,13 @@ export default function StylistsPage() {
       })}
     </div>
   );
+}
+
+
+export default function StylistsPage() {
+    return (
+        <ClientOnly>
+            <StylistsPageContent />
+        </ClientOnly>
+    )
 }

@@ -39,13 +39,12 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import NewAppointmentDialog from '@/components/dashboard/new-appointment-dialog';
+import ClientOnly from '@/components/client-only';
 
-export default function AppointmentsPage() {
+function AppointmentsPageContent() {
   const [date, setDate] = React.useState<Date | undefined>();
   const [stylistFilter, setStylistFilter] = React.useState<string>('all');
   const [serviceFilter, setServiceFilter] = React.useState<string>('all');
-  const [isNewAppointmentDialogOpen, setIsNewAppointmentDialogOpen] = React.useState(false);
-  
   const [appointmentList, setAppointmentList] = React.useState<Appointment[]>(appointments);
 
   React.useEffect(() => {
@@ -204,4 +203,12 @@ export default function AppointmentsPage() {
       </div>
     </div>
   );
+}
+
+export default function AppointmentsPage() {
+  return (
+    <ClientOnly>
+      <AppointmentsPageContent />
+    </ClientOnly>
+  )
 }
