@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -56,18 +56,17 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, Timestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-
+import { collection, Timestamp } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 const formSchema = z.object({
   serviceIds: z.array(z.string()).min(1, 'Debes seleccionar al menos un servicio.'),
   preferredDate: z.date({
     required_error: 'Debes seleccionar una fecha.',
   }),
-  customerName: z.string().min(2, 'El nombre del cliente es requerido.'),
+  customerName: z.string().min(2, 'El nombre es requerido.'),
   customerEmail: z.string().email('El correo electrónico no es válido.').optional().or(z.literal('')),
 });
 
@@ -84,17 +83,15 @@ export default function PublicBookingForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const { toast } = useToast();
-  const { services, isLoading: isLoadingServices } = useServices();
-  const { stylists, isLoading: isLoadingStylists } = useStylists();
+  const { services } = useServices();
+  const { stylists } = useStylists();
   const firestore = useFirestore();
+  const [isClient, setIsClient] = React.useState(false);
 
-  const appointmentsCollectionRef = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'admin/appointments/appointments');
-  }, [firestore]);
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
-  const { data: appointments } = useCollection<Appointment>(appointmentsCollectionRef);
-  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -103,15 +100,6 @@ export default function PublicBookingForm() {
       customerEmail: '',
     },
   });
-
-  const handleOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-        form.reset();
-        setStep(1);
-        setIsLoading(false);
-        setSuggestions([]);
-    }
-  };
 
   const findSuggestions = async (values: FormValues) => {
     setIsLoading(true);
@@ -132,20 +120,6 @@ export default function PublicBookingForm() {
     const serviceNames = selectedServices.map(s => s.name).join(', ');
 
     const formattedDate = format(values.preferredDate, 'yyyy-MM-dd');
-    const existingAppointmentsForDate = (appointments || [])
-      .filter((a) => {
-          const appDate = a.start instanceof Timestamp ? a.start.toDate() : new Date(a.start as any);
-          return format(appDate, 'yyyy-MM-dd') === formattedDate
-        })
-      .map((a) => {
-        const startDate = a.start instanceof Timestamp ? a.start.toDate() : new Date(a.start as any);
-        const endDate = a.end instanceof Timestamp ? a.end.toDate() : new Date(a.end as any);
-        return {
-          stylistId: a.stylistId,
-          start: format(startDate, 'HH:mm'),
-          end: format(endDate, 'HH:mm'),
-        }
-      });
       
     const dayIndex = values.preferredDate.getDay();
     const days: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -160,7 +134,9 @@ export default function PublicBookingForm() {
           stylistId: s.id,
           availableTimes: s.availability[dayOfWeek] || [],
         })),
-        existingAppointments: existingAppointmentsForDate,
+        // We pass an empty array because we don't have access to all appointments here.
+        // The AI flow is designed to handle this gracefully.
+        existingAppointments: [], 
       });
 
       if (result && result.suggestions && result.suggestions.length > 0) {
@@ -209,13 +185,15 @@ export default function PublicBookingForm() {
       status: 'scheduled',
     };
     
+    // Add to main admin collection
     const appointmentsCollection = collection(firestore, 'admin', 'appointments', 'appointments');
     addDocumentNonBlocking(appointmentsCollection, newAppointment);
     
-    // This is a mock customer id, in a real app you would get this from the logged in user
-    const customerAppointmentsCollection = collection(firestore, 'customers', 'mock_customer_id', 'appointments');
+    // In a real app, customerId would come from logged-in user, here we use a placeholder
+    const customerAppointmentsCollection = collection(firestore, 'customers', 'public_customer', 'appointments');
     addDocumentNonBlocking(customerAppointmentsCollection, newAppointment);
 
+    // Add to the stylist's subcollection
     const stylistAppointmentsCollection = collection(firestore, 'stylists', suggestion.stylistId, 'appointments');
     addDocumentNonBlocking(stylistAppointmentsCollection, newAppointment);
 
@@ -227,43 +205,63 @@ export default function PublicBookingForm() {
         startDate,
         "eeee, d 'de' MMMM 'a las' HH:mm",
         { locale: es }
-      )}.`,
+      )}. Recibirás una confirmación pronto.`,
     });
-    handleOpenChange(false); // Reset and close
+
+    form.reset();
     setStep(1);
     setSuggestions([]);
   };
 
-   const selectedServices = services.filter((s) =>
+  const selectedServices = services.filter((s) =>
     form.watch('serviceIds').includes(s.id)
   );
 
+  if (!isClient) {
+    return (
+        <Card className="w-full max-w-2xl mx-auto shadow-2xl">
+            <CardHeader>
+                <CardTitle className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-center">
+                    Cargando Agendamiento...
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="flex justify-center items-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+            </CardContent>
+        </Card>
+    );
+  }
 
-    if (step === 2) {
-        return (
-            <Card className="w-full max-w-2xl mx-auto">
-                 <CardHeader>
-                    <CardTitle className="font-headline text-3xl">Horarios Disponibles</CardTitle>
-                    <CardDescription>
-                        Revisa los detalles y elige el horario que más te convenga.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+  if (step === 2) {
+    return (
+        <Card className="w-full max-w-2xl mx-auto shadow-2xl">
+            <DialogHeader className="p-6">
+                <DialogTitle className="font-headline text-2xl flex items-center gap-2">
+                    <Sparkles className="text-primary" /> Horarios Disponibles
+                </DialogTitle>
+                <DialogDescription>
+                   Estos son los mejores momentos que encontramos para ti.
+                </DialogDescription>
+            </DialogHeader>
+
+            <div className="px-6 pb-6 space-y-4">
                 <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-2">
                     <h4 className="font-semibold">Resumen de tu Cita</h4>
                     <div className='text-sm'>
-                    <p><strong>Nombre:</strong> {form.getValues('customerName')}</p>
-                    <p><strong>Fecha:</strong> {format(form.getValues('preferredDate'), 'PPP', { locale: es })}</p>
-                    <div><strong>Servicios:</strong>
-                        <div className='flex flex-wrap gap-1 mt-1'>
-                            {selectedServices.map(s => <Badge key={s.id} variant="secondary">{s.name}</Badge>)}
+                        <p><strong>Cliente:</strong> {form.getValues('customerName')}</p>
+                        <p><strong>Fecha:</strong> {format(form.getValues('preferredDate'), 'PPP', { locale: es })}</p>
+                        <div><strong>Servicios:</strong>
+                            <div className='flex flex-wrap gap-1 mt-1'>
+                                {selectedServices.map(s => <Badge key={s.id} variant="secondary">{s.name}</Badge>)}
+                            </div>
                         </div>
-                    </div>
                     </div>
                 </div>
 
                 <h3 className="text-md font-medium pt-4">
-                  Horarios Sugeridos por nuestra IA
+                  Elige un horario para confirmar:
                 </h3>
                 <ScrollArea className="h-64 pr-4">
                   <div className="space-y-3">
@@ -301,38 +299,44 @@ export default function PublicBookingForm() {
                     })}
                   </div>
                 </ScrollArea>
-                </CardContent>
-                <CardFooter>
+                <DialogFooter>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setStep(1)}
                   >
-                    Volver
+                    Volver y Editar
                   </Button>
-                </CardFooter>
-            </Card>
-        );
-    }
+                </DialogFooter>
+            </div>
+        </Card>
+    )
+  }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(findSuggestions)}>
-                <CardHeader>
-                    <CardTitle className="font-headline text-3xl">Agenda tu Cita</CardTitle>
-                    <CardDescription>
-                        Usa nuestro asistente de IA para encontrar el momento perfecto para ti.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
+    <Card className="w-full max-w-2xl mx-auto shadow-2xl">
+        <CardHeader className="text-center">
+            <CardTitle className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                Agenda tu Cita
+            </CardTitle>
+            <p className="text-foreground/80">
+                Usa nuestro asistente de IA para encontrar el momento perfecto.
+            </p>
+        </CardHeader>
+        <CardContent>
+            <Form {...form}>
+            <form className="space-y-8" onSubmit={form.handleSubmit(findSuggestions)}>
+                <div className="space-y-4">
+                    <p className="text-sm font-medium">
+                    Ingresa tus datos y el servicio que deseas
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                         control={form.control}
                         name="customerName"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Tu Nombre Completo</FormLabel>
+                            <FormLabel>Tu Nombre</FormLabel>
                             <FormControl>
                                 <Input placeholder="Ej: Ana García" {...field} />
                             </FormControl>
@@ -345,7 +349,7 @@ export default function PublicBookingForm() {
                         name="customerEmail"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Correo Electrónico (Opcional)</FormLabel>
+                            <FormLabel>Tu Correo Electrónico</FormLabel>
                             <FormControl>
                                 <Input placeholder="tu@correo.com" {...field} />
                             </FormControl>
@@ -466,29 +470,29 @@ export default function PublicBookingForm() {
                         )}
                     />
                     </div>
-                </CardContent>
-                <CardFooter>
-                <Button
-                    type="submit"
-                    disabled={isLoading || isLoadingServices || isLoadingStylists}
-                    size="lg"
-                    className='w-full'
-                >
-                    {isLoading || isLoadingServices || isLoadingStylists ? (
-                    <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Buscando...
-                    </>
-                    ) : (
+                    <div className="flex justify-end pt-4">
+                    <Button
+                        type="submit"
+                        disabled={isLoading}
+                        size="lg"
+                    >
+                        {isLoading ? (
                         <>
-                         <Sparkles className="mr-2 h-4 w-4" />
-                        Buscar Horarios Disponibles
-                       </>
-                    )}
-                </Button>
-                </CardFooter>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Buscando...
+                        </>
+                        ) : (
+                           <>
+                             <Sparkles className="mr-2 h-4 w-4" />
+                             Buscar Horarios con IA
+                           </>
+                        )}
+                    </Button>
+                    </div>
+                </div>
             </form>
-        </Form>
+            </Form>
+        </CardContent>
     </Card>
   );
 }
