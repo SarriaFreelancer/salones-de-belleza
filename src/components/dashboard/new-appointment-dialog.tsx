@@ -52,7 +52,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import type { Appointment } from '@/lib/types';
+import type { Appointment, DayOfWeek } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
@@ -137,6 +137,8 @@ export default function NewAppointmentDialog({
         end: format(a.end, 'HH:mm'),
       }));
 
+    const dayOfWeek = format(values.preferredDate, 'eeee', { locale: es }).toLowerCase() as DayOfWeek;
+
     try {
       const result = await suggestAppointment({
         service: serviceNames,
@@ -144,7 +146,7 @@ export default function NewAppointmentDialog({
         preferredDate: formattedDate,
         stylistAvailability: stylists.map((s) => ({
           stylistId: s.id,
-          availableTimes: s.availability,
+          availableTimes: s.availability[dayOfWeek] || [],
         })),
         existingAppointments: existingAppointmentsForDate,
       });
@@ -188,7 +190,7 @@ export default function NewAppointmentDialog({
     const newAppointment: Appointment = {
       id: String(Date.now()),
       customerName: values.customerName.trim(),
-      serviceId: serviceId,
+      serviceId: serviceId, // Simplified for now
       stylistId: suggestion.stylistId,
       start: startDate,
       end: endDate,

@@ -49,28 +49,30 @@ const prompt = ai.definePrompt({
   output: {schema: AppointmentSuggestionsOutputSchema},
   prompt: `You are an AI assistant helping to schedule appointments for a beauty salon.
 
-  Given the following information, suggest optimal appointment times and stylist assignments, considering service duration and stylist availability. Ensure no scheduling conflicts occur with existing appointments.
+  Given the following information, suggest up to 5 optimal appointment times and stylist assignments, considering service duration and stylist availability. Ensure no scheduling conflicts occur with existing appointments.
 
   Service: {{{service}}}
   Duration: {{{duration}}} minutes
   Preferred Date: {{{preferredDate}}}
 
-  Stylist Availability:
+  Stylist Availability for the preferred date:
   {{#each stylistAvailability}}
-  Stylist ID: {{{stylistId}}}
-  Available Times:
-  {{#each availableTimes}}
-  Start: {{{start}}}, End: {{{end}}}
-  {{/each}}
+    {{#if availableTimes}}
+      Stylist ID: {{{stylistId}}}
+      Available Times:
+      {{#each availableTimes}}
+        Start: {{{start}}}, End: {{{end}}}
+      {{/each}}
+    {{/if}}
   {{/each}}
 
-  Existing Appointments:
+  Existing Appointments on the preferred date:
   {{#each existingAppointments}}
   Stylist ID: {{{stylistId}}}, Start: {{{start}}}, End: {{{end}}}
   {{/each}}
 
   Suggest appointment times and stylist assignments that fit within the available time slots and avoid conflicts with existing appointments.
-  Return the suggestions in the format specified in the output schema.
+  Return the suggestions in the format specified in the output schema. If no slots are available, return an empty array of suggestions.
   `, 
 });
 
