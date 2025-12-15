@@ -23,6 +23,7 @@ import {
   Users,
   LogOut,
   Flower2,
+  ExternalLink,
 } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -124,6 +125,12 @@ export default function DashboardLayout({
               {getPageTitle(pathname)}
             </h1>
           </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/book">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Ver Sitio Público
+            </Link>
+          </Button>
         </header>
         <main className="flex-1 p-4 lg:p-6">{children}</main>
       </SidebarInset>
