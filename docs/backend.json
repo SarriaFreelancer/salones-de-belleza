@@ -1,0 +1,133 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Divas AyA application, either a stylist or an administrator.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
+        "username": {
+          "type": "string",
+          "description": "Username of the user."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Phone number of the user."
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the user (e.g., stylist, administrator)."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates if the user account is active."
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "firstName",
+        "lastName",
+        "email",
+        "role",
+        "isActive"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles (stylists and administrators).",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/stylists/{stylistId}/appointments/{appointmentId}",
+        "definition": {
+          "entityName": "appointment",
+          "schema": {
+            "$ref": "#/backend/entities/Appointment"
+          },
+          "description": "Stores appointments for each stylist. Includes denormalized 'stylistId' for authorization independence.",
+          "params": [
+            {
+              "name": "stylistId",
+              "description": "The unique identifier for the stylist."
+            },
+            {
+              "name": "appointmentId",
+              "description": "The unique identifier for the appointment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/services/{serviceId}",
+        "definition": {
+          "entityName": "service",
+          "schema": {
+            "$ref": "#/backend/entities/Service"
+          },
+          "description": "Stores service details (name, description, price).",
+          "params": [
+            {
+              "name": "serviceId",
+              "description": "The unique identifier for the service."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "adminRole",
+          "schema": {
+            "$ref": "#/backend/entities/AdminRole"
+          },
+          "description": "Marks a user as an administrator via document existence.  No data is stored in the document itself.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user with admin privileges."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore data structure is designed for the Divas AyA application, prioritizing secure and efficient data access while adhering to the principles of Authorization Independence, Structural Segregation, and Access Modeling. User data is stored separately to manage stylist and administrator information. The core data model revolves around appointments, services, and stylist availability. The design ensures that security rules can be implemented without complex `get()` calls, enabling atomic operations and easy debugging.\n\nAuthorization Independence is achieved through denormalization. Specifically, the `stylists/{stylistId}/appointments/{appointmentId}` collection includes a `stylistId` field in each appointment document. This allows security rules to verify the appointment's stylist based solely on the document content and the authenticated user's ID (`request.auth.uid`), without needing to fetch the stylist document itself. Similarly the services are managed at `/services/{serviceId}` since all the stylists can create appointments with every service, and are not related to particular stylists.\n\nStructural Segregation is implemented by using distinct collections for different data types, e.g., `users` for user profiles, `services` for service details, and nested collections for appointments under each stylist. This segregation simplifies security rules by ensuring each collection has a consistent security posture. Global roles are managed via document existence within dedicated collections such as `/roles_admin/{uid}`. This existence-based check provides a simple and efficient mechanism for granting administrative privileges.\n\nQAPs (Rules are not Filters) are supported by this design. The structural segregation ensures that list operations can be secured effectively. For example, listing appointments under a stylist (`/stylists/{stylistId}/appointments`) can be restricted to the stylist themselves using the `stylistId` denormalized in each appointment document, or to admins using global role checks. The membership map is not used as the stylists are known based on the URL, and the admins are known based on a global admin role.\n\nThe design enforces invariants by using explicit state modeling with a `status` field for appointments (e.g., `SCHEDULED`, `CONFIRMED`, `CANCELLED`). Semantic naming conventions are used throughout the structure, such as `stylistId` and `appointmentId`, improving data clarity and predictability."
+  }
+}
