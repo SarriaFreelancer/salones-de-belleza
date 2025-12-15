@@ -20,11 +20,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Calendar as CalendarIcon,
-  ChevronDown,
   MoreHorizontal,
   PlusCircle,
 } from 'lucide-react';
-import { appointments, services, stylists } from '@/lib/data';
+import { appointments, services } from '@/lib/data';
 import type { Appointment } from '@/lib/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -39,12 +38,14 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import NewAppointmentDialog from '@/components/dashboard/new-appointment-dialog';
+import { useStylists } from '@/hooks/use-stylists';
 
 function AppointmentsPage() {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [stylistFilter, setStylistFilter] = React.useState<string>('all');
   const [serviceFilter, setServiceFilter] = React.useState<string>('all');
   const [appointmentList, setAppointmentList] = React.useState<Appointment[]>(appointments);
+  const { stylists } = useStylists();
 
   const filteredAppointments = appointmentList
     .filter((appointment) => {

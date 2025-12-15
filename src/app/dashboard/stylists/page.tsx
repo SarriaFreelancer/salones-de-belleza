@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { stylists as initialStylists, appointments, services } from '@/lib/data';
+import { appointments, services } from '@/lib/data';
 import type { Stylist } from '@/lib/types';
 import {
   Card,
@@ -14,102 +14,204 @@ import {
   DialogContent,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, CalendarCog } from 'lucide-react';
+import { Clock, CalendarCog, MoreVertical, Edit, Trash2, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import AvailabilityEditor from '@/components/dashboard/availability-editor';
+import { useStylists } from '@/hooks/use-stylists';
+import NewStylistDialog from '@/components/dashboard/new-stylist-dialog';
+import { useToast } from '@/hooks/use-toast';
+
+type DialogState = 
+  | { type: 'new' }
+  | { type: 'edit'; stylist: Stylist }
+  | { type: 'delete'; stylist: Stylist }
+  | { type: 'availability'; stylist: Stylist }
+  | null;
 
 function StylistsPage() {
   const [today] = React.useState<Date>(new Date());
-  const [stylists, setStylists] = React.useState<Stylist[]>(initialStylists);
-  const [editingStylist, setEditingStylist] = React.useState<Stylist | null>(null);
+  const { stylists, addStylist, updateStylist, deleteStylist } = useStylists();
+  const [dialogState, setDialogState] = React.useState<DialogState>(null);
+  const { toast } = useToast();
 
   const handleSaveAvailability = (updatedStylist: Stylist) => {
-    setStylists(currentStylists =>
-      currentStylists.map(s => s.id === updatedStylist.id ? updatedStylist : s)
-    );
-    setEditingStylist(null);
-    // Here you would typically make an API call to save the changes to your backend
+    updateStylist(updatedStylist);
+    setDialogState(null);
   };
+
+  const handleAddStylist = (stylist: Stylist) => {
+    addStylist(stylist);
+    setDialogState(null);
+  };
+
+  const handleUpdateStylist = (stylist: Stylist) => {
+    updateStylist(stylist);
+    setDialogState(null);
+  };
+  
+  const handleDeleteStylist = () => {
+    if (dialogState?.type === 'delete') {
+      deleteStylist(dialogState.stylist.id);
+      toast({
+        title: 'Estilista Eliminado',
+        description: `El estilista "${dialogState.stylist.name}" ha sido eliminado.`,
+      });
+      setDialogState(null);
+    }
+  };
+
+  const stylistToEdit = dialogState?.type === 'edit' ? dialogState.stylist : null;
+  const stylistToDelete = dialogState?.type === 'delete' ? dialogState.stylist : null;
+  const stylistForAvailability = dialogState?.type === 'availability' ? dialogState.stylist : null;
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {stylists.map((stylist) => {
-          const todaysAppointments = appointments.filter(
-            (a) =>
-              a.stylistId === stylist.id &&
-              a.start.toDateString() === today.toDateString() &&
-              a.status !== 'cancelled'
-          ).sort((a,b) => a.start.getTime() - b.start.getTime());
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="font-headline text-2xl">Equipo de Estilistas</h1>
+          <Button onClick={() => setDialogState({ type: 'new' })}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Añadir Estilista
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {stylists.map((stylist) => {
+            const todaysAppointments = appointments.filter(
+              (a) =>
+                a.stylistId === stylist.id &&
+                a.start.toDateString() === today.toDateString() &&
+                a.status !== 'cancelled'
+            ).sort((a,b) => a.start.getTime() - b.start.getTime());
 
-          return (
-            <Card key={stylist.id}>
-              <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
-                <Avatar className="h-16 w-16 border-2 border-primary">
-                  <AvatarImage src={stylist.avatarUrl} alt={stylist.name} data-ai-hint="woman portrait" />
-                  <AvatarFallback>{stylist.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="grid gap-1">
-                  <CardTitle className="font-headline text-xl">{stylist.name}</CardTitle>
+            return (
+              <Card key={stylist.id} className="relative">
+                <div className="absolute top-2 right-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setDialogState({ type: 'edit', stylist })}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        <span>Editar</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setDialogState({ type: 'delete', stylist })}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <span>Eliminar</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              </CardHeader>
-              <CardContent>
-                 <Dialog onOpenChange={(open) => !open && setEditingStylist(null)}>
-                    <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full mb-4" onClick={() => setEditingStylist(stylist)}>
-                            <CalendarCog className="mr-2 h-4 w-4" />
-                            Gestionar Horario
-                        </Button>
-                    </DialogTrigger>
-                    {editingStylist && editingStylist.id === stylist.id && (
-                        <DialogContent className="max-w-2xl">
-                           <AvailabilityEditor 
-                                stylist={editingStylist} 
-                                onSave={handleSaveAvailability} 
-                            />
-                        </DialogContent>
-                    )}
-                </Dialog>
-                
-                <h4 className="mb-2 font-semibold">Citas para Hoy</h4>
-                {todaysAppointments.length > 0 ? (
-                  <div className="space-y-2">
-                    {todaysAppointments.map((appointment) => {
-                      const service = services.find(
-                        (s) => s.id === appointment.serviceId
-                      );
-                      return (
-                        <div
-                          key={appointment.id}
-                          className="text-sm text-muted-foreground"
-                        >
-                          <div className="flex items-center justify-between">
-                              <span className="font-medium text-foreground">{appointment.customerName}</span>
-                              <Badge variant="secondary">{service?.name}</Badge>
-                          </div>
-                          <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              <span>
-                              {format(appointment.start, 'HH:mm')} - {format(appointment.end, 'HH:mm')}
-                              </span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 pr-12">
+                  <Avatar className="h-16 w-16 border-2 border-primary">
+                    <AvatarImage src={stylist.avatarUrl} alt={stylist.name} data-ai-hint="woman portrait" />
+                    <AvatarFallback>{stylist.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="grid gap-1">
+                    <CardTitle className="font-headline text-xl">{stylist.name}</CardTitle>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No hay citas agendadas para hoy.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                </CardHeader>
+                <CardContent>
+                  <Button variant="outline" className="w-full mb-4" onClick={() => setDialogState({ type: 'availability', stylist })}>
+                      <CalendarCog className="mr-2 h-4 w-4" />
+                      Gestionar Horario
+                  </Button>
+                  
+                  <h4 className="mb-2 font-semibold">Citas para Hoy</h4>
+                  {todaysAppointments.length > 0 ? (
+                    <div className="space-y-2">
+                      {todaysAppointments.map((appointment) => {
+                        const service = services.find(
+                          (s) => s.id === appointment.serviceId
+                        );
+                        return (
+                          <div
+                            key={appointment.id}
+                            className="text-sm text-muted-foreground"
+                          >
+                            <div className="flex items-center justify-between">
+                                <span className="font-medium text-foreground">{appointment.customerName}</span>
+                                <Badge variant="secondary">{service?.name}</Badge>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>
+                                {format(appointment.start, 'HH:mm')} - {format(appointment.end, 'HH:mm')}
+                                </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No hay citas agendadas para hoy.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
+
+      <Dialog open={dialogState?.type === 'availability'} onOpenChange={(open) => !open && setDialogState(null)}>
+        {stylistForAvailability && (
+            <DialogContent className="max-w-2xl">
+                <AvailabilityEditor 
+                    stylist={stylistForAvailability} 
+                    onSave={handleSaveAvailability} 
+                />
+            </DialogContent>
+        )}
+      </Dialog>
+
+      <NewStylistDialog
+        open={dialogState?.type === 'new' || dialogState?.type === 'edit'}
+        onOpenChange={(isOpen) => !isOpen && setDialogState(null)}
+        stylistToEdit={stylistToEdit}
+        onStylistCreated={stylistToEdit ? handleUpdateStylist : handleAddStylist}
+      />
+
+      <AlertDialog open={!!stylistToDelete} onOpenChange={(isOpen) => !isOpen && setDialogState(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Esto eliminará permanentemente a
+              "{stylistToDelete?.name}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDialogState(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteStylist} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

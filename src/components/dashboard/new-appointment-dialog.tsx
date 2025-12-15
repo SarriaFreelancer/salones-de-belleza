@@ -38,7 +38,7 @@ import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { services, stylists, appointments } from '@/lib/data';
+import { appointments } from '@/lib/data';
 import { suggestAppointment } from '@/ai/flows/appointment-suggestions';
 import {
   Loader2,
@@ -56,6 +56,8 @@ import type { Appointment, DayOfWeek } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
+import { useServices } from '@/hooks/use-services';
+import { useStylists } from '@/hooks/use-stylists';
 
 const formSchema = z.object({
   serviceIds: z.array(z.string()).min(1, 'Debes seleccionar al menos un servicio.'),
@@ -86,6 +88,8 @@ export default function NewAppointmentDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const { toast } = useToast();
+  const { services } = useServices();
+  const { stylists } = useStylists();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

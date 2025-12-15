@@ -31,11 +31,12 @@ import {
   CircleDollarSign,
   Clock,
 } from 'lucide-react';
-import { appointments, services, stylists } from '@/lib/data';
+import { appointments, services } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useStylists } from '@/hooks/use-stylists';
 
 const chartData = [
   { date: 'Lunes', appointments: 5 },
@@ -56,6 +57,7 @@ const chartConfig = {
 
 function DashboardPage() {
   const [today, setToday] = React.useState<Date>(new Date());
+  const { stylists } = useStylists();
 
   const todaysAppointments = appointments.filter(
     (a) => a.start.toDateString() === today.toDateString() && a.status !== 'cancelled'
