@@ -22,7 +22,7 @@ export default function LoginPage() {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
-  const { login, signup, user, isUserLoading } = useAuth();
+  const { login, user, isUserLoading } = useAuth();
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -43,21 +43,7 @@ export default function LoginPage() {
       });
       router.push('/dashboard');
     } catch (err: any) {
-      // If login fails because user does not exist, try to sign up
-      if (err.message.includes('auth/invalid-credential')) {
-        try {
-          await signup(email, password);
-          toast({
-            title: '¡Usuario administrador creado!',
-            description: 'Se ha creado el usuario administrador. Has iniciado sesión.',
-          });
-          router.push('/dashboard');
-        } catch (signupErr: any) {
-           setError(`Error al crear usuario: ${signupErr.message}`);
-        }
-      } else {
-        setError(err.message);
-      }
+       setError(err.message);
     } finally {
       setLoading(false);
     }

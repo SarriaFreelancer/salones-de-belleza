@@ -4,7 +4,7 @@ import React, { createContext, useContext, ReactNode, useCallback } from 'react'
 import { Auth, User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth as useFirebaseAuth, useUser, useFirestore } from '@/firebase';
 import { useToast } from './use-toast';
-import { doc, setDoc } from 'firebase/firestore'; // Import setDoc directly
+import { doc, setDoc } from 'firebase/firestore'; 
 
 interface AuthContextType {
   user: User | null;
@@ -26,24 +26,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
     } catch (error: any) {
-      // Re-throw all login errors to be handled by the UI
-      throw new Error(error.message || 'Error al iniciar sesión.');
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
+        // If user does not exist, try to sign them up as the first admin
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+          const newUser = userCredential.user;
+          if (newUser && firestore) {
+            const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
+            await setDoc(adminRoleDoc, {});
+          }
+        } catch (signupError: any) {
+           throw new Error(`Error al crear usuario administrador: ${signupError.message}`);
+        }
+      } else {
+        // For other login errors (e.g., wrong password), re-throw
+        throw new Error(error.message || 'Error al iniciar sesión.');
+      }
     }
-  }, [auth]);
+  }, [auth, firestore]);
 
+  // Signup is now primarily for future use, login handles the first admin creation.
   const signup = useCallback(async (email: string, pass: string): Promise<void> => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
       const newUser = userCredential.user;
       if (newUser && firestore) {
-        // This is the crucial step: add the new user's UID to the admin roles collection.
+        // This logic is now duplicated in login, but kept here for potential future separate signup flows.
         const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
-        // We use a blocking setDoc here to ensure the role is created before proceeding.
-        // This is critical for the initial admin setup.
         await setDoc(adminRoleDoc, {});
       }
     } catch (error: any) {
-      // Re-throw all creation errors to be handled by the UI
       throw new Error(error.message || 'Error al crear el usuario.');
     }
   }, [auth, firestore]);
