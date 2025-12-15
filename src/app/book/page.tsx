@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Sparkles } from 'lucide-react';
+import ClientOnly from '@/components/client-only';
 
 export default function BookingPage() {
   return (
@@ -21,7 +22,9 @@ export default function BookingPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <BookingForm />
+        <ClientOnly>
+          <BookingForm />
+        </ClientOnly>
       </CardContent>
     </Card>
   );
