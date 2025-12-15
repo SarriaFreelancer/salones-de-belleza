@@ -126,7 +126,7 @@ export default function DashboardLayout({
             </h1>
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link href="/book">
+            <Link href="/">
               <ExternalLink className="mr-2 h-4 w-4" />
               Ver Sitio Público
             </Link>
