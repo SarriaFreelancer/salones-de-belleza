@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import PublicBookingForm from '@/components/public/public-booking-form';
 
 
 export default function HomePage() {
@@ -47,7 +48,7 @@ export default function HomePage() {
           </Link>
         </nav>
         <Button asChild>
-          <Link href="/dashboard/appointments">
+          <Link href="#agendar">
             Agenda tu Cita
           </Link>
         </Button>
@@ -70,7 +71,7 @@ export default function HomePage() {
                 En Divas AyA, combinamos arte y experiencia para ofrecerte un servicio excepcional.
                 </p>
                 <Button asChild size="lg" className="mt-6">
-                    <Link href="/dashboard/appointments">
+                    <Link href="#agendar">
                         Reserva Ahora
                     </Link>
                 </Button>
@@ -165,22 +166,7 @@ export default function HomePage() {
 
         <section id="agendar" className="w-full py-12 md:py-24 lg:py-32">
             <div className="container px-4 md:px-6">
-                 <Card className="mx-auto max-w-2xl">
-                    <CardHeader className="text-center">
-                        <div className="mx-auto mb-2 flex items-center justify-center rounded-full bg-primary/10 p-3">
-                        <Sparkles className="h-8 w-8 text-primary" />
-                        </div>
-                        <CardTitle className="font-headline text-3xl">Agende su Cita</CardTitle>
-                        <CardDescription>
-                        El agendamiento se realiza desde nuestro panel de administración para asegurar la mejor atención.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex justify-center">
-                        <Button asChild size="lg">
-                            <Link href="/dashboard/appointments">Ir al Panel de Citas</Link>
-                        </Button>
-                    </CardContent>
-                </Card>
+                 <PublicBookingForm />
             </div>
         </section>
 
