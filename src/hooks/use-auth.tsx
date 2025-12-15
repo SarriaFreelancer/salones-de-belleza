@@ -4,8 +4,7 @@ import React, { createContext, useContext, ReactNode, useCallback } from 'react'
 import { Auth, User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth as useFirebaseAuth, useUser, useFirestore } from '@/firebase';
 import { useToast } from './use-toast';
-import { doc } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, setDoc } from 'firebase/firestore'; // Import setDoc directly
 
 interface AuthContextType {
   user: User | null;
@@ -39,9 +38,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (newUser && firestore) {
         // This is the crucial step: add the new user's UID to the admin roles collection.
         const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
-        // We use a non-blocking set to create the role document.
-        // The empty object {} is because we only care about the document's existence.
-        setDocumentNonBlocking(adminRoleDoc, {}, {});
+        // We use a blocking setDoc here to ensure the role is created before proceeding.
+        // This is critical for the initial admin setup.
+        await setDoc(adminRoleDoc, {});
       }
     } catch (error: any) {
       // Re-throw all creation errors to be handled by the UI
