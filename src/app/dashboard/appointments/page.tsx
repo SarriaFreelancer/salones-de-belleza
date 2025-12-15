@@ -24,7 +24,7 @@ import {
   PlusCircle,
 } from 'lucide-react';
 import type { Appointment } from '@/lib/types';
-import { format, toDate } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -42,6 +42,7 @@ import { useServices } from '@/hooks/use-services';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, Timestamp } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function AppointmentsPage() {
   const [date, setDate] = React.useState<Date | undefined>();
@@ -61,17 +62,35 @@ function AppointmentsPage() {
   
   const { data: appointments, isLoading } = useCollection<Appointment>(appointmentsCollection);
 
-  const handleAppointmentCreated = () => {
+  const handleAppointmentCreated = (newAppointment: Appointment) => {
     // No need to manually update state, useCollection handles it
   };
   
+  if (!date) {
+    return (
+       <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <Skeleton className="h-10 w-[240px]" />
+            <Skeleton className="h-10 w-[180px]" />
+            <Skeleton className="h-10 w-[180px]" />
+          </div>
+          <Skeleton className="h-10 w-36" />
+        </div>
+        <div className="rounded-lg border shadow-sm">
+           <Skeleton className="h-96 w-full" />
+        </div>
+      </div>
+    );
+  }
+
   const filteredAppointments = (appointments || [])
     .map(appointment => {
         // Convert Firestore Timestamps to JS Date objects
         return {
             ...appointment,
-            start: appointment.start instanceof Timestamp ? appointment.start.toDate() : appointment.start,
-            end: appointment.end instanceof Timestamp ? appointment.end.toDate() : appointment.end,
+            start: appointment.start instanceof Timestamp ? appointment.start.toDate() : new Date(appointment.start),
+            end: appointment.end instanceof Timestamp ? appointment.end.toDate() : new Date(appointment.end),
         };
     })
     .filter((appointment) => {

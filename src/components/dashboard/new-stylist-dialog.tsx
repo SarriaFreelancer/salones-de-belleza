@@ -32,7 +32,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface NewStylistDialogProps {
-  onStylistSaved: (stylist: Omit<Stylist, 'id' | 'avatarUrl'>) => void;
+  onStylistSaved: (stylist: Stylist | Omit<Stylist, 'id' | 'avatarUrl' | 'availability'>) => void;
   stylistToEdit?: Stylist | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -70,15 +70,12 @@ export default function NewStylistDialog({
     setIsLoading(true);
     
     if (isEditMode && stylistToEdit) {
-      // In edit mode, we pass the full stylist object back to the hook.
-      // The hook should decide what to update.
       onStylistSaved({
         ...stylistToEdit,
         ...values,
-      } as any); // Cast because onStylistSaved expects Omit, but it can handle full for updates
+      });
     } else {
-      // In add mode, just pass the form values
-      onStylistSaved({ ...values, availability: {} });
+      onStylistSaved(values);
     }
 
     setTimeout(() => {

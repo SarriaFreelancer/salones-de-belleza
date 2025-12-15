@@ -75,7 +75,7 @@ function StylistsPage() {
     setDialogState(null);
   };
 
-  const handleAddOrUpdateStylist = (stylist: Stylist | Omit<Stylist, 'id'>) => {
+  const handleAddOrUpdateStylist = (stylist: Stylist | Omit<Stylist, 'id' | 'avatarUrl' | 'availability'>) => {
     if ('id' in stylist) {
       updateStylist(stylist);
       toast({
@@ -138,8 +138,8 @@ function StylistsPage() {
              const todaysAppointments = (appointments || [])
               .map(appointment => ({
                 ...appointment,
-                start: appointment.start instanceof Timestamp ? appointment.start.toDate() : appointment.start,
-                end: appointment.end instanceof Timestamp ? appointment.end.toDate() : appointment.end,
+                start: appointment.start instanceof Timestamp ? appointment.start.toDate() : new Date(appointment.start),
+                end: appointment.end instanceof Timestamp ? appointment.end.toDate() : new Date(appointment.end),
               }))
               .filter(
                 (a) =>

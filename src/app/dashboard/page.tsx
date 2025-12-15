@@ -77,8 +77,8 @@ function DashboardPage() {
 
   const processedAppointments = (appointments || []).map(appointment => ({
       ...appointment,
-      start: appointment.start instanceof Timestamp ? appointment.start.toDate() : appointment.start,
-      end: appointment.end instanceof Timestamp ? appointment.end.toDate() : appointment.end,
+      start: appointment.start instanceof Timestamp ? appointment.start.toDate() : new Date(appointment.start),
+      end: appointment.end instanceof Timestamp ? appointment.end.toDate() : new Date(appointment.end),
   }));
 
   const todaysAppointments = processedAppointments.filter(

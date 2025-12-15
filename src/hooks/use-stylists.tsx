@@ -10,7 +10,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 interface StylistsContextType {
   stylists: Stylist[];
-  addStylist: (stylist: Omit<Stylist, 'id' | 'avatarUrl'>) => void;
+  addStylist: (stylist: Omit<Stylist, 'id' | 'avatarUrl' | 'availability'>) => void;
   updateStylist: (updatedStylist: Stylist) => void;
   deleteStylist: (stylistId: string) => void;
   isLoading: boolean;
@@ -28,7 +28,7 @@ export const StylistsProvider = ({ children }: { children: ReactNode }) => {
   
   const { data: stylists, isLoading } = useCollection<Stylist>(stylistsCollection);
 
-  const addStylist = (stylist: Omit<Stylist, 'id' | 'avatarUrl'>) => {
+  const addStylist = (stylist: Omit<Stylist, 'id' | 'avatarUrl' | 'availability'>) => {
     if (!stylistsCollection) return;
     const currentStylistCount = stylists?.length || 0;
     const avatarUrl = PlaceHolderImages[currentStylistCount % PlaceHolderImages.length]?.imageUrl || `https://picsum.photos/seed/stylist${currentStylistCount}/100/100`;
@@ -36,6 +36,7 @@ export const StylistsProvider = ({ children }: { children: ReactNode }) => {
     const newStylist: Omit<Stylist, 'id'> = {
       ...stylist,
       avatarUrl,
+      availability: {},
     };
     addDocumentNonBlocking(stylistsCollection, newStylist);
   };
