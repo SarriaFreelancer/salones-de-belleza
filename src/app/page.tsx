@@ -6,7 +6,7 @@ import { Card, CardHeader, CardContent, CardDescription, CardFooter, CardTitle }
 import BookingForm from '@/components/public/booking-form';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
-import { Sparkles, Flower2, Phone, Mail, MapPin, Users } from 'lucide-react';
+import { Sparkles, Flower2, Phone, Mail, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import { Logo } from '@/components/icons';
 import Link from 'next/link';
@@ -54,9 +54,9 @@ export default function HomePage() {
           </Link>
         </nav>
         <Button asChild>
-            <Link href="/login">
-              Admin Login
-            </Link>
+          <Link href="#agendar">
+            Agenda tu Cita
+          </Link>
         </Button>
       </header>
       <main className="flex-1">
