@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent, CardDescription, CardFooter, CardTitle } from '@/components/ui/card';
-import BookingForm from '@/components/public/booking-form';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
 import { useGallery } from '@/hooks/use-gallery';
@@ -48,7 +47,7 @@ export default function HomePage() {
           </Link>
         </nav>
         <Button asChild>
-          <Link href="#agendar">
+          <Link href="/dashboard/appointments">
             Agenda tu Cita
           </Link>
         </Button>
@@ -71,7 +70,7 @@ export default function HomePage() {
                 En Divas AyA, combinamos arte y experiencia para ofrecerte un servicio excepcional.
                 </p>
                 <Button asChild size="lg" className="mt-6">
-                    <Link href="#agendar">
+                    <Link href="/dashboard/appointments">
                         Reserva Ahora
                     </Link>
                 </Button>
@@ -173,11 +172,13 @@ export default function HomePage() {
                         </div>
                         <CardTitle className="font-headline text-3xl">Agende su Cita</CardTitle>
                         <CardDescription>
-                        Utilice nuestro asistente de IA para encontrar el momento perfecto para su próximo tratamiento.
+                        El agendamiento se realiza desde nuestro panel de administración para asegurar la mejor atención.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <BookingForm />
+                    <CardContent className="flex justify-center">
+                        <Button asChild size="lg">
+                            <Link href="/dashboard/appointments">Ir al Panel de Citas</Link>
+                        </Button>
                     </CardContent>
                 </Card>
             </div>
