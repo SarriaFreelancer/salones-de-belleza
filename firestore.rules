@@ -44,10 +44,10 @@ service cloud.firestore {
 
     /**
      * Checks if the authenticated user is an administrator by checking for
-     * the existence of their UID in the roles_admin collection.
+     * the custom claim 'admin' on the auth token.
      */
     function isAdmin() {
-      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      return request.auth != null && request.auth.token.admin == true;
     }
 
     /**
@@ -188,14 +188,15 @@ service cloud.firestore {
 
     /**
      * @description A centralized collection of all appointments, intended for use
-     *              by the admin dashboard. Access is strictly limited to admins.
+     *              by the admin dashboard. Access is strictly limited to admins
+     *              via a custom claim.
      * @path /admin_appointments/{appointmentId}
      * @allow (list) An admin user lists all appointments for the dashboard.
      * @deny (get) Any non-admin user tries to read an appointment from this collection.
      * @principle Enforces a strictly admin-only access pattern for a sensitive data collection.
      */
-    match /admin_appointments/{appointmentId} {
-      allow read, write: if isAdmin();
+    match /admin_appointments/{docId} {
+      allow read, write: if request.auth != null && request.auth.token.admin == true;
     }
 
     /**
