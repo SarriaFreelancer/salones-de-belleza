@@ -6,10 +6,11 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 interface StylistsContextType {
   stylists: Stylist[];
-  addStylist: (stylist: Omit<Stylist, 'id'>) => void;
+  addStylist: (stylist: Omit<Stylist, 'id' | 'avatarUrl'>) => void;
   updateStylist: (updatedStylist: Stylist) => void;
   deleteStylist: (stylistId: string) => void;
   isLoading: boolean;
@@ -27,9 +28,16 @@ export const StylistsProvider = ({ children }: { children: ReactNode }) => {
   
   const { data: stylists, isLoading } = useCollection<Stylist>(stylistsCollection);
 
-  const addStylist = (stylist: Omit<Stylist, 'id'>) => {
+  const addStylist = (stylist: Omit<Stylist, 'id' | 'avatarUrl'>) => {
     if (!stylistsCollection) return;
-    addDocumentNonBlocking(stylistsCollection, stylist);
+    const currentStylistCount = stylists?.length || 0;
+    const avatarUrl = PlaceHolderImages[currentStylistCount % PlaceHolderImages.length]?.imageUrl || `https://picsum.photos/seed/stylist${currentStylistCount}/100/100`;
+
+    const newStylist: Omit<Stylist, 'id'> = {
+      ...stylist,
+      avatarUrl,
+    };
+    addDocumentNonBlocking(stylistsCollection, newStylist);
   };
 
   const updateStylist = (updatedStylist: Stylist) => {

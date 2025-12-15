@@ -27,11 +27,12 @@ import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.'),
-  avatarUrl: z.string().url('Debe ser una URL de imagen válida.'),
 });
 
+type FormValues = z.infer<typeof formSchema>;
+
 interface NewStylistDialogProps {
-  onStylistSaved: (stylist: Stylist | Omit<Stylist, 'id'>) => void;
+  onStylistSaved: (stylist: Omit<Stylist, 'id' | 'avatarUrl'>) => void;
   stylistToEdit?: Stylist | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -46,11 +47,10 @@ export default function NewStylistDialog({
   const [isLoading, setIsLoading] = React.useState(false);
   const isEditMode = !!stylistToEdit;
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      avatarUrl: '',
     },
   });
 
@@ -58,26 +58,28 @@ export default function NewStylistDialog({
     if (open && stylistToEdit) {
       form.reset({
         name: stylistToEdit.name,
-        avatarUrl: stylistToEdit.avatarUrl,
       });
     } else if (open && !isEditMode) {
       form.reset({
         name: '',
-        avatarUrl: `https://picsum.photos/seed/stylist${Math.floor(Math.random() * 1000)}/100/100`,
       });
     }
   }, [stylistToEdit, open, form, isEditMode]);
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = (values: FormValues) => {
     setIsLoading(true);
-
-    const stylistData: Stylist = {
-      id: isEditMode && stylistToEdit ? stylistToEdit.id : String(Date.now()),
-      availability: isEditMode && stylistToEdit ? stylistToEdit.availability : {},
-      ...values,
-    };
-
-    onStylistSaved(isEditMode ? stylistData : { ...values, availability: {} });
+    
+    if (isEditMode && stylistToEdit) {
+      // In edit mode, we pass the full stylist object back to the hook.
+      // The hook should decide what to update.
+      onStylistSaved({
+        ...stylistToEdit,
+        ...values,
+      } as any); // Cast because onStylistSaved expects Omit, but it can handle full for updates
+    } else {
+      // In add mode, just pass the form values
+      onStylistSaved({ ...values, availability: {} });
+    }
 
     setTimeout(() => {
       setIsLoading(false);
@@ -109,22 +111,7 @@ export default function NewStylistDialog({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="avatarUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL de la Imagen del Avatar</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="https://example.com/avatar.jpg"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
                 Cancelar
