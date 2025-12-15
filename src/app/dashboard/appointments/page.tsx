@@ -42,12 +42,16 @@ import { useStylists } from '@/hooks/use-stylists';
 import { useServices } from '@/hooks/use-services';
 
 function AppointmentsPage() {
-  const [date, setDate] = React.useState<Date | undefined>(new Date());
+  const [date, setDate] = React.useState<Date | undefined>(undefined);
   const [stylistFilter, setStylistFilter] = React.useState<string>('all');
   const [serviceFilter, setServiceFilter] = React.useState<string>('all');
   const [appointmentList, setAppointmentList] = React.useState<Appointment[]>(initialAppointments);
   const { stylists } = useStylists();
   const { services } = useServices();
+  
+  React.useEffect(() => {
+    setDate(new Date());
+  }, []);
 
   const filteredAppointments = appointmentList
     .filter((appointment) => {

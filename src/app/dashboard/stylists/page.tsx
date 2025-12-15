@@ -47,10 +47,14 @@ type DialogState =
   | null;
 
 function StylistsPage() {
-  const [today] = React.useState<Date>(new Date());
+  const [today, setToday] = React.useState<Date | null>(null);
   const { stylists, addStylist, updateStylist, deleteStylist } = useStylists();
   const [dialogState, setDialogState] = React.useState<DialogState>(null);
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    setToday(new Date());
+  }, []);
 
   const handleSaveAvailability = (updatedStylist: Stylist) => {
     updateStylist(updatedStylist);
@@ -88,6 +92,14 @@ function StylistsPage() {
   const stylistToEdit = dialogState?.type === 'edit' ? dialogState.stylist : null;
   const stylistToDelete = dialogState?.type === 'delete' ? dialogState.stylist : null;
   const stylistForAvailability = dialogState?.type === 'availability' ? dialogState.stylist : null;
+
+  if (!today) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Cargando estilistas...</p>
+      </div>
+    );
+  }
 
   return (
     <>

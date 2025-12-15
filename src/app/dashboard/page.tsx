@@ -56,8 +56,20 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 function DashboardPage() {
-  const [today, setToday] = React.useState<Date>(new Date());
+  const [today, setToday] = React.useState<Date | null>(null);
   const { stylists } = useStylists();
+
+  React.useEffect(() => {
+    setToday(new Date());
+  }, []);
+
+  if (!today) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Cargando dashboard...</p>
+      </div>
+    );
+  }
 
   const todaysAppointments = appointments.filter(
     (a) => a.start.toDateString() === today.toDateString() && a.status !== 'cancelled'
