@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent, CardDescription, CardFooter, CardTitle } from '@/components/ui/card';
 import BookingForm from '@/components/public/booking-form';
 import { useServices } from '@/hooks/use-services';
-import { Sparkles, Flower2, Phone, Mail, MapPin } from 'lucide-react';
+import { useStylists } from '@/hooks/use-stylists';
+import { Sparkles, Flower2, Phone, Mail, MapPin, Users } from 'lucide-react';
 import Image from 'next/image';
 import { Logo } from '@/components/icons';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const galleryImages = [
   { id: 1, src: 'https://picsum.photos/seed/gallery1/600/400', alt: 'Peinado profesional', hint: 'woman hairstyle' },
@@ -23,6 +25,8 @@ const galleryImages = [
 
 export default function HomePage() {
     const { services } = useServices();
+    const { stylists } = useStylists();
+
   return (
     <div className="flex min-h-dvh w-full flex-col">
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
@@ -39,6 +43,9 @@ export default function HomePage() {
           <Link href="#servicios" className="text-foreground/70 transition-colors hover:text-foreground">
             Servicios
           </Link>
+          <Link href="#equipo" className="text-foreground/70 transition-colors hover:text-foreground">
+            Equipo
+          </Link>
           <Link href="#galeria" className="text-foreground/70 transition-colors hover:text-foreground">
             Galería
           </Link>
@@ -47,8 +54,8 @@ export default function HomePage() {
           </Link>
         </nav>
         <Button asChild>
-            <Link href="/dashboard">
-              Admin
+            <Link href="/login">
+              Admin Login
             </Link>
         </Button>
       </header>
@@ -111,7 +118,32 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="galeria" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
+        <section id="equipo" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
+            <div className="container px-4 md:px-6">
+                <div className="mx-auto flex max-w-5xl flex-col items-center justify-center space-y-4 text-center">
+                    <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                        Conoce a Nuestro Equipo
+                    </h2>
+                    <p className="text-foreground/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                        Manos expertas dedicadas a realzar tu belleza.
+                    </p>
+                </div>
+                <div className="mx-auto mt-12 grid grid-cols-2 gap-6 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4">
+                    {stylists.map((stylist) => (
+                        <div key={stylist.id} className="group relative flex flex-col items-center text-center">
+                            <Avatar className="h-40 w-40 border-4 border-background shadow-lg transition-transform group-hover:scale-105">
+                                <AvatarImage src={stylist.avatarUrl} alt={stylist.name} data-ai-hint="woman portrait" />
+                                <AvatarFallback>{stylist.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <h3 className="font-headline mt-4 text-xl font-semibold">{stylist.name}</h3>
+                            <p className="text-sm text-muted-foreground">Estilista Experta</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </section>
+
+        <section id="galeria" className="w-full py-12 md:py-24 lg:py-32">
           <div className="container px-4 md:px-6">
             <div className="mx-auto flex max-w-5xl flex-col items-center justify-center space-y-4 text-center">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
