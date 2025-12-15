@@ -45,7 +45,7 @@ import { useFirestore, useMemoFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function AppointmentsPage() {
-  const [date, setDate] = React.useState<Date | undefined>();
+  const [date, setDate] = React.useState<Date | undefined>(undefined);
   React.useEffect(() => {
     // Set date only on the client side
     setDate(new Date());
@@ -58,7 +58,7 @@ function AppointmentsPage() {
   
   const appointmentsCollection = useMemoFirebase(() => {
     if (!firestore) return null;
-    return collection(firestore, 'admin/appointments');
+    return collection(firestore, 'admin_appointments');
   }, [firestore]);
   
   const { data: appointments, isLoading } = useCollection<Appointment>(appointmentsCollection);

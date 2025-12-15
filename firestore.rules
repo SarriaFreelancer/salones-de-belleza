@@ -8,7 +8,7 @@
  * Data Structure: The data is segregated by role and ownership. Customer and
  * Stylist data, including their respective views of appointments, are stored in
  * user-specific paths (e.g., `/customers/{userId}`). A separate, denormalized
- * collection, `/admin/appointments`, provides a centralized view for the admin
+ * collection, `/admin_appointments`, provides a centralized view for the admin
  * dashboard. Publicly accessible data like salon services is stored in a top-level
  * `/services` collection.
  *
@@ -20,7 +20,7 @@
  *   own data trees. Users cannot list or view profiles of other users (except for
  *   stylist profiles, which are public to signed-in users).
  * - Denormalization for Security: Appointment data is denormalized into three
- *   separate locations (`/customers/...`, `/stylists/...`, `/admin/...`) to
+ *   separate locations (`/customers/...`, `/stylists/...`, `/admin_appointments/...`) to
  *   ensure that security rules for each role are simple, performant, and do not
  *   require slow, cross-collection `get()` calls.
  * - Public vs. Private: Public data (like `/services`) is explicitly marked as
@@ -189,12 +189,12 @@ service cloud.firestore {
     /**
      * @description A centralized collection of all appointments, intended for use
      *              by the admin dashboard. Access is strictly limited to admins.
-     * @path /admin/appointments/{appointmentId}
+     * @path /admin_appointments/{appointmentId}
      * @allow (list) An admin user lists all appointments for the dashboard.
      * @deny (get) Any non-admin user tries to read an appointment from this collection.
      * @principle Enforces a strictly admin-only access pattern for a sensitive data collection.
      */
-    match /admin/appointments/{appointmentId} {
+    match /admin_appointments/{appointmentId} {
       allow get: if isAdmin();
       allow list: if isAdmin();
       allow create: if isAdmin();

@@ -218,7 +218,7 @@ export default function NewAppointmentDialog({
       status: 'scheduled',
     };
     
-    const appointmentsCollection = collection(firestore, 'admin/appointments');
+    const appointmentsCollection = collection(firestore, 'admin_appointments');
     addDocumentNonBlocking(appointmentsCollection, newAppointment);
     
     // This is a mock customer id, in a real app you would get this from the logged in user

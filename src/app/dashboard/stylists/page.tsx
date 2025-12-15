@@ -61,7 +61,7 @@ function StylistsPage() {
 
   const appointmentsCollection = useMemoFirebase(() => {
     if (!firestore) return null;
-    return collection(firestore, 'admin/appointments');
+    return collection(firestore, 'admin_appointments');
   }, [firestore]);
 
   const { data: appointments } = useCollection<Appointment>(appointmentsCollection);
