@@ -15,7 +15,7 @@ export interface AvailabilitySlot {
 
 export interface Stylist {
   id: string;
-  name: string;
+  name:string;
   avatarUrl: string;
   availability: Partial<Record<DayOfWeek, AvailabilitySlot[]>>;
 }
@@ -28,4 +28,11 @@ export interface Appointment {
   start: Date;
   end: Date;
   status: 'scheduled' | 'confirmed' | 'cancelled';
+}
+
+export interface GalleryImage {
+  id: string;
+  src: string;
+  alt: string;
+  hint: string;
 }

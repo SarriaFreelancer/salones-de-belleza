@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { AuthProvider } from '@/hooks/use-auth';
 import { ServicesProvider } from '@/hooks/use-services';
 import { StylistsProvider } from '@/hooks/use-stylists';
+import { GalleryProvider } from '@/hooks/use-gallery';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
@@ -29,7 +30,9 @@ export default function RootLayout({
           <AuthProvider>
             <StylistsProvider>
               <ServicesProvider>
-                {children}
+                <GalleryProvider>
+                  {children}
+                </GalleryProvider>
               </ServicesProvider>
             </StylistsProvider>
           </AuthProvider>

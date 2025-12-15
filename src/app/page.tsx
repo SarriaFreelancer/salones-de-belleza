@@ -6,6 +6,7 @@ import { Card, CardHeader, CardContent, CardDescription, CardFooter, CardTitle }
 import BookingForm from '@/components/public/booking-form';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
+import { useGallery } from '@/hooks/use-gallery';
 import { Sparkles, Flower2, Phone, Mail, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import { Logo } from '@/components/icons';
@@ -14,18 +15,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-const galleryImages = [
-  { id: 1, src: 'https://picsum.photos/seed/gallery1/600/400', alt: 'Peinado profesional', hint: 'woman hairstyle' },
-  { id: 2, src: 'https://picsum.photos/seed/gallery2/600/400', alt: 'Manicura detallada', hint: 'manicure nails' },
-  { id: 3, src: 'https://picsum.photos/seed/gallery3/600/400', alt: 'Tratamiento facial relajante', hint: 'facial treatment' },
-  { id: 4, src: 'https://picsum.photos/seed/gallery4/600/400', alt: 'Pedicura spa', hint: 'pedicure spa' },
-  { id: 5, src: 'https://picsum.photos/seed/gallery5/600/400', alt: 'Corte de cabello moderno', hint: 'haircut style' },
-  { id: 6, src: 'https://picsum.photos/seed/gallery6/600/400', alt: 'Diseño de uñas creativo', hint: 'nail art' },
-];
 
 export default function HomePage() {
     const { services } = useServices();
     const { stylists } = useStylists();
+    const { galleryImages } = useGallery();
 
   return (
     <div className="flex min-h-dvh w-full flex-col">
@@ -240,8 +234,8 @@ export default function HomePage() {
         </section>
       </main>
       <footer className="w-full shrink-0 border-t py-6 px-4 md:px-6">
-        <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
-          <p className="flex-1 text-center text-xs text-muted-foreground sm:text-left">
+        <div className="flex flex-col items-center justify-center gap-2 sm:flex-row sm:justify-between">
+          <p className="flex-1 text-center text-xs text-muted-foreground">
             &copy; 2024 Divas AyA. Todos los derechos reservados.
           </p>
           <nav className="flex gap-4 sm:gap-6">

@@ -23,6 +23,7 @@ import {
   Users,
   LogOut,
   ExternalLink,
+  GalleryHorizontal,
 } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -120,6 +121,18 @@ export default function DashboardLayout({
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === '/dashboard/gallery'}
+                tooltip={{ children: 'Galería' }}
+              >
+                <Link href="/dashboard/gallery">
+                  <GalleryHorizontal />
+                  <span>Galería</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
@@ -163,5 +176,6 @@ function getPageTitle(pathname: string): string {
   if (pathname.includes('/appointments')) return 'Gestión de Citas';
   if (pathname.includes('/services')) return 'Nuestros Servicios';
   if (pathname.includes('/stylists')) return 'Equipo de Estilistas';
+  if (pathname.includes('/gallery')) return 'Gestión de Galería';
   return 'Bienvenida, Admin!';
 }

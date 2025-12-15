@@ -1,4 +1,4 @@
-import type { Service, Stylist, Appointment } from './types';
+import type { Service, Stylist, Appointment, GalleryImage } from './types';
 
 export const services: Service[] = [
   { id: '1', name: 'Corte Diva', description: 'Corte de cabello personalizado con lavado y secado.', price: 25.00, duration: 60 },
@@ -115,4 +115,13 @@ export const appointments: Appointment[] = [
     end: setTimeToDate(today, '15:00'),
     status: 'cancelled' 
   },
+];
+
+export const galleryImages: GalleryImage[] = [
+  { id: '1', src: 'https://picsum.photos/seed/gallery1/600/400', alt: 'Peinado profesional', hint: 'woman hairstyle' },
+  { id: '2', src: 'https://picsum.photos/seed/gallery2/600/400', alt: 'Manicura detallada', hint: 'manicure nails' },
+  { id: '3', src: 'https://picsum.photos/seed/gallery3/600/400', alt: 'Tratamiento facial relajante', hint: 'facial treatment' },
+  { id: '4', src: 'https://picsum.photos/seed/gallery4/600/400', alt: 'Pedicura spa', hint: 'pedicure spa' },
+  { id: '5', src: 'https://picsum.photos/seed/gallery5/600/400', alt: 'Corte de cabello moderno', hint: 'haircut style' },
+  { id: '6', src: 'https://picsum.photos/seed/gallery6/600/400', alt: 'Diseño de uñas creativo', hint: 'nail art' },
 ];
