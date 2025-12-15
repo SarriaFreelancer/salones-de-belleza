@@ -1,10 +1,12 @@
 
 'use client';
+import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import ClientOnly from '@/components/client-only';
 import BookingForm from '@/components/public/booking-form';
-import { services } from '@/lib/data';
+import { services as initialServices } from '@/lib/data';
+import type { Service } from '@/lib/types';
 import { Sparkles, Flower2, Phone, Mail, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import { Logo } from '@/components/icons';
@@ -22,6 +24,7 @@ const galleryImages = [
 ];
 
 function HomePageContent() {
+    const [services, setServices] = React.useState<Service[]>(initialServices);
   return (
     <div className="flex min-h-dvh w-full flex-col">
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
