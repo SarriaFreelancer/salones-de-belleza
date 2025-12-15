@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { AuthProvider } from '@/hooks/use-auth';
 import { ServicesProvider } from '@/hooks/use-services';
 import { StylistsProvider } from '@/hooks/use-stylists';
+import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
   title: 'Divas AyA',
@@ -24,13 +25,15 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&family=Belleza&display=swap" rel="stylesheet" />
       </head>
       <body className={cn('font-body antialiased', 'min-h-screen bg-background font-sans')}>
-        <AuthProvider>
-          <StylistsProvider>
-            <ServicesProvider>
-              {children}
-            </ServicesProvider>
-          </StylistsProvider>
-        </AuthProvider>
+        <FirebaseClientProvider>
+          <AuthProvider>
+            <StylistsProvider>
+              <ServicesProvider>
+                {children}
+              </ServicesProvider>
+            </StylistsProvider>
+          </AuthProvider>
+        </FirebaseClientProvider>
         <Toaster />
       </body>
     </html>

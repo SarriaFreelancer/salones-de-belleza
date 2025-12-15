@@ -34,24 +34,24 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, isUserLoading } = useAuth();
   const router = useRouter();
 
   React.useEffect(() => {
-    if (user === null) {
+    if (!isUserLoading && !user) {
       router.push('/login');
     }
-  }, [user, router]);
+  }, [user, isUserLoading, router]);
 
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
   
-  if (!user) {
+  if (isUserLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p>Redirigiendo al login...</p>
+        <p>Cargando y verificando autenticación...</p>
       </div>
     );
   }
@@ -125,12 +125,12 @@ export default function DashboardLayout({
         <SidebarFooter>
            <div className="flex items-center gap-3">
               <Avatar className="size-8">
-                <AvatarImage src="https://picsum.photos/seed/admin/100/100" alt="Admin" data-ai-hint="woman portrait" />
-                <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
+                <AvatarImage src={user.photoURL || "https://picsum.photos/seed/admin/100/100"} alt={user.email || 'Admin'} data-ai-hint="woman portrait" />
+                <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-                <p className="text-sm font-medium text-sidebar-foreground">{user?.name}</p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
+                <p className="text-sm font-medium text-sidebar-foreground">{user.displayName || 'Administrador'}</p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>
               <Button variant="ghost" size="icon" className="ml-auto group-data-[collapsible=icon]:hidden" onClick={handleLogout}>
                 <LogOut />

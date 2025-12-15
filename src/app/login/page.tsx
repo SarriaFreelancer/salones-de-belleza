@@ -17,19 +17,19 @@ import { Logo } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
-  const [username, setUsername] = React.useState('');
-  const [password, setPassword] = React.useState('');
+  const [email, setEmail] = React.useState('admin@divas.com');
+  const [password, setPassword] = React.useState('12345678');
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
-  const { login, user } = useAuth();
+  const { login, user, isUserLoading } = useAuth();
   const { toast } = useToast();
 
   React.useEffect(() => {
-    if (user) {
+    if (!isUserLoading && user) {
       router.push('/dashboard');
     }
-  }, [user, router]);
+  }, [user, isUserLoading, router]);
 
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -37,7 +37,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    const success = await login(username, password);
+    const success = await login(email, password);
 
     setLoading(false);
     if (success) {
@@ -47,9 +47,17 @@ export default function LoginPage() {
       });
       router.push('/dashboard');
     } else {
-      setError('Nombre de usuario o contraseña incorrectos.');
+      setError('Correo electrónico o contraseña incorrectos.');
     }
   };
+  
+  if (isUserLoading || user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Cargando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40">
@@ -68,13 +76,14 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Nombre de Usuario</Label>
+              <Label htmlFor="email">Correo Electrónico</Label>
               <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="David Sarria"
+                placeholder="admin@divas.com"
               />
             </div>
             <div className="space-y-2">
