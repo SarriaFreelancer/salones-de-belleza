@@ -41,7 +41,7 @@ export default function LoginPage() {
         title: '¡Bienvenido de vuelta!',
         description: 'Has iniciado sesión correctamente.',
       });
-      router.push('/dashboard');
+      // The useEffect will handle the redirect
     } catch (loginError: any) {
       if (loginError.code === 'auth/invalid-credential' || loginError.code === 'auth/user-not-found') {
         // User doesn't exist, so try to create the first admin account.
@@ -51,15 +51,24 @@ export default function LoginPage() {
             title: '¡Cuenta de Administrador Creada!',
             description: 'Bienvenido. Tu cuenta de administrador ha sido creada.',
           });
-          // After successful signup, the onAuthStateChanged listener will handle the redirect.
-          // We can push to dashboard directly as well.
-           router.push('/dashboard');
+          // After successful signup, the onAuthStateChanged listener will handle auth state
+          // and the useEffect will redirect.
         } catch (signupError: any) {
           setError(`Error de registro: ${signupError.message}`);
+          toast({
+            variant: 'destructive',
+            title: 'Error de Registro',
+            description: signupError.message,
+          });
         }
       } else {
         // Handle other login errors (e.g., wrong password, network error)
         setError(loginError.message || 'Error al iniciar sesión.');
+        toast({
+          variant: 'destructive',
+          title: 'Error de Inicio de Sesión',
+          description: loginError.message || 'Error desconocido.',
+        });
       }
     } finally {
       setLoading(false);

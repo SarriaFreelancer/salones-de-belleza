@@ -23,25 +23,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
-    try {
-      await signInWithEmailAndPassword(auth, email, pass);
-    } catch (error: any) {
-      // Re-throw the error to be handled by the caller
-      throw error;
-    }
+    // This function will now re-throw the error to be handled by the UI component.
+    await signInWithEmailAndPassword(auth, email, pass);
   }, [auth]);
 
   const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<void> => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-      const newUser = userCredential.user;
-      if (newUser && firestore) {
-        const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
-        // CRITICAL: Ensure the role document is created before proceeding.
-        await setDoc(adminRoleDoc, {});
-      }
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al crear el usuario administrador.');
+    // This function creates the user and assigns the admin role in one atomic operation from the UI perspective.
+    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+    const newUser = userCredential.user;
+    if (newUser && firestore) {
+      const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
+      // CRITICAL: Ensure the role document is created before proceeding.
+      await setDoc(adminRoleDoc, {});
+    } else {
+      throw new Error('No se pudo crear el usuario o la instancia de Firestore no está disponible.');
     }
   }, [auth, firestore]);
 
