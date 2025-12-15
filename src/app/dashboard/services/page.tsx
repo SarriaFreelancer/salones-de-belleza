@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import { services as initialServices } from '@/lib/data';
 import type { Service } from '@/lib/types';
 import {
   Card,
@@ -14,19 +13,16 @@ import {
 import { Button } from '@/components/ui/button';
 import { Flower2, PlusCircle } from 'lucide-react';
 import NewServiceDialog from '@/components/dashboard/new-service-dialog';
+import { useServices } from '@/hooks/use-services';
 
 export default function ServicesPage() {
-  const [services, setServices] = React.useState<Service[]>(initialServices);
-
-  const handleServiceCreated = (newService: Service) => {
-    setServices((prevServices) => [...prevServices, newService]);
-  };
+  const { services, addService } = useServices();
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="font-headline text-2xl">Nuestros Servicios</h1>
-        <NewServiceDialog onServiceCreated={handleServiceCreated}>
+        <NewServiceDialog onServiceCreated={addService}>
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" />
             Añadir Servicio

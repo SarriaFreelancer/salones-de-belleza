@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { AuthProvider } from '@/hooks/use-auth';
+import { ServicesProvider } from '@/hooks/use-services';
 
 export const metadata: Metadata = {
   title: 'Divas AyA',
@@ -23,7 +24,9 @@ export default function RootLayout({
       </head>
       <body className={cn('font-body antialiased', 'min-h-screen bg-background font-sans')}>
         <AuthProvider>
-          {children}
+          <ServicesProvider>
+            {children}
+          </ServicesProvider>
         </AuthProvider>
         <Toaster />
       </body>
