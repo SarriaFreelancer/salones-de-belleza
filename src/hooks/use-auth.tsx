@@ -10,7 +10,7 @@ interface AuthContextType {
   user: User | null;
   isUserLoading: boolean;
   login: (email: string, pass: string) => Promise<void>;
-  signup: (email: string, pass: string) => Promise<void>;
+  signupAndAssignAdminRole: (email: string, pass: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -26,37 +26,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
     } catch (error: any) {
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
-        // If user does not exist, try to sign them up as the first admin
-        try {
-          const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-          const newUser = userCredential.user;
-          if (newUser && firestore) {
-            const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
-            await setDoc(adminRoleDoc, {});
-          }
-        } catch (signupError: any) {
-           throw new Error(`Error al crear usuario administrador: ${signupError.message}`);
-        }
-      } else {
-        // For other login errors (e.g., wrong password), re-throw
-        throw new Error(error.message || 'Error al iniciar sesión.');
-      }
+      // Re-throw the error to be handled by the caller
+      throw error;
     }
-  }, [auth, firestore]);
+  }, [auth]);
 
-  // Signup is now primarily for future use, login handles the first admin creation.
-  const signup = useCallback(async (email: string, pass: string): Promise<void> => {
+  const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<void> => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
       const newUser = userCredential.user;
       if (newUser && firestore) {
-        // This logic is now duplicated in login, but kept here for potential future separate signup flows.
         const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
+        // CRITICAL: Ensure the role document is created before proceeding.
         await setDoc(adminRoleDoc, {});
       }
     } catch (error: any) {
-      throw new Error(error.message || 'Error al crear el usuario.');
+      throw new Error(error.message || 'Error al crear el usuario administrador.');
     }
   }, [auth, firestore]);
 
@@ -79,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [auth, toast]);
 
   return (
-    <AuthContext.Provider value={{ user, isUserLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isUserLoading, login, signupAndAssignAdminRole, logout }}>
       {children}
     </AuthContext.Provider>
   );

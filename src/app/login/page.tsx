@@ -22,7 +22,7 @@ export default function LoginPage() {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
-  const { login, user, isUserLoading } = useAuth();
+  const { login, signupAndAssignAdminRole, user, isUserLoading } = useAuth();
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -38,12 +38,29 @@ export default function LoginPage() {
     try {
       await login(email, password);
       toast({
-        title: '¡Bienvenido!',
+        title: '¡Bienvenido de vuelta!',
         description: 'Has iniciado sesión correctamente.',
       });
       router.push('/dashboard');
-    } catch (err: any) {
-       setError(err.message);
+    } catch (loginError: any) {
+      if (loginError.code === 'auth/invalid-credential' || loginError.code === 'auth/user-not-found') {
+        // User doesn't exist, so try to create the first admin account.
+        try {
+          await signupAndAssignAdminRole(email, password);
+          toast({
+            title: '¡Cuenta de Administrador Creada!',
+            description: 'Bienvenido. Tu cuenta de administrador ha sido creada.',
+          });
+          // After successful signup, the onAuthStateChanged listener will handle the redirect.
+          // We can push to dashboard directly as well.
+           router.push('/dashboard');
+        } catch (signupError: any) {
+          setError(`Error de registro: ${signupError.message}`);
+        }
+      } else {
+        // Handle other login errors (e.g., wrong password, network error)
+        setError(loginError.message || 'Error al iniciar sesión.');
+      }
     } finally {
       setLoading(false);
     }
