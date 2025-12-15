@@ -47,6 +47,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 function AppointmentsPage() {
   const [date, setDate] = React.useState<Date | undefined>();
   React.useEffect(() => {
+    // Set date only on the client side
     setDate(new Date());
   }, []);
   const [stylistFilter, setStylistFilter] = React.useState<string>('all');
@@ -66,6 +67,7 @@ function AppointmentsPage() {
     // No need to manually update state, useCollection handles it
   };
   
+  // Wait until date is set on the client to avoid hydration mismatch
   if (!date) {
     return (
        <div className="space-y-6">
@@ -94,7 +96,6 @@ function AppointmentsPage() {
         };
     })
     .filter((appointment) => {
-      if (!date) return true;
       return (appointment.start as Date).toDateString() === date.toDateString();
     })
     .filter((appointment) => {
