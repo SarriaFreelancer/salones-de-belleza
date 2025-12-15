@@ -39,18 +39,12 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import NewAppointmentDialog from '@/components/dashboard/new-appointment-dialog';
-import ClientOnly from '@/components/client-only';
 
-function AppointmentsPageContent() {
-  const [date, setDate] = React.useState<Date | undefined>();
+function AppointmentsPage() {
+  const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [stylistFilter, setStylistFilter] = React.useState<string>('all');
   const [serviceFilter, setServiceFilter] = React.useState<string>('all');
   const [appointmentList, setAppointmentList] = React.useState<Appointment[]>(appointments);
-
-  React.useEffect(() => {
-    // Set initial date on client-side to avoid hydration mismatch
-    setDate(new Date());
-  }, []);
 
   const filteredAppointments = appointmentList
     .filter((appointment) => {
@@ -205,10 +199,4 @@ function AppointmentsPageContent() {
   );
 }
 
-export default function AppointmentsPage() {
-  return (
-    <ClientOnly>
-      <AppointmentsPageContent />
-    </ClientOnly>
-  )
-}
+export default AppointmentsPage;

@@ -2,8 +2,7 @@
 'use client';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import ClientOnly from '@/components/client-only';
+import { Card, CardHeader, CardContent, CardDescription, CardFooter, CardTitle } from '@/components/ui/card';
 import BookingForm from '@/components/public/booking-form';
 import { useServices } from '@/hooks/use-services';
 import { Sparkles, Flower2, Phone, Mail, MapPin } from 'lucide-react';
@@ -22,7 +21,7 @@ const galleryImages = [
   { id: 6, src: 'https://picsum.photos/seed/gallery6/600/400', alt: 'Diseño de uñas creativo', hint: 'nail art' },
 ];
 
-function HomePageContent() {
+export default function HomePage() {
     const { services } = useServices();
   return (
     <div className="flex min-h-dvh w-full flex-col">
@@ -48,8 +47,8 @@ function HomePageContent() {
           </Link>
         </nav>
         <Button asChild>
-            <Link href="/login">
-              Admin Login
+            <Link href="/dashboard">
+              Admin
             </Link>
         </Button>
       </header>
@@ -219,14 +218,5 @@ function HomePageContent() {
         </nav>
       </footer>
     </div>
-  );
-}
-
-
-export default function HomePage() {
-  return (
-    <ClientOnly>
-      <HomePageContent />
-    </ClientOnly>
   );
 }

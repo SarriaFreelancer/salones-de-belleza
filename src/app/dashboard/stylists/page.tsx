@@ -19,17 +19,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Clock, CalendarCog } from 'lucide-react';
 import { format } from 'date-fns';
-import ClientOnly from '@/components/client-only';
 import AvailabilityEditor from '@/components/dashboard/availability-editor';
 
-function StylistsPageContent() {
-  const [today, setToday] = React.useState<Date | null>(null);
+function StylistsPage() {
+  const [today] = React.useState<Date>(new Date());
   const [stylists, setStylists] = React.useState<Stylist[]>(initialStylists);
   const [editingStylist, setEditingStylist] = React.useState<Stylist | null>(null);
-
-  React.useEffect(() => {
-    setToday(new Date());
-  }, []);
 
   const handleSaveAvailability = (updatedStylist: Stylist) => {
     setStylists(currentStylists =>
@@ -38,27 +33,6 @@ function StylistsPageContent() {
     setEditingStylist(null);
     // Here you would typically make an API call to save the changes to your backend
   };
-
-  if (!today) {
-    return (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {stylists.map(stylist => (
-                <Card key={stylist.id}>
-                    <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-                         <Avatar className="h-16 w-16 border-2 border-primary">
-                            <AvatarImage src={stylist.avatarUrl} alt={stylist.name} data-ai-hint="woman portrait" />
-                            <AvatarFallback>{stylist.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <CardTitle className="font-headline text-xl">Cargando...</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">Cargando citas...</p>
-                    </CardContent>
-                </Card>
-            ))}
-        </div>
-    );
-  }
 
   return (
     <>
@@ -140,10 +114,4 @@ function StylistsPageContent() {
   );
 }
 
-export default function StylistsPage() {
-    return (
-        <ClientOnly>
-            <StylistsPageContent />
-        </ClientOnly>
-    )
-}
+export default StylistsPage;
