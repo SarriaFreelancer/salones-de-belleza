@@ -17,7 +17,7 @@ import { Logo } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
-  const [email, setEmail] = React.useState('divas@admin.com');
+  const [email, setEmail] = React.useState('admin@divas.com');
   const [password, setPassword] = React.useState('12345678');
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
