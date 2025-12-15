@@ -65,9 +65,9 @@ export default function NewServiceDialog({
   });
 
   React.useEffect(() => {
-    if (serviceToEdit) {
+    if (open && serviceToEdit) {
       form.reset(serviceToEdit);
-    } else {
+    } else if (open && !serviceToEdit) {
       form.reset({
         name: '',
         description: '',
@@ -75,13 +75,13 @@ export default function NewServiceDialog({
         duration: 30,
       });
     }
-  }, [serviceToEdit, form]);
+  }, [serviceToEdit, open, form]);
 
   const handleOpenChange = (isOpen: boolean) => {
+    onOpenChange(isOpen);
     if (!isOpen) {
       form.reset();
     }
-    onOpenChange(isOpen);
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
@@ -90,7 +90,7 @@ export default function NewServiceDialog({
     // Simulate API call
     setTimeout(() => {
       const serviceData: Service = {
-        id: isEditMode ? serviceToEdit.id : String(Date.now()),
+        id: isEditMode && serviceToEdit ? serviceToEdit.id : String(Date.now()),
         ...values,
       };
 

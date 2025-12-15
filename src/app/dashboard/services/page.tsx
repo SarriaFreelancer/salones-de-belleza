@@ -133,18 +133,18 @@ export default function ServicesPage() {
         </div>
       </div>
       
-      <NewServiceDialog
-        open={!!editingService}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            setEditingService(null);
-          }
-        }}
-        serviceToEdit={editingService}
-        onServiceCreated={handleServiceUpdated}
-      >
-        {/* Trigger is not rendered as dialog is controlled */}
-      </NewServiceDialog>
+      {editingService && (
+        <NewServiceDialog
+          open={!!editingService}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setEditingService(null);
+            }
+          }}
+          serviceToEdit={editingService}
+          onServiceCreated={handleServiceUpdated}
+        />
+      )}
 
       <AlertDialog open={!!serviceToDelete} onOpenChange={(isOpen) => !isOpen && setServiceToDelete(null)}>
         <AlertDialogContent>
