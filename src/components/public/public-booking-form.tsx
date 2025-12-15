@@ -1,10 +1,16 @@
 'use client';
-
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -25,6 +31,7 @@ import {
 } from '@/components/ui/command';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -43,29 +50,27 @@ import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import type { Appointment, DayOfWeek } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '../ui/scroll-area';
-import { Badge } from '../ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, Timestamp } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from '@/components/ui/card';
 
 const formSchema = z.object({
-  serviceIds: z.array(z.string()).min(1, 'Debes seleccionar al menos un servicio.'),
+  serviceIds: z
+    .array(z.string())
+    .min(1, 'Debes seleccionar al menos un servicio.'),
   preferredDate: z.date({
     required_error: 'Debes seleccionar una fecha.',
   }),
-  customerName: z.string().min(2, 'Tu nombre es requerido.'),
-  customerEmail: z.string().email('El correo electrónico no es válido.').optional().or(z.literal('')),
+  customerName: z.string().min(2, 'El nombre del cliente es requerido.'),
+  customerEmail: z
+    .string()
+    .email('El correo electrónico no es válido.')
+    .optional()
+    .or(z.literal('')),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -77,17 +82,20 @@ type Suggestion = {
 };
 
 export default function PublicBookingForm() {
-  const [step, setStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [step, setStep] = React.useState(1);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [suggestions, setSuggestions] = React.useState<Suggestion[]>([]);
   const { toast } = useToast();
   const { services } = useServices();
   const { stylists } = useStylists();
   const firestore = useFirestore();
-  const [isMounted, setIsMounted] = useState(false);
+  const [appointments, setAppointments] = React.useState<Appointment[]>([]);
 
-  useEffect(() => {
-    setIsMounted(true);
+  // This is a placeholder for fetching real appointments.
+  // In a real app, you might fetch this from a context or a hook that gets all public appointments.
+  React.useEffect(() => {
+    // In this example, we'll just use an empty array.
+    setAppointments([]);
   }, []);
 
   const form = useForm<FormValues>({
@@ -102,8 +110,10 @@ export default function PublicBookingForm() {
   const findSuggestions = async (values: FormValues) => {
     setIsLoading(true);
     setSuggestions([]);
-    
-    const selectedServices = services.filter((s) => values.serviceIds.includes(s.id));
+
+    const selectedServices = services.filter((s) =>
+      values.serviceIds.includes(s.id)
+    );
     if (selectedServices.length === 0) {
       toast({
         variant: 'destructive',
@@ -114,13 +124,41 @@ export default function PublicBookingForm() {
       return;
     }
 
-    const totalDuration = selectedServices.reduce((acc, s) => acc + s.duration, 0);
-    const serviceNames = selectedServices.map(s => s.name).join(', ');
+    const totalDuration = selectedServices.reduce(
+      (acc, s) => acc + s.duration,
+      0
+    );
+    const serviceNames = selectedServices.map((s) => s.name).join(', ');
 
     const formattedDate = format(values.preferredDate, 'yyyy-MM-dd');
-    
+    const existingAppointmentsForDate = appointments
+      .filter((a) => {
+        const appDate =
+          a.start instanceof Timestamp ? a.start.toDate() : new Date(a.start as any);
+        return format(appDate, 'yyyy-MM-dd') === formattedDate;
+      })
+      .map((a) => {
+        const startDate =
+          a.start instanceof Timestamp ? a.start.toDate() : new Date(a.start as any);
+        const endDate =
+          a.end instanceof Timestamp ? a.end.toDate() : new Date(a.end as any);
+        return {
+          stylistId: a.stylistId,
+          start: format(startDate, 'HH:mm'),
+          end: format(endDate, 'HH:mm'),
+        };
+      });
+
     const dayIndex = values.preferredDate.getDay();
-    const days: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const days: DayOfWeek[] = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+    ];
     const dayOfWeek = days[dayIndex];
 
     try {
@@ -132,7 +170,7 @@ export default function PublicBookingForm() {
           stylistId: s.id,
           availableTimes: s.availability[dayOfWeek] || [],
         })),
-        existingAppointments: [], // Simplified for public form
+        existingAppointments: existingAppointmentsForDate,
       });
 
       if (result && result.suggestions && result.suggestions.length > 0) {
@@ -142,7 +180,7 @@ export default function PublicBookingForm() {
         toast({
           title: 'No hay disponibilidad',
           description:
-            'No se encontraron horarios disponibles. Por favor, intenta con otra fecha.',
+            'No se encontraron horarios disponibles con los criterios seleccionados. Por favor, intenta con otra fecha o servicio.',
         });
       }
     } catch (error) {
@@ -161,7 +199,9 @@ export default function PublicBookingForm() {
   const selectSuggestion = (suggestion: Suggestion) => {
     if (!firestore) return;
     const values = form.getValues();
-    const selectedServices = services.filter(s => values.serviceIds.includes(s.id));
+    const selectedServices = services.filter((s) =>
+      values.serviceIds.includes(s.id)
+    );
     const serviceId = selectedServices.length > 0 ? selectedServices[0].id : '';
 
     const [startHours, startMinutes] = suggestion.startTime.split(':').map(Number);
@@ -174,271 +214,324 @@ export default function PublicBookingForm() {
 
     const newAppointment: Omit<Appointment, 'id'> = {
       customerName: values.customerName.trim(),
-      serviceId: serviceId, // Simplified
+      serviceId: serviceId, // Simplified for now
       stylistId: suggestion.stylistId,
       start: Timestamp.fromDate(startDate),
       end: Timestamp.fromDate(endDate),
       status: 'scheduled',
     };
-    
-    const appointmentsCollectionRef = collection(firestore, 'admin/appointments/appointments');
-    addDocumentNonBlocking(appointmentsCollectionRef, newAppointment);
-    
-    const customerAppointmentsCollectionRef = collection(firestore, 'customers', 'public_customer', 'appointments');
-    addDocumentNonBlocking(customerAppointmentsCollectionRef, newAppointment);
 
-    const stylistAppointmentsCollectionRef = collection(firestore, 'stylists', suggestion.stylistId, 'appointments');
-    addDocumentNonBlocking(stylistAppointmentsCollectionRef, newAppointment);
+    const appointmentsCollection = collection(
+      firestore,
+      'admin',
+      'appointments',
+      'appointments'
+    );
+    addDocumentNonBlocking(appointmentsCollection, newAppointment);
+
+    // This is a mock customer id, in a real app you would get this from the logged in user
+    const customerAppointmentsCollection = collection(
+      firestore,
+      'customers',
+      'mock_customer_id',
+      'appointments'
+    );
+    addDocumentNonBlocking(customerAppointmentsCollection, newAppointment);
+
+    const stylistAppointmentsCollection = collection(
+      firestore,
+      'stylists',
+      suggestion.stylistId,
+      'appointments'
+    );
+    addDocumentNonBlocking(stylistAppointmentsCollection, newAppointment);
 
     toast({
       title: '¡Cita Agendada!',
-      description: `Gracias, ${newAppointment.customerName}. Tu cita ha sido agendada para el ${format(startDate, "eeee, d 'de' MMMM 'a las' HH:mm", { locale: es })}.`,
+      description: `Se ha agendado a ${
+        newAppointment.customerName
+      } el ${format(startDate, "eeee, d 'de' MMMM 'a las' HH:mm", {
+        locale: es,
+      })}.`,
     });
-
-    setStep(3); // Go to confirmation step
+    
+    setStep(3);
   };
-
-   const selectedServices = services.filter((s) =>
+  
+  const selectedServices = services.filter((s) =>
     form.watch('serviceIds').includes(s.id)
   );
 
-  const resetForm = () => {
-    form.reset();
-    setSuggestions([]);
-    setStep(1);
-  };
-  
-  if (!isMounted) {
-    return (
-      <div className="mx-auto max-w-2xl">
-        <Card>
-          <CardHeader>
-             <div className="h-8 bg-muted rounded w-3/4"></div>
-             <div className="h-4 bg-muted rounded w-1/2"></div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="h-10 bg-muted rounded w-full"></div>
-            <div className="h-10 bg-muted rounded w-full"></div>
-            <div className="h-10 bg-muted rounded w-1/2 ml-auto"></div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <Card className="mx-auto max-w-2xl">
+    <Card className="w-full max-w-3xl mx-auto shadow-2xl">
       <CardHeader className="text-center">
-        <CardTitle className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl">
-          {step === 3 ? '¡Cita Confirmada!' : 'Agenda tu Cita'}
+        <Sparkles className="mx-auto h-8 w-8 text-primary" />
+        <CardTitle className="font-headline text-3xl">
+          Agenda tu Cita con IA
         </CardTitle>
         <CardDescription>
-          {step === 3 ? 'Recibirás un correo de confirmación pronto.' : 'Usa nuestro asistente de IA para encontrar el momento perfecto.'}
+          Deja que nuestro asistente inteligente encuentre el momento perfecto
+          para ti.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {step !== 3 && (
-        <Form {...form}>
-          <form className="space-y-8" onSubmit={form.handleSubmit(findSuggestions)}>
-            {step === 1 && (
-              <div className="space-y-4">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="customerName"
-                      render={({ field }) => (
-                          <FormItem>
-                          <FormLabel>Tu Nombre</FormLabel>
+        {step === 1 && (
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(findSuggestions)}
+              className="space-y-6"
+            >
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="customerName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tu Nombre</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ej: Ana García" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="customerEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tu Correo Electrónico</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="tu@correo.com"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="serviceIds"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Servicio(s) Deseado(s)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
                           <FormControl>
-                              <Input placeholder="Ej: Ana García" {...field} />
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                'w-full justify-between',
+                                !field.value?.length && 'text-muted-foreground'
+                              )}
+                            >
+                              <span className="truncate">
+                                {selectedServices.length > 0
+                                  ? selectedServices.map((s) => s.name).join(', ')
+                                  : 'Selecciona uno o más servicios'}
+                              </span>
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
                           </FormControl>
-                          <FormMessage />
-                          </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="customerEmail"
-                      render={({ field }) => (
-                          <FormItem>
-                          <FormLabel>Tu Correo Electrónico</FormLabel>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <Command>
+                            <CommandInput placeholder="Buscar servicio..." />
+                            <CommandEmpty>
+                              No se encontró el servicio.
+                            </CommandEmpty>
+                            <CommandGroup>
+                              <CommandList>
+                                {services.map((service) => (
+                                  <CommandItem
+                                    value={service.name}
+                                    key={service.id}
+                                    onSelect={() => {
+                                      const currentValues =
+                                        form.getValues('serviceIds');
+                                      const newValues = currentValues.includes(
+                                        service.id
+                                      )
+                                        ? currentValues.filter(
+                                            (id) => id !== service.id
+                                          )
+                                        : [...currentValues, service.id];
+                                      form.setValue('serviceIds', newValues, {
+                                        shouldValidate: true,
+                                      });
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        'mr-2 h-4 w-4',
+                                        field.value.includes(service.id)
+                                          ? 'opacity-100'
+                                          : 'opacity-0'
+                                      )}
+                                    />
+                                    {service.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandList>
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="preferredDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Fecha Preferida</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
                           <FormControl>
-                              <Input placeholder="tu@correo.com" {...field} />
+                            <Button
+                              variant={'outline'}
+                              className={cn(
+                                'w-full pl-3 text-left font-normal',
+                                !field.value && 'text-muted-foreground'
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, 'PPP', { locale: es })
+                              ) : (
+                                <span>Elige una fecha</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
                           </FormControl>
-                          <FormMessage />
-                          </FormItem>
-                      )}
-                    />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <FormField
-                    control={form.control}
-                    name="serviceIds"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                        <FormLabel>Servicios</FormLabel>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                            <FormControl>
-                                <Button
-                                variant="outline"
-                                role="combobox"
-                                className={cn('w-full justify-between', !field.value.length && 'text-muted-foreground')}
-                                >
-                                <span className="truncate">
-                                    {selectedServices.length > 0 ? selectedServices.map((s) => s.name).join(', ') : 'Selecciona uno o más servicios'}
-                                </span>
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Buscar servicio..." />
-                                <CommandEmpty>No se encontró el servicio.</CommandEmpty>
-                                <CommandGroup>
-                                    <CommandList>
-                                        {services.map((service) => (
-                                        <CommandItem
-                                            value={service.name}
-                                            key={service.id}
-                                            onSelect={() => {
-                                            const currentValues = form.getValues('serviceIds');
-                                            const newValues = currentValues.includes(service.id) ? currentValues.filter((id) => id !== service.id) : [...currentValues, service.id];
-                                            form.setValue('serviceIds', newValues, { shouldValidate: true });
-                                            }}
-                                        >
-                                            <Check
-                                            className={cn('mr-2 h-4 w-4', field.value.includes(service.id) ? 'opacity-100' : 'opacity-0')}
-                                            />
-                                            {service.name}
-                                        </CommandItem>
-                                        ))}
-                                    </CommandList>
-                                </CommandGroup>
-                            </Command>
-                            </PopoverContent>
-                        </Popover>
-                         <FormDescription>
-                            Puedes seleccionar múltiples servicios.
-                        </FormDescription>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                  <FormField
-                    control={form.control}
-                    name="preferredDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Fecha Preferida</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={'outline'}
-                                className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
-                              >
-                                {field.value ? format(field.value, 'PPP', { locale: es }) : <span>Elige una fecha</span>}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                              initialFocus
-                              locale={es}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="flex justify-end pt-4">
-                    <Button
-                        type="submit"
-                        disabled={isLoading}
-                        size="lg"
-                    >
-                        {isLoading ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Buscando...
-                        </>
-                        ) : (
-                        <>
-                          <Sparkles className="mr-2 h-4 w-4" />
-                          Buscar Horarios Disponibles
-                        </>
-                        )}
-                    </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date < new Date(new Date().setHours(0, 0, 0, 0))
+                            }
+                            initialFocus
+                            locale={es}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <CardFooter className="px-0 pt-6">
+                <Button type="submit" disabled={isLoading} className="w-full" size="lg">
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Buscando horarios...
+                    </>
+                  ) : (
+                    'Encontrar Horarios Disponibles'
+                  )}
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
+        )}
+        {step === 2 && (
+          <div className="space-y-4">
+            <Card className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-2">
+              <CardTitle className="font-semibold text-lg">
+                Resumen de tu Solicitud
+              </CardTitle>
+              <div className="text-sm">
+                <p>
+                  <strong>Cliente:</strong> {form.getValues('customerName')}
+                </p>
+                <p>
+                  <strong>Fecha:</strong>{' '}
+                  {format(form.getValues('preferredDate'), 'PPP', {
+                    locale: es,
+                  })}
+                </p>
+                <div>
+                  <strong>Servicios:</strong>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedServices.map((s) => (
+                      <Badge key={s.id} variant="secondary">
+                        {s.name}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               </div>
-            )}
-            </form>
-        </Form>
-        )}
-
-        {step === 2 && (
-            <div className="space-y-4">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-2">
-                <h4 className="font-semibold">Resumen de la Cita</h4>
-                <div className='text-sm'>
-                <p><strong>Cliente:</strong> {form.getValues('customerName')}</p>
-                <p><strong>Fecha:</strong> {format(form.getValues('preferredDate'), 'PPP', { locale: es })}</p>
-                <div><strong>Servicios:</strong>
-                    <div className='flex flex-wrap gap-1 mt-1'>
-                        {selectedServices.map(s => <Badge key={s.id} variant="secondary">{s.name}</Badge>)}
-                    </div>
-                </div>
-                </div>
-            </div>
+            </Card>
 
             <h3 className="text-md font-medium pt-4">
-                Horarios Sugeridos por la IA
+              Horarios Sugeridos por la IA
             </h3>
             <ScrollArea className="h-64 pr-4">
-                <div className="space-y-3">
+              <div className="space-y-3">
                 {suggestions.map((suggestion, index) => {
-                    const stylist = stylists.find((s) => s.id === suggestion.stylistId);
-                    return (
-                    <div key={index} className="flex items-center justify-between p-3 rounded-lg border bg-accent/50">
-                        <div className="flex flex-col gap-1">
+                  const stylist = stylists.find(
+                    (s) => s.id === suggestion.stylistId
+                  );
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-accent/50"
+                    >
+                      <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2 font-semibold">
-                            <Clock className="h-4 w-4" />
-                            <span>{suggestion.startTime} - {suggestion.endTime}</span>
+                          <Clock className="h-4 w-4" />
+                          <span>
+                            {suggestion.startTime} - {suggestion.endTime}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <User className="h-4 w-4" />
-                            <span>con {stylist?.name || 'Estilista desconocido'}</span>
+                          <User className="h-4 w-4" />
+                          <span>
+                            con {stylist?.name || 'Estilista desconocido'}
+                          </span>
                         </div>
-                        </div>
-                        <Button size="sm" onClick={() => selectSuggestion(suggestion)}>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => selectSuggestion(suggestion)}
+                      >
                         Agendar
-                        </Button>
+                      </Button>
                     </div>
-                    );
+                  );
                 })}
-                </div>
+              </div>
             </ScrollArea>
-            <div className="flex justify-end pt-4">
-                <Button type="button" variant="outline" onClick={() => setStep(1)}>
-                Volver
-                </Button>
-            </div>
-            </div>
+            <CardFooter className="px-0 pt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep(1)}
+                className="w-full"
+              >
+                Volver y Modificar
+              </Button>
+            </CardFooter>
+          </div>
         )}
-        
-        {step === 3 && (
-            <div className="text-center space-y-4">
-                <p>Tu cita ha sido registrada. ¡Te esperamos en Divas AyA!</p>
-                <Button onClick={resetForm}>Agendar otra cita</Button>
+         {step === 3 && (
+            <div className="text-center py-8">
+                <Check className="mx-auto h-16 w-16 text-green-500 bg-green-100 rounded-full p-2" />
+                <h3 className="mt-4 font-headline text-2xl">¡Cita Agendada!</h3>
+                <p className="text-muted-foreground mt-2">Hemos recibido tu solicitud de cita. Pronto recibirás una confirmación por correo.</p>
+                <Button className="mt-6" onClick={() => setStep(1)}>Agendar otra Cita</Button>
             </div>
         )}
       </CardContent>

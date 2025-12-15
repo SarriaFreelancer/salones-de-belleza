@@ -6,7 +6,7 @@ import { Card, CardHeader, CardContent, CardDescription, CardFooter, CardTitle }
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
 import { useGallery } from '@/hooks/use-gallery';
-import { Sparkles, Flower2, Phone, Mail, MapPin } from 'lucide-react';
+import { Flower2, Phone, Mail, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import { Logo } from '@/components/icons';
 import Link from 'next/link';
@@ -234,4 +234,3 @@ export default function HomePage() {
     </div>
   );
 }
-

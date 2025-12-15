@@ -63,7 +63,7 @@ export default function LoginPage() {
     }
   };
   
-  if (isUserLoading || user) {
+  if (isUserLoading || (!isUserLoading && user)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p>Cargando...</p>
