@@ -205,9 +205,11 @@ service cloud.firestore {
      * @path /roles_admin/{uid}
      * @allow (get) if isAdmin();
      * @allow list: if isAdmin();
-     * @allow create: if isAdmin() || get(/databases/$(database)/documents/roles_admin).size() == 0;
+     * @allow create: if isOwner(uid) && resource.data.size() == 0;
      * @allow update: if isAdmin() && isExistingDoc();
      * @allow delete: if isAdmin() && isExistingDoc();
     }
   }
 }
+
+    
