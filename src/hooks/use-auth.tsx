@@ -2,8 +2,10 @@
 
 import React, { createContext, useContext, ReactNode, useCallback } from 'react';
 import { Auth, User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
-import { useAuth as useFirebaseAuth, useUser } from '@/firebase';
+import { useAuth as useFirebaseAuth, useUser, useFirestore } from '@/firebase';
 import { useToast } from './use-toast';
+import { doc } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface AuthContextType {
   user: User | null;
@@ -18,6 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { user, isUserLoading } = useUser();
   const auth = useFirebaseAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
 
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
@@ -31,12 +34,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signup = useCallback(async (email: string, pass: string): Promise<void> => {
     try {
-      await createUserWithEmailAndPassword(auth, email, pass);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      const newUser = userCredential.user;
+      if (newUser && firestore) {
+        // This is the crucial step: add the new user's UID to the admin roles collection.
+        const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
+        // We use a non-blocking set to create the role document.
+        // The empty object {} is because we only care about the document's existence.
+        setDocumentNonBlocking(adminRoleDoc, {}, { merge: false });
+      }
     } catch (error: any) {
       // Re-throw all creation errors to be handled by the UI
       throw new Error(error.message || 'Error al crear el usuario.');
     }
-  }, [auth]);
+  }, [auth, firestore]);
 
 
   const logout = useCallback(async () => {
