@@ -32,57 +32,51 @@ import NewServiceDialog from '@/components/dashboard/new-service-dialog';
 import { useServices } from '@/hooks/use-services';
 import { useToast } from '@/hooks/use-toast';
 
+type DialogState = 
+  | { type: 'new' }
+  | { type: 'edit'; service: Service }
+  | { type: 'delete'; service: Service }
+  | null;
+
+
 export default function ServicesPage() {
   const { services, addService, updateService, deleteService } = useServices();
-  const [editingService, setEditingService] = React.useState<Service | null>(null);
-  const [isNewServiceDialogOpen, setIsNewServiceDialogOpen] = React.useState(false);
-  const [serviceToDelete, setServiceToDelete] = React.useState<Service | null>(null);
+  const [dialogState, setDialogState] = React.useState<DialogState>(null);
   const { toast } = useToast();
 
-  const handleServiceCreated = (service: Service) => {
+  const handleAddService = (service: Service) => {
     addService(service);
-    setIsNewServiceDialogOpen(false);
+    setDialogState(null);
   };
 
-  const handleServiceUpdated = (service: Service) => {
+  const handleUpdateService = (service: Service) => {
     updateService(service);
-    setEditingService(null);
+    setDialogState(null);
   };
-
-  const openEditDialog = (service: Service) => {
-    setEditingService(service);
-  };
-
-  const handleDeleteClick = (service: Service) => {
-    setServiceToDelete(service);
-  };
-
-  const confirmDelete = () => {
-    if (serviceToDelete) {
-      deleteService(serviceToDelete.id);
+  
+  const handleDeleteService = () => {
+    if (dialogState?.type === 'delete') {
+      deleteService(dialogState.service.id);
       toast({
         title: 'Servicio Eliminado',
-        description: `El servicio "${serviceToDelete.name}" ha sido eliminado.`,
+        description: `El servicio "${dialogState.service.name}" ha sido eliminado.`,
       });
-      setServiceToDelete(null);
+      setDialogState(null);
     }
   };
+
+  const serviceToEdit = dialogState?.type === 'edit' ? dialogState.service : null;
+  const serviceToDelete = dialogState?.type === 'delete' ? dialogState.service : null;
 
   return (
     <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="font-headline text-2xl">Nuestros Servicios</h1>
-          <NewServiceDialog
-            open={isNewServiceDialogOpen}
-            onOpenChange={setIsNewServiceDialogOpen}
-            onServiceCreated={handleServiceCreated}
-          >
-            <Button onClick={() => setIsNewServiceDialogOpen(true)}>
+           <Button onClick={() => setDialogState({ type: 'new' })}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Añadir Servicio
             </Button>
-          </NewServiceDialog>
         </div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {services.map((service) => (
@@ -95,12 +89,12 @@ export default function ServicesPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => openEditDialog(service)}>
+                    <DropdownMenuItem onClick={() => setDialogState({ type: 'edit', service })}>
                       <Edit className="mr-2 h-4 w-4" />
                       <span>Editar</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => handleDeleteClick(service)}
+                      onClick={() => setDialogState({ type: 'delete', service })}
                       className="text-destructive"
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
@@ -133,20 +127,14 @@ export default function ServicesPage() {
         </div>
       </div>
       
-      {editingService && (
-        <NewServiceDialog
-          open={!!editingService}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) {
-              setEditingService(null);
-            }
-          }}
-          serviceToEdit={editingService}
-          onServiceCreated={handleServiceUpdated}
-        />
-      )}
+      <NewServiceDialog
+        open={dialogState?.type === 'new' || dialogState?.type === 'edit'}
+        onOpenChange={(isOpen) => !isOpen && setDialogState(null)}
+        serviceToEdit={serviceToEdit}
+        onServiceCreated={dialogState?.type === 'edit' ? handleUpdateService : handleAddService}
+      />
 
-      <AlertDialog open={!!serviceToDelete} onOpenChange={(isOpen) => !isOpen && setServiceToDelete(null)}>
+      <AlertDialog open={!!serviceToDelete} onOpenChange={(isOpen) => !isOpen && setDialogState(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
@@ -156,8 +144,8 @@ export default function ServicesPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setServiceToDelete(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDialogState(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteService} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

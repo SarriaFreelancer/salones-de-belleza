@@ -8,7 +8,6 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,7 +35,6 @@ const formSchema = z.object({
 });
 
 interface NewServiceDialogProps {
-  children?: React.ReactNode;
   onServiceCreated: (service: Service) => void;
   serviceToEdit?: Service | null;
   open: boolean;
@@ -44,7 +42,6 @@ interface NewServiceDialogProps {
 }
 
 export default function NewServiceDialog({
-  children,
   onServiceCreated,
   serviceToEdit,
   open,
@@ -107,7 +104,6 @@ export default function NewServiceDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEditMode ? 'Editar Servicio' : 'Añadir Nuevo Servicio'}</DialogTitle>
