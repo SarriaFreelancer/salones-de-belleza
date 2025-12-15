@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
 import { Logo } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function LoginPage() {
   const [email, setEmail] = React.useState('admin@divas.com');
@@ -22,31 +23,37 @@ export default function LoginPage() {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
-  const { login, signupAndAssignAdminRole, user, isUserLoading } = useAuth();
+  const auth = useAuth();
   const { toast } = useToast();
 
+  const [isClient, setIsClient] = React.useState(false);
   React.useEffect(() => {
-    if (!isUserLoading && user) {
+    setIsClient(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (auth && !auth.isUserLoading && auth.user) {
       router.push('/dashboard');
     }
-  }, [user, isUserLoading, router]);
+  }, [auth, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth) return;
+    
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await auth.login(email, password);
       toast({
         title: '¡Bienvenido de vuelta!',
         description: 'Has iniciado sesión correctamente.',
       });
       // The useEffect will handle the redirect
     } catch (loginError: any) {
-      // Check if it is the first time and the user needs to be created.
       if (loginError.code === 'auth/invalid-credential' || loginError.code === 'auth/user-not-found') {
         try {
-          await signupAndAssignAdminRole(email, password);
+          await auth.signupAndAssignAdminRole(email, password);
           toast({
             title: '¡Cuenta de Administrador Creada!',
             description: 'Bienvenido. Tu cuenta de administrador ha sido creada.',
@@ -62,7 +69,6 @@ export default function LoginPage() {
           });
         }
       } else {
-        // Handle other login errors (e.g., wrong password, network error)
         const errorMessage = loginError.message || 'Error al iniciar sesión.';
         setError(errorMessage);
         toast({
@@ -75,11 +81,30 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-  
-  if (isUserLoading || (!isUserLoading && user)) {
+
+  if (!isClient || !auth || auth.isUserLoading || auth.user) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p>Cargando...</p>
+      <div className="flex min-h-screen items-center justify-center bg-muted/40">
+        <Card className="w-full max-w-sm">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4">
+              <Logo />
+            </div>
+            <Skeleton className="h-8 w-32 mx-auto" />
+            <Skeleton className="h-4 w-48 mx-auto mt-2" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <Skeleton className="h-10 w-full mt-4" />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -88,9 +113,9 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-            <div className="mx-auto mb-4">
-                <Logo />
-            </div>
+          <div className="mx-auto mb-4">
+            <Logo />
+          </div>
           <CardTitle className="font-headline text-2xl">
             Admin Login
           </CardTitle>
@@ -125,7 +150,7 @@ export default function LoginPage() {
             {error && (
               <p className="text-sm font-medium text-destructive">{error}</p>
             )}
-             <p className="text-xs text-center text-muted-foreground pt-2">
+            <p className="text-xs text-center text-muted-foreground pt-2">
               Si es la primera vez que inicias sesión, la cuenta de administrador se creará automáticamente.
             </p>
             <Button type="submit" className="w-full" disabled={loading}>
