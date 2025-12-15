@@ -143,12 +143,12 @@ export default function NewAppointmentDialog({
     const formattedDate = format(values.preferredDate, 'yyyy-MM-dd');
     const existingAppointmentsForDate = appointments
       .filter((a) => {
-          const appDate = a.start instanceof Timestamp ? a.start.toDate() : a.start;
+          const appDate = a.start instanceof Timestamp ? a.start.toDate() : new Date(a.start as any);
           return format(appDate, 'yyyy-MM-dd') === formattedDate
         })
       .map((a) => {
-        const startDate = a.start instanceof Timestamp ? a.start.toDate() : a.start;
-        const endDate = a.end instanceof Timestamp ? a.end.toDate() : a.end;
+        const startDate = a.start instanceof Timestamp ? a.start.toDate() : new Date(a.start as any);
+        const endDate = a.end instanceof Timestamp ? a.end.toDate() : new Date(a.end as any);
         return {
           stylistId: a.stylistId,
           start: format(startDate, 'HH:mm'),
