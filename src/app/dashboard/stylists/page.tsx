@@ -12,14 +12,12 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, CalendarEdit } from 'lucide-react';
+import { Clock, CalendarCog } from 'lucide-react';
 import { format } from 'date-fns';
 import ClientOnly from '@/components/client-only';
 import AvailabilityEditor from '@/components/dashboard/availability-editor';
@@ -88,7 +86,7 @@ function StylistsPageContent() {
                  <Dialog onOpenChange={(open) => !open && setEditingStylist(null)}>
                     <DialogTrigger asChild>
                         <Button variant="outline" className="w-full mb-4" onClick={() => setEditingStylist(stylist)}>
-                            <CalendarEdit className="mr-2 h-4 w-4" />
+                            <CalendarCog className="mr-2 h-4 w-4" />
                             Gestionar Horario
                         </Button>
                     </DialogTrigger>
