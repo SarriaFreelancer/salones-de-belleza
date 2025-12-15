@@ -8,7 +8,7 @@ import { useToast } from './use-toast';
 interface AuthContextType {
   user: User | null;
   isUserLoading: boolean;
-  login: (email: string, pass: string) => Promise<boolean>;
+  login: (email: string, pass: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -19,23 +19,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const auth = useFirebaseAuth();
   const { toast } = useToast();
 
-  const login = useCallback(async (email: string, pass: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, pass: string): Promise<void> => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      return true;
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
-        // If user does not exist, create a new one
         try {
           await createUserWithEmailAndPassword(auth, email, pass);
-          return true;
-        } catch (creationError) {
-          console.error("Firebase user creation error:", creationError);
-          return false;
+        } catch (creationError: any) {
+            // Re-throw creation error to be caught by the UI
+            throw new Error(`Error al crear usuario: ${creationError.message}`);
         }
+      } else {
+        // Re-throw other login errors
+        throw new Error(`Error al iniciar sesión: ${error.message}`);
       }
-      console.error("Firebase login error:", error);
-      return false;
     }
   }, [auth]);
 

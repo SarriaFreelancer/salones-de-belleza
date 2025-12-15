@@ -36,18 +36,17 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
-    const success = await login(email, password);
-
-    setLoading(false);
-    if (success) {
+    try {
+      await login(email, password);
       toast({
         title: '¡Bienvenido!',
         description: 'Has iniciado sesión correctamente.',
       });
       router.push('/dashboard');
-    } else {
-      setError('Correo electrónico o contraseña incorrectos.');
+    } catch (err: any) {
+      setError(err.message || 'Correo electrónico o contraseña incorrectos.');
+    } finally {
+      setLoading(false);
     }
   };
   
