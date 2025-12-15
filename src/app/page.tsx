@@ -149,16 +149,15 @@ export default function HomePage() {
             </div>
             <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3">
                 {galleryImages.map(img => (
-                    <div key={img.id} className="overflow-hidden rounded-lg">
-                        <Image 
-                            src={img.src} 
-                            alt={img.alt} 
-                            width={600} 
-                            height={400} 
-                            className="h-full w-full object-cover transition-transform hover:scale-110"
-                            data-ai-hint={img.hint}
-                        />
-                    </div>
+                    <Image 
+                        key={img.id}
+                        src={img.src} 
+                        alt={img.alt} 
+                        width={600} 
+                        height={400} 
+                        className="overflow-hidden rounded-lg h-full w-full object-cover transition-transform hover:scale-110"
+                        data-ai-hint={img.hint}
+                    />
                 ))}
             </div>
           </div>
@@ -235,3 +234,4 @@ export default function HomePage() {
     </div>
   );
 }
+
