@@ -195,11 +195,7 @@ service cloud.firestore {
      * @principle Enforces a strictly admin-only access pattern for a sensitive data collection.
      */
     match /admin/appointments/{appointmentId} {
-      allow get: if isAdmin();
-      allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && isExistingDoc();
-      allow delete: if isAdmin() && isExistingDoc();
+      allow read, write: if isAdmin();
     }
 
     /**
