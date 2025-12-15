@@ -171,6 +171,22 @@ service cloud.firestore {
     }
     
     /**
+     * @description Manages the salon's gallery images. This data is public for any client
+     *              to read, but can only be created, updated, or deleted by admins.
+     * @path /gallery/{imageId}
+     * @allow (get) An anonymous user reads an image from the gallery.
+     * @deny (create) A non-admin user tries to add a new image.
+     * @principle Implements a public-read collection with admin-only write access.
+     */
+    match /gallery/{imageId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin() && isExistingDoc();
+      allow delete: if isAdmin() && isExistingDoc();
+    }
+
+    /**
      * @description A centralized collection of all appointments, intended for use
      *              by the admin dashboard. Access is strictly limited to admins.
      * @path /admin/appointments/{appointmentId}
