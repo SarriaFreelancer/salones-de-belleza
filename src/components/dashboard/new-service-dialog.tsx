@@ -23,7 +23,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useToast } from '@/hooks/use-toast';
 import type { Service } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
@@ -35,20 +34,19 @@ const formSchema = z.object({
 });
 
 interface NewServiceDialogProps {
-  onServiceCreated: (service: Service) => void;
+  onServiceSaved: (service: Service) => void;
   serviceToEdit?: Service | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export default function NewServiceDialog({
-  onServiceCreated,
+  onServiceSaved,
   serviceToEdit,
   open,
   onOpenChange,
 }: NewServiceDialogProps) {
   const [isLoading, setIsLoading] = React.useState(false);
-  const { toast } = useToast();
   const isEditMode = !!serviceToEdit;
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -74,13 +72,6 @@ export default function NewServiceDialog({
     }
   }, [serviceToEdit, open, form]);
 
-  const handleOpenChange = (isOpen: boolean) => {
-    onOpenChange(isOpen);
-    if (!isOpen) {
-      form.reset();
-    }
-  };
-
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
 
@@ -91,19 +82,14 @@ export default function NewServiceDialog({
         ...values,
       };
 
-      onServiceCreated(serviceData);
-      toast({
-        title: isEditMode ? '¡Servicio Actualizado!' : '¡Servicio Creado!',
-        description: `El servicio "${serviceData.name}" ha sido ${isEditMode ? 'actualizado' : 'añadido'} correctamente.`,
-      });
-
+      onServiceSaved(serviceData);
       setIsLoading(false);
-      handleOpenChange(false);
+      onOpenChange(false);
     }, 500);
   };
-
+  
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEditMode ? 'Editar Servicio' : 'Añadir Nuevo Servicio'}</DialogTitle>
@@ -171,7 +157,7 @@ export default function NewServiceDialog({
                 />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isLoading}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={isLoading}>

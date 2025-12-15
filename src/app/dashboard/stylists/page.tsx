@@ -12,7 +12,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
@@ -58,13 +57,20 @@ function StylistsPage() {
     setDialogState(null);
   };
 
-  const handleAddStylist = (stylist: Stylist) => {
-    addStylist(stylist);
-    setDialogState(null);
-  };
-
-  const handleUpdateStylist = (stylist: Stylist) => {
-    updateStylist(stylist);
+  const handleAddOrUpdateStylist = (stylist: Stylist) => {
+    if (dialogState?.type === 'edit') {
+      updateStylist(stylist);
+      toast({
+        title: 'Estilista Actualizado',
+        description: `Los datos de "${stylist.name}" han sido actualizados.`,
+      });
+    } else {
+      addStylist(stylist);
+      toast({
+        title: 'Estilista Añadido',
+        description: `El estilista "${stylist.name}" ha sido añadido al equipo.`,
+      });
+    }
     setDialogState(null);
   };
   
@@ -194,7 +200,7 @@ function StylistsPage() {
         open={dialogState?.type === 'new' || dialogState?.type === 'edit'}
         onOpenChange={(isOpen) => !isOpen && setDialogState(null)}
         stylistToEdit={stylistToEdit}
-        onStylistCreated={stylistToEdit ? handleUpdateStylist : handleAddStylist}
+        onStylistSaved={handleAddOrUpdateStylist}
       />
 
       <AlertDialog open={!!stylistToDelete} onOpenChange={(isOpen) => !isOpen && setDialogState(null)}>

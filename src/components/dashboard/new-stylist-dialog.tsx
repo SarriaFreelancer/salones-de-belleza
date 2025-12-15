@@ -22,7 +22,6 @@ import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useToast } from '@/hooks/use-toast';
 import type { Stylist } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
@@ -32,20 +31,19 @@ const formSchema = z.object({
 });
 
 interface NewStylistDialogProps {
-  onStylistCreated: (stylist: Stylist) => void;
+  onStylistSaved: (stylist: Stylist) => void;
   stylistToEdit?: Stylist | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export default function NewStylistDialog({
-  onStylistCreated,
+  onStylistSaved,
   stylistToEdit,
   open,
   onOpenChange,
 }: NewStylistDialogProps) {
   const [isLoading, setIsLoading] = React.useState(false);
-  const { toast } = useToast();
   const isEditMode = !!stylistToEdit;
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -70,13 +68,6 @@ export default function NewStylistDialog({
     }
   }, [stylistToEdit, open, form, isEditMode]);
 
-  const handleOpenChange = (isOpen: boolean) => {
-    onOpenChange(isOpen);
-    if (!isOpen) {
-      form.reset();
-    }
-  };
-
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
 
@@ -87,19 +78,14 @@ export default function NewStylistDialog({
         ...values,
       };
 
-      onStylistCreated(stylistData);
-      toast({
-        title: isEditMode ? '¡Estilista Actualizado!' : '¡Estilista Creado!',
-        description: `El estilista "${stylistData.name}" ha sido ${isEditMode ? 'actualizado' : 'añadido'} correctamente.`,
-      });
-
+      onStylistSaved(stylistData);
       setIsLoading(false);
-      handleOpenChange(false);
+      onOpenChange(false);
     }, 500);
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEditMode ? 'Editar Estilista' : 'Añadir Nuevo Estilista'}</DialogTitle>
@@ -139,7 +125,7 @@ export default function NewStylistDialog({
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isLoading}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={isLoading}>

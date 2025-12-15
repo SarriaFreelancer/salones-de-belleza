@@ -22,7 +22,6 @@ import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useToast } from '@/hooks/use-toast';
 import type { GalleryImage } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
@@ -33,20 +32,19 @@ const formSchema = z.object({
 });
 
 interface NewGalleryImageDialogProps {
-  onImageCreated: (image: GalleryImage) => void;
+  onImageSaved: (image: GalleryImage) => void;
   imageToEdit?: GalleryImage | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export default function NewGalleryImageDialog({
-  onImageCreated,
+  onImageSaved,
   imageToEdit,
   open,
   onOpenChange,
 }: NewGalleryImageDialogProps) {
   const [isLoading, setIsLoading] = React.useState(false);
-  const { toast } = useToast();
   const isEditMode = !!imageToEdit;
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -70,13 +68,6 @@ export default function NewGalleryImageDialog({
     }
   }, [imageToEdit, open, form]);
 
-  const handleOpenChange = (isOpen: boolean) => {
-    onOpenChange(isOpen);
-    if (!isOpen) {
-      form.reset();
-    }
-  };
-
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
 
@@ -87,19 +78,14 @@ export default function NewGalleryImageDialog({
         ...values,
       };
 
-      onImageCreated(imageData);
-      toast({
-        title: isEditMode ? '¡Imagen Actualizada!' : '¡Imagen Añadida!',
-        description: `La imagen ha sido ${isEditMode ? 'actualizada' : 'añadida'} correctamente.`,
-      });
-
+      onImageSaved(imageData);
       setIsLoading(false);
-      handleOpenChange(false);
+      onOpenChange(false);
     }, 500);
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEditMode ? 'Editar Imagen' : 'Añadir Nueva Imagen'}</DialogTitle>
@@ -149,7 +135,7 @@ export default function NewGalleryImageDialog({
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isLoading}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={isLoading}>

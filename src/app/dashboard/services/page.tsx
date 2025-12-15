@@ -32,7 +32,7 @@ import NewServiceDialog from '@/components/dashboard/new-service-dialog';
 import { useServices } from '@/hooks/use-services';
 import { useToast } from '@/hooks/use-toast';
 
-type DialogState = 
+type DialogState =
   | { type: 'new' }
   | { type: 'edit'; service: Service }
   | { type: 'delete'; service: Service }
@@ -44,13 +44,20 @@ export default function ServicesPage() {
   const [dialogState, setDialogState] = React.useState<DialogState>(null);
   const { toast } = useToast();
 
-  const handleAddService = (service: Service) => {
-    addService(service);
-    setDialogState(null);
-  };
-
-  const handleUpdateService = (service: Service) => {
-    updateService(service);
+  const handleAddOrUpdateService = (service: Service) => {
+    if (dialogState?.type === 'edit') {
+      updateService(service);
+      toast({
+        title: '¡Servicio Actualizado!',
+        description: `El servicio "${service.name}" ha sido actualizado correctamente.`,
+      });
+    } else {
+      addService(service);
+      toast({
+        title: '¡Servicio Creado!',
+        description: `El servicio "${service.name}" ha sido añadido correctamente.`,
+      });
+    }
     setDialogState(null);
   };
   
@@ -131,7 +138,7 @@ export default function ServicesPage() {
         open={dialogState?.type === 'new' || dialogState?.type === 'edit'}
         onOpenChange={(isOpen) => !isOpen && setDialogState(null)}
         serviceToEdit={serviceToEdit}
-        onServiceCreated={dialogState?.type === 'edit' ? handleUpdateService : handleAddService}
+        onServiceSaved={handleAddOrUpdateService}
       />
 
       <AlertDialog open={!!serviceToDelete} onOpenChange={(isOpen) => !isOpen && setDialogState(null)}>

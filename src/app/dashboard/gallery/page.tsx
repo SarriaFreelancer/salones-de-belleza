@@ -4,7 +4,6 @@ import * as React from 'react';
 import type { GalleryImage } from '@/lib/types';
 import {
   Card,
-  CardContent,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,13 +40,20 @@ export default function GalleryPage() {
   const [dialogState, setDialogState] = React.useState<DialogState>(null);
   const { toast } = useToast();
 
-  const handleAddImage = (image: GalleryImage) => {
-    addImage(image);
-    setDialogState(null);
-  };
-
-  const handleUpdateImage = (image: GalleryImage) => {
-    updateImage(image);
+  const handleAddOrUpdateImage = (image: GalleryImage) => {
+    if (dialogState?.type === 'edit') {
+      updateImage(image);
+      toast({
+        title: '¡Imagen Actualizada!',
+        description: `La imagen ha sido actualizada correctamente.`,
+      });
+    } else {
+      addImage(image);
+      toast({
+        title: '¡Imagen Añadida!',
+        description: `La imagen ha sido añadida correctamente.`,
+      });
+    }
     setDialogState(null);
   };
   
@@ -120,7 +126,7 @@ export default function GalleryPage() {
         open={dialogState?.type === 'new' || dialogState?.type === 'edit'}
         onOpenChange={(isOpen) => !isOpen && setDialogState(null)}
         imageToEdit={imageToEdit}
-        onImageCreated={dialogState?.type === 'edit' ? handleUpdateImage : handleAddImage}
+        onImageSaved={handleAddOrUpdateImage}
       />
 
       <AlertDialog open={!!imageToDelete} onOpenChange={(isOpen) => !isOpen && setDialogState(null)}>
