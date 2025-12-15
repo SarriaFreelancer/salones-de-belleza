@@ -9,6 +9,7 @@ interface AuthContextType {
   user: User | null;
   isUserLoading: boolean;
   login: (email: string, pass: string) => Promise<void>;
+  signup: (email: string, pass: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -23,19 +24,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
     } catch (error: any) {
-      if (error.code === 'auth/user-not-found') {
-        try {
-          await createUserWithEmailAndPassword(auth, email, pass);
-        } catch (creationError: any) {
-            // Re-throw creation error to be caught by the UI
-            throw new Error(`Error al crear usuario: ${creationError.message}`);
-        }
-      } else {
-        // Re-throw other login errors
-        throw new Error(`Error al iniciar sesión: ${error.message}`);
-      }
+      // Re-throw all login errors to be handled by the UI
+      throw new Error(error.message || 'Error al iniciar sesión.');
     }
   }, [auth]);
+
+  const signup = useCallback(async (email: string, pass: string): Promise<void> => {
+    try {
+      await createUserWithEmailAndPassword(auth, email, pass);
+    } catch (error: any) {
+      // Re-throw all creation errors to be handled by the UI
+      throw new Error(error.message || 'Error al crear el usuario.');
+    }
+  }, [auth]);
+
 
   const logout = useCallback(async () => {
     try {
@@ -55,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [auth, toast]);
 
   return (
-    <AuthContext.Provider value={{ user, isUserLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isUserLoading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );

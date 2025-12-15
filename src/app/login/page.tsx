@@ -22,7 +22,7 @@ export default function LoginPage() {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
-  const { login, user, isUserLoading } = useAuth();
+  const { login, signup, user, isUserLoading } = useAuth();
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -30,7 +30,6 @@ export default function LoginPage() {
       router.push('/dashboard');
     }
   }, [user, isUserLoading, router]);
-
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +43,21 @@ export default function LoginPage() {
       });
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Correo electrónico o contraseña incorrectos.');
+      // If login fails because user does not exist, try to sign up
+      if (err.message.includes('auth/invalid-credential')) {
+        try {
+          await signup(email, password);
+          toast({
+            title: '¡Usuario administrador creado!',
+            description: 'Se ha creado el usuario administrador. Has iniciado sesión.',
+          });
+          router.push('/dashboard');
+        } catch (signupErr: any) {
+           setError(`Error al crear usuario: ${signupErr.message}`);
+        }
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -99,6 +112,9 @@ export default function LoginPage() {
             {error && (
               <p className="text-sm font-medium text-destructive">{error}</p>
             )}
+             <p className="text-xs text-center text-muted-foreground pt-2">
+              Si es la primera vez que inicias sesión, la cuenta de administrador se creará automáticamente.
+            </p>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Ingresando...' : 'Ingresar'}
             </Button>
