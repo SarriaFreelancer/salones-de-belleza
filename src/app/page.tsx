@@ -163,13 +163,13 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="agendar" className="w-full py-12 md:py-24 lg:py-32">
+        <section id="agendar" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
             <div className="container px-4 md:px-6">
                  <PublicBookingForm />
             </div>
         </section>
 
-        <section id="contacto" className="w-full border-t bg-muted/40 py-12 md:py-24 lg:py-32">
+        <section id="contacto" className="w-full border-t bg-card py-12 md:py-24 lg:py-32">
           <div className="container grid items-center justify-center gap-8 px-4 md:px-6 lg:grid-cols-2 lg:gap-16">
             <div className="space-y-4">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
