@@ -19,7 +19,7 @@ const galleryImages = [
   { id: 6, src: 'https://picsum.photos/seed/gallery6/600/400', alt: 'Diseño de uñas creativo', hint: 'nail art' },
 ];
 
-export default function HomePage() {
+function HomePageContent() {
   return (
     <div className="flex min-h-dvh w-full flex-col">
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
@@ -148,9 +148,7 @@ export default function HomePage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <ClientOnly>
-                            <BookingForm />
-                        </ClientOnly>
+                        <BookingForm />
                     </CardContent>
                 </Card>
             </div>
@@ -215,5 +213,14 @@ export default function HomePage() {
         </nav>
       </footer>
     </div>
+  );
+}
+
+
+export default function HomePage() {
+  return (
+    <ClientOnly>
+      <HomePageContent />
+    </ClientOnly>
   );
 }
