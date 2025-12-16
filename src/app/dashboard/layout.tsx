@@ -35,28 +35,13 @@ import { ServicesProvider } from '@/hooks/use-services';
 import { GalleryProvider } from '@/hooks/use-gallery';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// TEMPORARY: Mock user for layout preview
-const mockUser = {
-  email: 'admin@divas.com',
-  photoURL: "https://picsum.photos/seed/admin/100/100",
-  displayName: 'Admin Preview'
-};
-
-
 function DashboardLayoutContent({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { logout } = useAuth();
-  
-  const handleLogout = () => {
-    // In a real scenario, you'd call logout(). For now, we can redirect.
-    window.location.href = '/login';
-  };
-
-  const user = mockUser; // Use the mock user
+  const { user, logout } = useAuth();
 
   return (
     <SidebarProvider>
@@ -163,14 +148,14 @@ function DashboardLayoutContent({
         <SidebarFooter>
            <div className="flex items-center gap-3">
               <Avatar className="size-8">
-                <AvatarImage src={user.photoURL || "https://picsum.photos/seed/admin/100/100"} alt={user.email || 'Admin'} data-ai-hint="woman portrait" />
-                <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarImage src={"https://picsum.photos/seed/admin/100/100"} alt={user?.email || 'Admin'} data-ai-hint="woman portrait" />
+                <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-                <p className="text-sm font-medium text-sidebar-foreground">{user.displayName || 'Administrador'}</p>
-                <p className="text-xs text-muted-foreground">{user.email}</p>
+                <p className="text-sm font-medium text-sidebar-foreground">{user?.displayName || 'Administrador'}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
-              <Button variant="ghost" size="icon" className="ml-auto group-data-[collapsible=icon]:hidden" onClick={handleLogout}>
+              <Button variant="ghost" size="icon" className="ml-auto group-data-[collapsible=icon]:hidden" onClick={logout}>
                 <LogOut />
               </Button>
             </div>
@@ -202,56 +187,56 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // const { user, isUserLoading } = useAuth();
-  // const router = useRouter();
-  // const [isClient, setIsClient] = React.useState(false);
+  const { user, isUserLoading } = useAuth();
+  const router = useRouter();
+  const [isClient, setIsClient] = React.useState(false);
 
-  // React.useEffect(() => {
-  //   setIsClient(true);
-  // }, []);
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
-  // React.useEffect(() => {
-  //   if (isClient && !isUserLoading && !user) {
-  //     router.push('/login');
-  //   }
-  // }, [user, isUserLoading, router, isClient]);
+  React.useEffect(() => {
+    if (isClient && !isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router, isClient]);
 
-  // if (!isClient || isUserLoading || !user) {
-  //   return (
-  //     <div className="flex min-h-screen w-full">
-  //       <div className="hidden md:block border-r border-border p-2">
-  //           <div className="flex flex-col h-full w-[16rem]">
-  //                <div className="flex items-center gap-2 p-2">
-  //                   <Skeleton className="h-10 w-10 rounded-full" />
-  //                   <div className="space-y-2">
-  //                       <Skeleton className="h-4 w-[120px]" />
-  //                        <Skeleton className="h-3 w-[80px]" />
-  //                   </div>
-  //               </div>
-  //                <div className="flex-1 p-2 mt-4 space-y-2">
-  //                   <Skeleton className="h-8 w-full" />
-  //                   <Skeleton className="h-8 w-full" />
-  //                   <Skeleton className="h-8 w-full" />
-  //                   <Skeleton className="h-8 w-full" />
-  //                </div>
-  //                <div className="p-2">
-  //                   <Skeleton className="h-12 w-full" />
-  //                </div>
-  //           </div>
-  //       </div>
-  //       <div className="flex-1 flex flex-col">
-  //           <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
-  //                <Skeleton className="h-8 w-8 md:hidden" />
-  //                <Skeleton className="h-6 w-48" />
-  //                <Skeleton className="h-8 w-32 ml-auto" />
-  //           </header>
-  //            <main className="flex-1 p-4 lg:p-6">
-  //               <Skeleton className="h-64 w-full" />
-  //            </main>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  if (!isClient || isUserLoading || !user) {
+    return (
+      <div className="flex min-h-screen w-full">
+        <div className="hidden md:block border-r border-border p-2">
+            <div className="flex flex-col h-full w-[16rem]">
+                 <div className="flex items-center gap-2 p-2">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-[120px]" />
+                         <Skeleton className="h-3 w-[80px]" />
+                    </div>
+                </div>
+                 <div className="flex-1 p-2 mt-4 space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                 </div>
+                 <div className="p-2">
+                    <Skeleton className="h-12 w-full" />
+                 </div>
+            </div>
+        </div>
+        <div className="flex-1 flex flex-col">
+            <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
+                 <Skeleton className="h-8 w-8 md:hidden" />
+                 <Skeleton className="h-6 w-48" />
+                 <Skeleton className="h-8 w-32 ml-auto" />
+            </header>
+             <main className="flex-1 p-4 lg:p-6">
+                <Skeleton className="h-64 w-full" />
+             </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <StylistsProvider>
