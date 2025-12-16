@@ -6,7 +6,6 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 interface StylistsContextType {
   stylists: Stylist[];
@@ -30,10 +29,10 @@ export const StylistsProvider = ({ children }: { children: ReactNode }) => {
 
   const addStylist = (stylist: Omit<Stylist, 'id' | 'avatarUrl' | 'availability'>) => {
     if (!stylistsCollection) return;
-    const currentStylistCount = stylists?.length || 0;
-    // Use a deterministic but unique-enough seed for server/client consistency
-    const pseudoRandomId = (currentStylistCount + 1) * 13;
-    const avatarUrl = PlaceHolderImages[currentStylistCount % PlaceHolderImages.length]?.imageUrl || `https://picsum.photos/seed/stylist${pseudoRandomId}/100/100`;
+    
+    // Create a temporary ID for seeding the image. The real ID will be assigned by Firestore.
+    const tempId = Date.now().toString();
+    const avatarUrl = `https://picsum.photos/seed/stylist${tempId}/100/100`;
 
     const newStylist: Omit<Stylist, 'id'> = {
       ...stylist,
