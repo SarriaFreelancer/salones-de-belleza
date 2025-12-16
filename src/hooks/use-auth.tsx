@@ -12,7 +12,6 @@ interface AuthContextType {
   login: (email: string, pass: string) => Promise<void>;
   signupAndAssignAdminRole: (email: string, pass: string) => Promise<void>;
   logout: () => void;
-  // New methods for public clients
   clientSignup: (email: string, pass: string, firstName: string, lastName: string, phone: string) => Promise<void>;
   clientLogin: (email: string, pass: string) => Promise<void>;
 }

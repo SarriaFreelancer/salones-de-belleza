@@ -26,6 +26,7 @@ export interface Stylist {
 export interface Appointment {
   id: string;
   customerName: string;
+  customerId: string;
   serviceId: string;
   stylistId: string;
   start: Date | Timestamp;
