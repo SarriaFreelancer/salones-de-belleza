@@ -52,32 +52,37 @@ export default function LoginPage() {
     }
 
     try {
+      // Step 1: Try to sign in
       await signInWithEmailAndPassword(auth, email, password);
+      // If successful, redirect to dashboard
       window.location.href = '/dashboard';
-    } catch (err: any) {
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+    } catch (signInError: any) {
+      // Step 2: If sign-in fails because user not found, create the user
+      if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
         try {
+          // 2a: Create the user
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           const newUser = userCredential.user;
           
+          // 2b: Create the admin role document in Firestore
           const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
-          await setDoc(adminRoleDoc, {});
+          await setDoc(adminRoleDoc, {}); // The existence of the doc is enough
           
           toast({
               title: 'Cuenta de Admin Creada',
               description: '¡Bienvenido! Has sido registrado como administrador.',
           });
           
-          // Re-login to establish session now that role is set, then redirect
-          await signInWithEmailAndPassword(auth, email, password);
+          // 2c: Force redirect. The layout guard will handle the session.
           window.location.href = '/dashboard';
 
-        } catch (signupError: any) {
-          setError(signupError.message || "No se pudo crear la cuenta de administrador.");
+        } catch (signUpError: any) {
+          setError(`Error al crear la cuenta: ${signUpError.message}`);
           setLoading(false);
         }
       } else {
-        setError(err.message || 'Ocurrió un error inesperado.');
+        // Handle other sign-in errors
+        setError(`Error al iniciar sesión: ${signInError.message}`);
         setLoading(false);
       }
     }

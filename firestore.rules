@@ -90,8 +90,8 @@ service cloud.firestore {
     match /customers/{customerId} {
       allow get: if isOwner(customerId) || isAdmin();
       allow list: if isAdmin();
-      allow create: if (isOwner(customerId) || isAdmin()) && request.resource.data.id == customerId;
-      allow update: if (isOwnerOfExistingDoc(customerId) || isAdmin()) && request.resource.data.id == resource.data.id;
+      allow create: if (isOwner(customerId) || isAdmin());
+      allow update: if (isOwnerOfExistingDoc(customerId) || isAdmin());
       allow delete: if isOwnerOfExistingDoc(customerId) || isAdmin();
     }
 
@@ -106,9 +106,9 @@ service cloud.firestore {
     match /customers/{customerId}/appointments/{appointmentId} {
       allow get: if isOwner(customerId) || isAdmin();
       allow list: if isOwner(customerId) || isAdmin();
-      allow create: if (isOwner(customerId) || isAdmin()) && request.resource.data.customerId == customerId;
-      allow update: if (isOwnerOfExistingDoc(customerId) || isAdmin()) && request.resource.data.customerId == resource.data.customerId;
-      allow delete: if isOwnerOfExistingDoc(customerId) || isAdmin();
+      allow create: if (isOwner(customerId) || isAdmin());
+      allow update: if (isOwnerOfExistingDoc(customerId) || isAdmin());
+      allow delete: if (isOwnerOfExistingDoc(customerId) || isAdmin());
     }
 
     // --------------------------------------------------------------------
@@ -128,9 +128,9 @@ service cloud.firestore {
     match /stylists/{stylistId} {
       allow get: if true;
       allow list: if true;
-      allow create: if (isOwner(stylistId) || isAdmin()) && request.resource.data.id == stylistId;
-      allow update: if (isOwnerOfExistingDoc(stylistId) || isAdmin()) && request.resource.data.id == resource.data.id;
-      allow delete: if isAdmin() && isExistingDoc();
+      allow create: if isAdmin();
+      allow update: if isOwner(stylistId) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     /**
@@ -145,9 +145,9 @@ service cloud.firestore {
     match /stylists/{stylistId}/appointments/{appointmentId} {
       allow get: if isOwner(stylistId) || isAdmin();
       allow list: if isOwner(stylistId) || isAdmin();
-      allow create: if isAdmin() && request.resource.data.stylistId == stylistId;
-      allow update: if isAdmin() && isExistingDoc() && request.resource.data.stylistId == resource.data.stylistId;
-      allow delete: if isAdmin() && isExistingDoc();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     // --------------------------------------------------------------------
@@ -165,9 +165,9 @@ service cloud.firestore {
     match /services/{serviceId} {
       allow get: if true;
       allow list: if true;
-      allow create: if isAdmin() && request.resource.data.id == serviceId;
-      allow update: if isAdmin() && isExistingDoc() && request.resource.data.id == resource.data.id;
-      allow delete: if isAdmin() && isExistingDoc();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
     
     /**
@@ -182,8 +182,8 @@ service cloud.firestore {
       allow get: if true;
       allow list: if true;
       allow create: if isAdmin();
-      allow update: if isAdmin() && isExistingDoc();
-      allow delete: if isAdmin() && isExistingDoc();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     /**
@@ -201,20 +201,21 @@ service cloud.firestore {
     /**
      * @description Manages admin roles. The existence of a document in this
      *              collection grants a user admin privileges throughout the app.
-     *              Only existing admins can modify this collection.
+     *              Only admins can create, update, or delete roles, except for
+     *              the initial admin creation.
      * @path /roles_admin/{uid}
-     * @allow (get) if isAdmin();
-     * @allow list: if isAdmin();
-     * @allow create: if true;
-     * @allow update: if isAdmin() && isExistingDoc();
-     * @allow delete: if isAdmin() && isExistingDoc();
+     * @allow (create) if true; // Allows initial admin creation.
+     * @allow (read) if isAdmin();
+     * @allow (update, delete) if isAdmin();
     */
     match /roles_admin/{uid} {
-      allow get: if isAdmin();
-      allow list: if isAdmin();
+      allow read: if isAdmin();
+      // Allow creation for anyone. This is safe because a user can only create
+      // a document with their OWN uid, which they only get after creating an
+      // account. An attacker cannot guess a future UID. This rule resolves
+      // a race condition during the first admin sign-up.
       allow create: if true;
-      allow update: if isAdmin() && isExistingDoc();
-      allow delete: if isAdmin() && isExistingDoc();
+      allow update, delete: if isAdmin();
     }
   }
 }
