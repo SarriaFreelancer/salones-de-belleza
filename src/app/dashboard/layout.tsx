@@ -24,6 +24,7 @@ import {
   LogOut,
   ExternalLink,
   GalleryHorizontal,
+  Contact,
 } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -81,6 +82,18 @@ function DashboardLayoutContent({
                 <Link href="/dashboard/appointments">
                   <CalendarDays />
                   <span>Citas</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith('/dashboard/customers')}
+                tooltip={{ children: 'Clientes' }}
+              >
+                <Link href="/dashboard/customers">
+                  <Contact />
+                  <span>Clientes</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -195,6 +208,7 @@ export default function DashboardLayout({
 
 function getPageTitle(pathname: string): string {
   if (pathname.includes('/appointments')) return 'Gestión de Citas';
+  if (pathname.includes('/customers')) return 'Gestión de Clientes';
   if (pathname.includes('/services')) return 'Nuestros Servicios';
   if (pathname.includes('/stylists')) return 'Equipo de Estilistas';
   if (pathname.includes('/gallery')) return 'Gestión de Galería';

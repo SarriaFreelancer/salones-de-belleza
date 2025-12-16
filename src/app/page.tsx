@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import PublicBookingForm from '@/components/public/public-booking-form';
+import UserAuth from '@/components/public/user-auth';
 
 
 function HomePageContent() {
@@ -47,11 +48,7 @@ function HomePageContent() {
             Contacto
           </Link>
         </nav>
-        <Button asChild>
-          <Link href="#agendar">
-            Agenda tu Cita
-          </Link>
-        </Button>
+        <UserAuth />
       </header>
       <main className="flex-1">
         <section id="hero" className="relative h-[60vh] w-full">

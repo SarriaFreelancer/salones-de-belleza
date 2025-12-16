@@ -40,6 +40,14 @@ export interface GalleryImage {
   hint: string;
 }
 
+export interface Customer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
 
 export const AppointmentSuggestionsInputSchema = z.object({
   service: z.string().describe('The name of the service to be booked.'),
