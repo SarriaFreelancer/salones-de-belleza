@@ -44,8 +44,13 @@ export default function LoginPage() {
     } catch (loginError: any) {
       if (loginError.code === 'auth/invalid-credential' || loginError.code === 'auth/user-not-found') {
         try {
+          // 1. Create user and assign role. Await its completion.
           await auth.signupAndAssignAdminRole(email, password);
-          // After signup, also trigger a full reload to ensure auth state is correct
+          toast({
+            title: 'Cuenta de Admin Creada',
+            description: 'Iniciando sesión con la nueva cuenta...',
+          });
+          // 2. Now, log in with the newly created user. This will handle the redirect.
           await auth.login(email, password);
         } catch (signupError: any) {
           const errorMessage = signupError.message || 'Ocurrió un error desconocido durante el registro.';
@@ -66,8 +71,12 @@ export default function LoginPage() {
         });
       }
     } finally {
-      // Don't set loading to false immediately, as the page will reload.
-      // setLoading(false);
+      // setLoading(false) is removed because the page will reload on success,
+      // and we want the button to stay disabled on failure. We'll only re-enable
+      // if there's an error that doesn't lead to a reload.
+       if (error) {
+         setLoading(false);
+       }
     }
   };
 
