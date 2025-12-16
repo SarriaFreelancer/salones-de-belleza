@@ -105,25 +105,22 @@ export default function NewAppointmentDialog({
       serviceIds: [],
       customerName: '',
       customerEmail: '',
-      // preferredDate is intentionally left undefined here to avoid hydration mismatch.
-      // It will be set in the useEffect hook on the client side.
     },
   });
 
   useEffect(() => {
-    // Set default date only on the client side to prevent hydration mismatch.
-    if (open) {
-      form.reset({
-        serviceIds: [],
-        customerName: '',
-        customerEmail: '',
-        preferredDate: new Date(),
-      });
+    if (open && form.getValues('preferredDate') === undefined) {
+      form.setValue('preferredDate', new Date());
     }
   }, [open, form]);
 
   const resetDialog = () => {
-    form.reset();
+    form.reset({
+        serviceIds: [],
+        customerName: '',
+        customerEmail: '',
+        preferredDate: new Date(),
+    });
     setStep(1);
     setIsLoading(false);
     setSuggestions([]);
@@ -156,11 +153,11 @@ export default function NewAppointmentDialog({
 
     const formattedDate = format(values.preferredDate, 'yyyy-MM-dd');
     const existingAppointmentsForDate = appointments
-      .filter(a => format(a.start, 'yyyy-MM-dd') === formattedDate)
+      .filter(a => format(a.start instanceof Date ? a.start : a.start.toDate(), 'yyyy-MM-dd') === formattedDate)
       .map((a) => ({
         stylistId: a.stylistId,
-        start: format(a.start, 'HH:mm'),
-        end: format(a.end, 'HH:mm'),
+        start: format(a.start instanceof Date ? a.start : a.start.toDate(), 'HH:mm'),
+        end: format(a.end instanceof Date ? a.end : a.end.toDate(), 'HH:mm'),
       }));
       
     const dayIndex = values.preferredDate.getDay();
@@ -442,7 +439,7 @@ export default function NewAppointmentDialog({
                     <h4 className="font-semibold">Resumen de la Cita</h4>
                     <div className='text-sm'>
                     <p><strong>Cliente:</strong> {form.getValues('customerName')}</p>
-                    <p><strong>Fecha:</strong> {format(form.getValues('preferredDate'), 'PPP', { locale: es })}</p>
+                    <p><strong>Fecha:</strong> {form.getValues('preferredDate') ? format(form.getValues('preferredDate'), 'PPP', { locale: es }) : ''}</p>
                     <div><strong>Servicios:</strong>
                         <div className='flex flex-wrap gap-1 mt-1'>
                             {selectedServices.map(s => <Badge key={s.id} variant="secondary">{s.name}</Badge>)}

@@ -42,13 +42,14 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 function DashboardPage() {
-  const [today, setToday] = React.useState<Date | null>(null);
+  const [today, setToday] = React.useState<Date | undefined>(undefined);
   const { stylists, isLoading: isLoadingStylists } = useStylists();
   const { services, isLoading: isLoadingServices } = useServices();
   const firestore = useFirestore();
+  const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
-    // Set date only on the client side to avoid hydration mismatch
+    setIsClient(true);
     setToday(new Date());
   }, []);
 
@@ -74,7 +75,10 @@ function DashboardPage() {
 
     return weekDays.map(day => {
         const dayAppointments = appointments.filter(
-            a => a.start.toDateString() === day.toDateString() && a.status !== 'cancelled'
+            a => {
+              const appointmentDate = a.start instanceof Date ? a.start : a.start.toDate();
+              return appointmentDate.toDateString() === day.toDateString() && a.status !== 'cancelled'
+            }
         ).length;
         
         // getDay() returns 0 for Sunday, 1 for Monday, etc.
@@ -88,7 +92,7 @@ function DashboardPage() {
   }, [appointments, today]);
 
 
-  if (!today || isLoadingStylists || isLoadingServices || isLoadingAppointments) {
+  if (!isClient || isLoadingStylists || isLoadingServices || isLoadingAppointments) {
     return (
       <div className="grid gap-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -105,7 +109,10 @@ function DashboardPage() {
   }
 
   const todaysAppointments = (appointments || []).filter(
-    (a) => a.start.toDateString() === today.toDateString() && a.status !== 'cancelled'
+    (a) => {
+      const appointmentDate = a.start instanceof Date ? a.start : a.start.toDate();
+      return today && appointmentDate.toDateString() === today.toDateString() && a.status !== 'cancelled'
+    }
   );
   const dailyRevenue = todaysAppointments.reduce((total, app) => {
     const service = services.find((s) => s.id === app.serviceId);
@@ -204,7 +211,7 @@ function DashboardPage() {
             {todaysAppointments.length > 0 ? (
               <div className="space-y-4">
                 {todaysAppointments
-                  .sort((a, b) => a.start.getTime() - b.start.getTime())
+                  .sort((a, b) => (a.start instanceof Date ? a.start.getTime() : a.start.toDate().getTime()) - (b.start instanceof Date ? b.start.getTime() : b.start.toDate().getTime()))
                   .slice(0, 4)
                   .map((appointment) => {
                     const stylist = stylists.find(
@@ -213,6 +220,7 @@ function DashboardPage() {
                     const service = services.find(
                       (s) => s.id === appointment.serviceId
                     );
+                    const appointmentDate = appointment.start instanceof Date ? appointment.start : appointment.start.toDate();
                     return (
                       <div key={appointment.id} className="flex items-center">
                         <Avatar className="h-9 w-9">
@@ -234,7 +242,7 @@ function DashboardPage() {
                         </div>
                         <div className="ml-auto font-medium text-sm flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {format(appointment.start, 'HH:mm')}
+                          {format(appointmentDate, 'HH:mm')}
                         </div>
                       </div>
                     );

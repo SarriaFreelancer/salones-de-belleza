@@ -82,7 +82,7 @@ export default function CustomersPage() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
-                        <AvatarImage src={`https://picsum.photos/seed/${customer.id}/100/100`} alt={customer.firstName} />
+                        <AvatarImage src={`https://picsum.photos/seed/${customer.id}/100/100`} alt={customer.firstName} data-ai-hint="person face" />
                         <AvatarFallback>{customer.firstName?.charAt(0)}{customer.lastName?.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <span className="font-medium">{customer.firstName} {customer.lastName}</span>

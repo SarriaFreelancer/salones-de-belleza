@@ -52,15 +52,16 @@ type DialogState =
   | null;
 
 function StylistsPage() {
-  const [today, setToday] = React.useState<Date | null>(null);
+  const [today, setToday] = React.useState<Date | undefined>(undefined);
   const { stylists, addStylist, updateStylist, deleteStylist, isLoading: isLoadingStylists } = useStylists();
   const { services } = useServices();
   const [dialogState, setDialogState] = React.useState<DialogState>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
+  const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
-    // Set date only on the client side to avoid hydration mismatch
+    setIsClient(true);
     setToday(new Date());
   }, []);
 
@@ -108,7 +109,7 @@ function StylistsPage() {
   const stylistToDelete = dialogState?.type === 'delete' ? dialogState.stylist : null;
   const stylistForAvailability = dialogState?.type === 'availability' ? dialogState.stylist : null;
 
-  if (!today || isLoadingStylists || isLoadingAppointments) {
+  if (!isClient || isLoadingStylists || isLoadingAppointments) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -138,11 +139,13 @@ function StylistsPage() {
           {stylists.map((stylist) => {
              const todaysAppointments = (appointments || [])
               .filter(
-                (a) =>
-                  a.stylistId === stylist.id &&
-                  a.start.toDateString() === today.toDateString() &&
+                (a) => {
+                  const appointmentDate = a.start instanceof Date ? a.start : a.start.toDate();
+                  return a.stylistId === stylist.id &&
+                  today && appointmentDate.toDateString() === today.toDateString() &&
                   a.status !== 'cancelled'
-              ).sort((a,b) => a.start.getTime() - b.start.getTime());
+                }
+              ).sort((a,b) => (a.start instanceof Date ? a.start.getTime() : a.start.toDate().getTime()) - (b.start instanceof Date ? b.start.getTime() : b.start.toDate().getTime()));
 
             return (
               <Card key={stylist.id} className="relative">
@@ -190,6 +193,9 @@ function StylistsPage() {
                         const service = services.find(
                           (s) => s.id === appointment.serviceId
                         );
+                        const appointmentStartDate = appointment.start instanceof Date ? appointment.start : appointment.start.toDate();
+                        const appointmentEndDate = appointment.end instanceof Date ? appointment.end : appointment.end.toDate();
+
                         return (
                           <div
                             key={appointment.id}
@@ -202,7 +208,7 @@ function StylistsPage() {
                             <div className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
                                 <span>
-                                {format(appointment.start, 'HH:mm')} - {format(appointment.end, 'HH:mm')}
+                                {format(appointmentStartDate, 'HH:mm')} - {format(appointmentEndDate, 'HH:mm')}
                                 </span>
                             </div>
                           </div>

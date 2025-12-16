@@ -51,9 +51,10 @@ function AppointmentsPage() {
   const { stylists } = useStylists();
   const { services } = useServices();
   const firestore = useFirestore();
+  const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
-    // Set date only on the client side to avoid hydration mismatch
+    setIsClient(true);
     setDate(new Date());
   }, []);
   
@@ -68,8 +69,7 @@ function AppointmentsPage() {
     // No need to manually update state, useCollection handles it
   };
   
-  // Wait until date is set on the client to avoid hydration mismatch
-  if (!date || isLoading) {
+  if (!isClient || isLoading) {
     return (
        <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -90,7 +90,8 @@ function AppointmentsPage() {
   const filteredAppointments = (appointments || [])
     .filter((appointment) => {
       if (!appointment.start || !date) return false;
-      return appointment.start.toDateString() === date.toDateString();
+      const appointmentDate = appointment.start instanceof Date ? appointment.start : appointment.start.toDate();
+      return appointmentDate.toDateString() === date.toDateString();
     })
     .filter((appointment) => {
       if (stylistFilter === 'all') return true;
@@ -182,13 +183,14 @@ function AppointmentsPage() {
               filteredAppointments.map((appointment) => {
                 const service = services.find(s => s.id === appointment.serviceId);
                 const stylist = stylists.find(s => s.id === appointment.stylistId);
+                const appointmentDate = appointment.start instanceof Date ? appointment.start : appointment.start.toDate();
                 return (
                   <TableRow key={appointment.id}>
                     <TableCell className="font-medium">{appointment.customerName}</TableCell>
                     <TableCell>{service?.name || 'N/A'}</TableCell>
                     <TableCell className="hidden md:table-cell">{stylist?.name || 'N/A'}</TableCell>
                     <TableCell>
-                      {format(appointment.start, 'Pp', { locale: es })}
+                      {format(appointmentDate, 'Pp', { locale: es })}
                     </TableCell>
                     <TableCell>
                       <Badge
