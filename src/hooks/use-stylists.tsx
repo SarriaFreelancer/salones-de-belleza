@@ -9,7 +9,7 @@ import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocki
 
 interface StylistsContextType {
   stylists: Stylist[];
-  addStylist: (stylist: Omit<Stylist, 'id' | 'avatarUrl' | 'availability'>) => void;
+  addStylist: (stylist: Omit<Stylist, 'id' | 'availability'>) => void;
   updateStylist: (updatedStylist: Stylist) => void;
   deleteStylist: (stylistId: string) => void;
   isLoading: boolean;
@@ -27,16 +27,11 @@ export const StylistsProvider = ({ children }: { children: ReactNode }) => {
   
   const { data: stylists, isLoading } = useCollection<Stylist>(stylistsCollection);
 
-  const addStylist = (stylist: Omit<Stylist, 'id' | 'avatarUrl' | 'availability'>) => {
+  const addStylist = (stylist: Omit<Stylist, 'id' | 'availability'>) => {
     if (!stylistsCollection) return;
-    
-    // Create a temporary ID for seeding the image. The real ID will be assigned by Firestore.
-    const tempId = Date.now().toString();
-    const avatarUrl = `https://picsum.photos/seed/stylist${tempId}/100/100`;
 
     const newStylist: Omit<Stylist, 'id'> = {
       ...stylist,
-      avatarUrl,
       availability: {},
     };
     addDocumentNonBlocking(stylistsCollection, newStylist);

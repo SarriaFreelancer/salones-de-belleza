@@ -27,12 +27,13 @@ import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.'),
+  avatarUrl: z.string().url('Debe ser una URL de imagen válida.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 interface NewStylistDialogProps {
-  onStylistSaved: (stylist: Stylist | Omit<Stylist, 'id' | 'avatarUrl' | 'availability'>) => void;
+  onStylistSaved: (stylist: Stylist | Omit<Stylist, 'id' | 'availability'>) => void;
   stylistToEdit?: Stylist | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -51,20 +52,26 @@ export default function NewStylistDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
+      avatarUrl: '',
     },
   });
 
   React.useEffect(() => {
-    if (open && stylistToEdit) {
-      form.reset({
-        name: stylistToEdit.name,
-      });
-    } else if (open && !isEditMode) {
-      form.reset({
-        name: '',
-      });
+    if (open) {
+      if (stylistToEdit) {
+        form.reset({
+          name: stylistToEdit.name,
+          avatarUrl: stylistToEdit.avatarUrl,
+        });
+      } else {
+        form.reset({
+          name: '',
+          avatarUrl: `https://picsum.photos/seed/stylist${Math.floor(Math.random() * 1000)}/100/100`,
+        });
+      }
     }
-  }, [stylistToEdit, open, form, isEditMode]);
+  }, [stylistToEdit, open, form]);
+
 
   const onSubmit = (values: FormValues) => {
     setIsLoading(true);
@@ -103,6 +110,19 @@ export default function NewStylistDialog({
                   <FormLabel>Nombre del Estilista</FormLabel>
                   <FormControl>
                     <Input placeholder="Ej: Ana" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="avatarUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URL del Avatar</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://example.com/avatar.png" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -76,7 +76,7 @@ function StylistsPage() {
     setDialogState(null);
   };
 
-  const handleAddOrUpdateStylist = (stylist: Stylist | Omit<Stylist, 'id' | 'avatarUrl' | 'availability'>) => {
+  const handleAddOrUpdateStylist = (stylist: Stylist | Omit<Stylist, 'id' | 'availability'>) => {
     if ('id' in stylist) {
       updateStylist(stylist);
       toast({
