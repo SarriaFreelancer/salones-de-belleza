@@ -51,7 +51,7 @@ function DashboardLayoutContent({
             <Logo />
             <div className="flex flex-col">
               <h2 className="font-headline text-lg font-semibold leading-tight tracking-tight">
-                Divas AyA
+                Divas A&A
               </h2>
               <p className="text-xs text-muted-foreground">Panel de Control</p>
             </div>

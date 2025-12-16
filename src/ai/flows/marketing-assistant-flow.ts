@@ -31,7 +31,7 @@ const prompt = ai.definePrompt({
   name: 'marketingAssistantPrompt',
   input: { schema: MarketingAssistantInputSchema },
   output: { schema: MarketingAssistantOutputSchema },
-  prompt: `You are a social media marketing expert for a beauty salon called "Divas AyA".
+  prompt: `You are a social media marketing expert for a beauty salon called "Divas A&A".
 Your task is to write a short, engaging post for platforms like Instagram or Facebook.
 
 The post must promote the following service: **{{{serviceName}}}**
@@ -40,7 +40,7 @@ Incorporate the following special offer: **{{#if offer}}{{offer}}{{else}}No spec
 
 The tone of the post should be: **{{{tone}}}**
 
-The final post should be concise (2-3 paragraphs max), use relevant emojis to be visually appealing, and include a clear call to action to book an appointment. End with a few relevant hashtags like #DivasAyA, #Belleza, #[serviceName], #PromocionSalon.
+The final post should be concise (2-3 paragraphs max), use relevant emojis to be visually appealing, and include a clear call to action to book an appointment. End with a few relevant hashtags like #DivasA&A, #Belleza, #[serviceName], #PromocionSalon.
 `,
 });
 

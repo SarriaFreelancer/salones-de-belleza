@@ -33,7 +33,7 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
         strokeOpacity="0.5"
       />
       <text x="50" y="58" textAnchor="middle" className="logo-text">
-        D&A
+        A&A
       </text>
     </svg>
   );

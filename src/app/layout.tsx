@@ -6,8 +6,8 @@ import { AuthProvider } from '@/hooks/use-auth';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'Divas AyA',
-  description: 'Gestión y agendamiento de citas en línea para el salón de belleza Divas AyA.',
+  title: 'Divas A&A',
+  description: 'Gestión y agendamiento de citas en línea para el salón de belleza Divas A&A.',
 };
 
 export default function RootLayout({

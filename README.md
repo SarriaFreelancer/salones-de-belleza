@@ -1,6 +1,6 @@
-# Salón de Belleza Divas AyA
+# Salón de Belleza Divas A&A
 
-Este es un proyecto de aplicación web para el salón de belleza "Divas AyA", construido con Next.js, React, Firebase y Genkit para funcionalidades de IA. La aplicación permite la gestión de citas, servicios, estilistas y una galería de imágenes a través de un panel de administración, y ofrece a los clientes una interfaz pública para ver información y agendar citas.
+Este es un proyecto de aplicación web para el salón de belleza "Divas A&A", construido con Next.js, React, Firebase y Genkit para funcionalidades de IA. La aplicación permite la gestión de citas, servicios, estilistas y una galería de imágenes a través de un panel de administración, y ofrece a los clientes una interfaz pública para ver información y agendar citas.
 
 ## Tecnologías Utilizadas
 

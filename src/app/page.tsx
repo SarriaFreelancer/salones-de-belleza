@@ -29,7 +29,7 @@ function HomePageContent() {
           <Logo />
           <div className="flex flex-col">
             <h1 className="font-headline text-lg font-semibold leading-tight tracking-tight">
-              Divas AyA
+              Divas A&A
             </h1>
             <p className="text-xs text-muted-foreground">Salón de Belleza</p>
           </div>
@@ -54,7 +54,7 @@ function HomePageContent() {
         <section id="hero" className="relative h-[60vh] w-full">
             <Image 
                 src="https://picsum.photos/seed/hero/1200/800" 
-                alt="Salón de belleza Divas AyA" 
+                alt="Salón de belleza Divas A&A" 
                 fill
                 className="object-cover"
                 data-ai-hint="beauty salon interior"
@@ -65,7 +65,7 @@ function HomePageContent() {
                 Realza tu Belleza Natural
                 </h2>
                 <p className="mx-auto max-w-[700px] text-foreground/80 md:text-xl">
-                En Divas AyA, combinamos arte y experiencia para ofrecerte un servicio excepcional.
+                En Divas A&A, combinamos arte y experiencia para ofrecerte un servicio excepcional.
                 </p>
                 <Button asChild size="lg" className="mt-6">
                     <Link href="#agendar">
@@ -191,7 +191,7 @@ function HomePageContent() {
                     </div>
                     <div>
                         <h3 className="font-semibold">Correo Electrónico</h3>
-                        <p className="text-muted-foreground">contacto@divasaya.com</p>
+                        <p className="text-muted-foreground">contacto@divasA&A.com</p>
                     </div>
                  </div>
                  <div className="flex items-center gap-4">
@@ -219,7 +219,7 @@ function HomePageContent() {
       <footer className="w-full shrink-0 border-t py-6 px-4 md:px-6">
         <div className="flex flex-col items-center justify-center gap-2 sm:flex-row sm:justify-between">
           <p className="flex-1 text-center text-xs text-muted-foreground">
-            &copy; 2024 Divas AyA. Todos los derechos reservados.
+            &copy; 2024 Divas A&A. Todos los derechos reservados.
           </p>
           <nav className="flex gap-4 sm:gap-6">
             <Button variant="outline" size="sm" asChild>
