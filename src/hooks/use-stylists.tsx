@@ -31,7 +31,9 @@ export const StylistsProvider = ({ children }: { children: ReactNode }) => {
   const addStylist = (stylist: Omit<Stylist, 'id' | 'avatarUrl' | 'availability'>) => {
     if (!stylistsCollection) return;
     const currentStylistCount = stylists?.length || 0;
-    const avatarUrl = PlaceHolderImages[currentStylistCount % PlaceHolderImages.length]?.imageUrl || `https://picsum.photos/seed/stylist${currentStylistCount}/100/100`;
+    // Use a deterministic but unique-enough seed for server/client consistency
+    const pseudoRandomId = (currentStylistCount + 1) * 13;
+    const avatarUrl = PlaceHolderImages[currentStylistCount % PlaceHolderImages.length]?.imageUrl || `https://picsum.photos/seed/stylist${pseudoRandomId}/100/100`;
 
     const newStylist: Omit<Stylist, 'id'> = {
       ...stylist,

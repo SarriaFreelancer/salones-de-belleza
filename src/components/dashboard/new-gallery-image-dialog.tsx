@@ -57,14 +57,18 @@ export default function NewGalleryImageDialog({
   });
 
   React.useEffect(() => {
-    if (open && imageToEdit) {
-      form.reset(imageToEdit);
-    } else if (open && !imageToEdit) {
-      form.reset({
-        src: `https://picsum.photos/seed/gallery${Date.now()}/600/400`,
-        alt: '',
-        hint: '',
-      });
+    if (open) {
+      if (imageToEdit) {
+        form.reset(imageToEdit);
+      } else {
+        // Generate a random seed on the client to avoid hydration mismatch
+        const randomSeed = `gallery${Math.floor(Math.random() * 10000)}`;
+        form.reset({
+          src: `https://picsum.photos/seed/${randomSeed}/600/400`,
+          alt: '',
+          hint: '',
+        });
+      }
     }
   }, [imageToEdit, open, form]);
 
