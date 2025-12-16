@@ -15,12 +15,29 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import PublicBookingForm from '@/components/public/public-booking-form';
 import UserAuth from '@/components/public/user-auth';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase } from '@/firebase';
+import type { Appointment } from '@/lib/types';
 
 
 function HomePageContent() {
     const { services } = useServices();
     const { stylists } = useStylists();
     const { galleryImages } = useGallery();
+    const [isClient, setIsClient] = React.useState(false);
+    const firestore = useFirestore();
+
+    React.useEffect(() => {
+        setIsClient(true);
+    }, []);
+
+    const appointmentsCollection = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'admin_appointments');
+    }, [firestore]);
+    
+    const { data: appointments } = useCollection<Appointment>(appointmentsCollection);
 
   return (
     <div className="flex min-h-dvh w-full flex-col">
@@ -162,7 +179,7 @@ function HomePageContent() {
 
         <section id="agendar" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
             <div className="container px-4 md:px-6">
-                 <PublicBookingForm appointments={[]} />
+                {isClient && <PublicBookingForm appointments={appointments || []} />}
             </div>
         </section>
 
@@ -243,5 +260,3 @@ export default function HomePage() {
     </StylistsProvider>
   );
 }
-
-    
