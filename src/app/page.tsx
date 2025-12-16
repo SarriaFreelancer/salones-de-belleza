@@ -165,7 +165,7 @@ function HomePageContent() {
 
         <section id="agendar" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
             <div className="container px-4 md:px-6">
-                 <PublicBookingForm />
+                 <PublicBookingForm appointments={[]} />
             </div>
         </section>
 

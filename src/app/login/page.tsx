@@ -38,47 +38,37 @@ export default function LoginPage() {
     
     setError('');
     setLoading(true);
+
     try {
+      // First, try to log in.
       await auth.login(email, password);
-      // The redirect is now handled inside the auth.login method by reloading the page
+      // The login function now handles redirection via page reload.
     } catch (loginError: any) {
+      // If login fails because the user doesn't exist, create the account.
       if (loginError.code === 'auth/invalid-credential' || loginError.code === 'auth/user-not-found') {
         try {
-          // 1. Create user and assign role. Await its completion.
+          // 1. Create user and assign admin role. Await its completion.
           await auth.signupAndAssignAdminRole(email, password);
           toast({
             title: 'Cuenta de Admin Creada',
-            description: 'Iniciando sesión con la nueva cuenta...',
+            description: 'Iniciando sesión por primera vez...',
           });
           // 2. Now, log in with the newly created user. This will handle the redirect.
           await auth.login(email, password);
         } catch (signupError: any) {
           const errorMessage = signupError.message || 'Ocurrió un error desconocido durante el registro.';
           setError(`Error de registro: ${errorMessage}`);
-          toast({
-            variant: 'destructive',
-            title: 'Error de Registro',
-            description: errorMessage,
-          });
+          setLoading(false); // Stop loading on signup failure.
         }
       } else {
+        // Handle other login errors (e.g., wrong password)
         const errorMessage = loginError.message || 'Error al iniciar sesión.';
         setError(errorMessage);
-        toast({
-          variant: 'destructive',
-          title: 'Error de Inicio de Sesión',
-          description: errorMessage,
-        });
+        setLoading(false); // Stop loading on other login failures.
       }
-    } finally {
-      // setLoading(false) is removed because the page will reload on success,
-      // and we want the button to stay disabled on failure. We'll only re-enable
-      // if there's an error that doesn't lead to a reload.
-       if (error) {
-         setLoading(false);
-       }
     }
   };
+
 
   if (!isClient || !auth || auth.isUserLoading) {
     return (

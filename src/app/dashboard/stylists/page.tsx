@@ -40,7 +40,7 @@ import NewStylistDialog from '@/components/dashboard/new-stylist-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useServices } from '@/hooks/use-services';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, Timestamp } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -59,16 +59,17 @@ function StylistsPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
 
+  React.useEffect(() => {
+    // Set date only on the client side to avoid hydration mismatch
+    setToday(new Date());
+  }, []);
+
   const appointmentsCollection = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'admin_appointments');
   }, [firestore]);
 
-  const { data: appointments } = useCollection<Appointment>(appointmentsCollection);
-
-  React.useEffect(() => {
-    setToday(new Date());
-  }, []);
+  const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection);
 
   const handleSaveAvailability = (updatedStylist: Stylist) => {
     updateStylist(updatedStylist);
@@ -107,7 +108,7 @@ function StylistsPage() {
   const stylistToDelete = dialogState?.type === 'delete' ? dialogState.stylist : null;
   const stylistForAvailability = dialogState?.type === 'availability' ? dialogState.stylist : null;
 
-  if (!today || isLoadingStylists) {
+  if (!today || isLoadingStylists || isLoadingAppointments) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -136,11 +137,6 @@ function StylistsPage() {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {stylists.map((stylist) => {
              const todaysAppointments = (appointments || [])
-              .map(appointment => ({
-                ...appointment,
-                start: appointment.start instanceof Timestamp ? appointment.start.toDate() : new Date(appointment.start),
-                end: appointment.end instanceof Timestamp ? appointment.end.toDate() : new Date(appointment.end),
-              }))
               .filter(
                 (a) =>
                   a.stylistId === stylist.id &&

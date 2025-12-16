@@ -40,21 +40,22 @@ import NewAppointmentDialog from '@/components/dashboard/new-appointment-dialog'
 import { useStylists } from '@/hooks/use-stylists';
 import { useServices } from '@/hooks/use-services';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, Timestamp } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function AppointmentsPage() {
   const [date, setDate] = React.useState<Date | undefined>(undefined);
-  React.useEffect(() => {
-    // Set date only on the client side
-    setDate(new Date());
-  }, []);
   const [stylistFilter, setStylistFilter] = React.useState<string>('all');
   const [serviceFilter, setServiceFilter] = React.useState<string>('all');
   const { stylists } = useStylists();
   const { services } = useServices();
   const firestore = useFirestore();
+
+  React.useEffect(() => {
+    // Set date only on the client side to avoid hydration mismatch
+    setDate(new Date());
+  }, []);
   
   const appointmentsCollection = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -63,12 +64,12 @@ function AppointmentsPage() {
   
   const { data: appointments, isLoading } = useCollection<Appointment>(appointmentsCollection);
 
-  const handleAppointmentCreated = (newAppointment: Appointment) => {
+  const handleAppointmentCreated = () => {
     // No need to manually update state, useCollection handles it
   };
   
   // Wait until date is set on the client to avoid hydration mismatch
-  if (!date) {
+  if (!date || isLoading) {
     return (
        <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -87,14 +88,6 @@ function AppointmentsPage() {
   }
 
   const filteredAppointments = (appointments || [])
-    .map(appointment => {
-        // Convert Firestore Timestamps to JS Date objects
-        return {
-            ...appointment,
-            start: appointment.start instanceof Timestamp ? appointment.start.toDate() : new Date(appointment.start),
-            end: appointment.end instanceof Timestamp ? appointment.end.toDate() : new Date(appointment.end),
-        };
-    })
     .filter((appointment) => {
       return (appointment.start as Date).toDateString() === date.toDateString();
     })
@@ -184,13 +177,7 @@ function AppointmentsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-                <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                    Cargando citas...
-                    </TableCell>
-                </TableRow>
-            ) : filteredAppointments.length > 0 ? (
+            {filteredAppointments.length > 0 ? (
               filteredAppointments.map((appointment) => {
                 const service = services.find(s => s.id === appointment.serviceId);
                 const stylist = stylists.find(s => s.id === appointment.stylistId);

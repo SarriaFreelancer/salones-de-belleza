@@ -30,8 +30,9 @@ import { es } from 'date-fns/locale';
 import { useStylists } from '@/hooks/use-stylists';
 import { useServices } from '@/hooks/use-services';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, Timestamp } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const chartData = [
   { date: 'Lunes', appointments: 5 },
@@ -52,36 +53,39 @@ const chartConfig = {
 
 function DashboardPage() {
   const [today, setToday] = React.useState<Date | null>(null);
-  const { stylists } = useStylists();
-  const { services } = useServices();
+  const { stylists, isLoading: isLoadingStylists } = useStylists();
+  const { services, isLoading: isLoadingServices } = useServices();
   const firestore = useFirestore();
+
+  React.useEffect(() => {
+    // Set date only on the client side to avoid hydration mismatch
+    setToday(new Date());
+  }, []);
 
   const appointmentsCollection = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'admin_appointments');
   }, [firestore]);
   
-  const { data: appointments } = useCollection<Appointment>(appointmentsCollection);
+  const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection);
 
-  React.useEffect(() => {
-    setToday(new Date());
-  }, []);
-
-  if (!today || !appointments) {
+  if (!today || !appointments || isLoadingStylists || isLoadingServices || isLoadingAppointments) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p>Cargando dashboard...</p>
+      <div className="grid gap-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card><CardHeader><Skeleton className="h-4 w-3/4" /></CardHeader><CardContent><Skeleton className="h-8 w-1/2" /><Skeleton className="h-4 w-full mt-2" /></CardContent></Card>
+          <Card><CardHeader><Skeleton className="h-4 w-3/4" /></CardHeader><CardContent><Skeleton className="h-8 w-1/2" /><Skeleton className="h-4 w-full mt-2" /></CardContent></Card>
+          <Card><CardHeader><Skeleton className="h-4 w-3/4" /></CardHeader><CardContent><Skeleton className="h-8 w-1/2" /><Skeleton className="h-4 w-full mt-2" /></CardContent></Card>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+            <Card className="lg:col-span-4"><CardHeader><Skeleton className="h-6 w-1/2" /></CardHeader><CardContent><Skeleton className="h-[250px] w-full" /></CardContent></Card>
+            <Card className="lg:col-span-3"><CardHeader><Skeleton className="h-6 w-1/2" /><Skeleton className="h-4 w-3/4 mt-2" /></CardHeader><CardContent><Skeleton className="h-48 w-full" /></CardContent></Card>
+        </div>
       </div>
     );
   }
 
-  const processedAppointments = (appointments || []).map(appointment => ({
-      ...appointment,
-      start: appointment.start instanceof Timestamp ? appointment.start.toDate() : new Date(appointment.start),
-      end: appointment.end instanceof Timestamp ? appointment.end.toDate() : new Date(appointment.end),
-  }));
-
-  const todaysAppointments = processedAppointments.filter(
+  const todaysAppointments = appointments.filter(
     (a) => (a.start as Date).toDateString() === today.toDateString() && a.status !== 'cancelled'
   );
   const dailyRevenue = todaysAppointments.reduce((total, app) => {
@@ -114,7 +118,7 @@ function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{todaysAppointments.length}</div>
             <p className="text-xs text-muted-foreground">
-              {processedAppointments.filter(a => a.status === 'confirmed').length} confirmadas
+              {appointments.filter(a => a.status === 'confirmed').length} confirmadas
             </p>
           </CardContent>
         </Card>

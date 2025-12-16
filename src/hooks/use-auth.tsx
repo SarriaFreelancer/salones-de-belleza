@@ -23,14 +23,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
-    // This function will now re-throw the error to be handled by the UI component.
+    // This function will re-throw the error to be handled by the UI component.
     await signInWithEmailAndPassword(auth, email, pass);
-    // Force a full page reload to ensure auth state is propagated everywhere.
+    // On successful login, force a reload to ensure all states are synchronized.
     window.location.href = '/dashboard';
   }, [auth]);
 
   const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<void> => {
-    // This function creates the user and assigns the admin role in one atomic operation from the UI perspective.
+    // This function creates the user and assigns the admin role.
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     const newUser = userCredential.user;
     if (newUser && firestore) {
@@ -47,10 +47,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signOut(auth);
        window.location.href = '/login';
-      toast({
-        title: 'Sesión cerrada',
-        description: 'Has cerrado sesión correctamente.',
-      });
     } catch (error) {
       console.error("Firebase logout error:", error);
        toast({
