@@ -58,19 +58,21 @@ export default function NewStylistDialog({
 
   React.useEffect(() => {
     if (open) {
-      if (stylistToEdit) {
+      if (isEditMode && stylistToEdit) {
         form.reset({
           name: stylistToEdit.name,
-          avatarUrl: stylistToEdit.avatarUrl,
+          avatarUrl: stylistToEdit.avatarUrl || '',
         });
-      } else {
+      } else if (!isEditMode) {
+        // Generate a random seed for a placeholder image only on the client
+        const randomSeed = `stylist${Math.floor(Math.random() * 1000)}`;
         form.reset({
           name: '',
-          avatarUrl: `https://picsum.photos/seed/stylist${Math.floor(Math.random() * 1000)}/100/100`,
+          avatarUrl: `https://picsum.photos/seed/${randomSeed}/100/100`,
         });
       }
     }
-  }, [stylistToEdit, open, form]);
+  }, [stylistToEdit, open, form, isEditMode]);
 
 
   const onSubmit = (values: FormValues) => {
