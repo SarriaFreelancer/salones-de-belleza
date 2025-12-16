@@ -89,6 +89,7 @@ function AppointmentsPage() {
 
   const filteredAppointments = (appointments || [])
     .filter((appointment) => {
+      if (!appointment.start || !date) return false;
       return appointment.start.toDateString() === date.toDateString();
     })
     .filter((appointment) => {

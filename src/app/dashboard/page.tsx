@@ -88,7 +88,7 @@ function DashboardPage() {
   }, [appointments, today]);
 
 
-  if (!today || !appointments || isLoadingStylists || isLoadingServices || isLoadingAppointments) {
+  if (!today || isLoadingStylists || isLoadingServices || isLoadingAppointments) {
     return (
       <div className="grid gap-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -104,7 +104,7 @@ function DashboardPage() {
     );
   }
 
-  const todaysAppointments = appointments.filter(
+  const todaysAppointments = (appointments || []).filter(
     (a) => a.start.toDateString() === today.toDateString() && a.status !== 'cancelled'
   );
   const dailyRevenue = todaysAppointments.reduce((total, app) => {
@@ -137,7 +137,7 @@ function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{todaysAppointments.length}</div>
             <p className="text-xs text-muted-foreground">
-              {appointments.filter(a => a.status === 'confirmed').length} confirmadas
+              {(appointments || []).filter(a => a.status === 'confirmed').length} confirmadas
             </p>
           </CardContent>
         </Card>
