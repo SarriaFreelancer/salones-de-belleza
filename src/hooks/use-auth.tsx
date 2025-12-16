@@ -25,6 +25,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
     // This function will now re-throw the error to be handled by the UI component.
     await signInWithEmailAndPassword(auth, email, pass);
+    // Force a full page reload to ensure auth state is propagated everywhere.
+    window.location.href = '/dashboard';
   }, [auth]);
 
   const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<void> => {
@@ -44,6 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
+       window.location.href = '/login';
       toast({
         title: 'Sesión cerrada',
         description: 'Has cerrado sesión correctamente.',

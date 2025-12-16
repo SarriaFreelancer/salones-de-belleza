@@ -40,20 +40,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await auth.login(email, password);
-      toast({
-        title: '¡Bienvenido de vuelta!',
-        description: 'Has iniciado sesión correctamente.',
-      });
-       router.push('/dashboard');
+      // The redirect is now handled inside the auth.login method by reloading the page
     } catch (loginError: any) {
       if (loginError.code === 'auth/invalid-credential' || loginError.code === 'auth/user-not-found') {
         try {
           await auth.signupAndAssignAdminRole(email, password);
-          toast({
-            title: '¡Cuenta de Administrador Creada!',
-            description: 'Bienvenido. Tu cuenta de administrador ha sido creada.',
-          });
-           router.push('/dashboard');
+          // After signup, also trigger a full reload to ensure auth state is correct
+          await auth.login(email, password);
         } catch (signupError: any) {
           const errorMessage = signupError.message || 'Ocurrió un error desconocido durante el registro.';
           setError(`Error de registro: ${errorMessage}`);
@@ -73,7 +66,8 @@ export default function LoginPage() {
         });
       }
     } finally {
-      setLoading(false);
+      // Don't set loading to false immediately, as the page will reload.
+      // setLoading(false);
     }
   };
 
