@@ -4,14 +4,12 @@ import React, { createContext, useContext, ReactNode, useCallback } from 'react'
 import { Auth, User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth as useFirebaseAuth, useUser, useFirestore } from '@/firebase';
 import { useToast } from './use-toast';
-import { doc, setDoc, getDoc } from 'firebase/firestore'; 
+import { doc, setDoc } from 'firebase/firestore'; 
 
 interface AuthContextType {
   user: User | null;
   isUserLoading: boolean;
-  login: (email: string, pass: string) => Promise<void>;
   logout: () => void;
-  // New methods for public clients
   clientSignup: (email: string, pass: string, firstName: string, lastName: string, phone: string) => Promise<void>;
   clientLogin: (email: string, pass: string) => Promise<void>;
 }
@@ -24,59 +22,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const login = useCallback(async (email: string, pass: string): Promise<void> => {
-    if (!firestore) {
-        throw new Error("Firestore is not initialized.");
-    }
-    try {
-        // First, just try to sign in.
-        await signInWithEmailAndPassword(auth, email, pass);
-    } catch (error: any) {
-        // If the user is not found, it means it's the first login.
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-            try {
-                // Create the user
-                const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-                const newUser = userCredential.user;
-                
-                // CRITICAL: Create the admin role document
-                const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
-                await setDoc(adminRoleDoc, {});
-                
-                toast({
-                    title: 'Cuenta de Admin Creada',
-                    description: 'Bienvenido. Configurando tu cuenta de administrador.',
-                });
-
-            } catch (signupError: any) {
-                 toast({
-                    variant: "destructive",
-                    title: 'Error de Registro',
-                    description: signupError.message || "No se pudo crear la cuenta de administrador."
-                });
-                // Stop execution if signup fails
-                return;
-            }
-        } else {
-            // For any other login error (e.g., wrong password)
-            toast({
-                variant: "destructive",
-                title: 'Error de Inicio de Sesión',
-                description: error.message || "No se pudo iniciar sesión."
-            });
-            // Stop execution if there's another error
-            return;
-        }
-    }
-    // If login is successful (either first or subsequent time), redirect.
-    toast({
-        title: '¡Bienvenido!',
-        description: 'Has iniciado sesión correctamente.',
-    });
-    window.location.href = '/dashboard';
-
-  }, [auth, firestore, toast]);
-  
   const clientLogin = useCallback(async (email: string, pass: string): Promise<void> => {
     await signInWithEmailAndPassword(auth, email, pass);
     toast({
@@ -110,7 +55,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
-      // Determine where to redirect after logout
       if (window.location.pathname.startsWith('/dashboard')) {
         window.location.href = '/login';
       } else {
@@ -127,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [auth, toast]);
 
   return (
-    <AuthContext.Provider value={{ user, isUserLoading, login, logout, clientSignup, clientLogin }}>
+    <AuthContext.Provider value={{ user, isUserLoading, logout, clientSignup, clientLogin }}>
       {children}
     </AuthContext.Provider>
   );

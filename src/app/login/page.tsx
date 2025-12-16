@@ -16,6 +16,10 @@ import { useAuth } from '@/hooks/use-auth';
 import { Logo } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LogOut } from 'lucide-react';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { useFirebaseAuth, useFirestore } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 
 export default function LoginPage() {
@@ -24,7 +28,14 @@ export default function LoginPage() {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
+  
+  // Use the new simplified auth context
   const authContext = useAuth();
+  
+  // Get the raw firebase services
+  const auth = useFirebaseAuth();
+  const firestore = useFirestore();
+  const { toast } = useToast();
   
   const [isClient, setIsClient] = React.useState(false);
   React.useEffect(() => {
@@ -36,14 +47,45 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
+    if (!firestore) {
+      setError("Firestore is not available. Please try again later.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      await authContext.login(email, password);
-      // The redirect is handled inside the login function now
+      await signInWithEmailAndPassword(auth, email, password);
+      // If successful, redirect
+      window.location.href = '/dashboard';
     } catch (err: any) {
-       setError(err.message || 'Ocurrió un error inesperado.');
-       setLoading(false);
-    } 
-    // No need for finally block to set loading to false, as redirect will happen
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        // This is likely the first login, so we create the user and the admin role.
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const newUser = userCredential.user;
+          
+          // CRITICAL: Create the admin role document synchronously
+          const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
+          await setDoc(adminRoleDoc, {});
+          
+          toast({
+              title: 'Cuenta de Admin Creada',
+              description: '¡Bienvenido! Has sido registrado como administrador.',
+          });
+          
+          // Redirect after successful creation and role assignment
+          window.location.href = '/dashboard';
+
+        } catch (signupError: any) {
+          setError(signupError.message || "No se pudo crear la cuenta de administrador.");
+          setLoading(false);
+        }
+      } else {
+        // Handle other sign-in errors (wrong password, etc.)
+        setError(err.message || 'Ocurrió un error inesperado.');
+        setLoading(false);
+      }
+    }
   };
 
 
