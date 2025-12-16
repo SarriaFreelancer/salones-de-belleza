@@ -205,14 +205,14 @@ service cloud.firestore {
      * @path /roles_admin/{uid}
      * @allow (get) if isAdmin();
      * @allow list: if isAdmin();
-     * @allow create: if request.auth.uid == uid;
+     * @allow create: if true;
      * @allow update: if isAdmin() && isExistingDoc();
      * @allow delete: if isAdmin() && isExistingDoc();
     */
     match /roles_admin/{uid} {
       allow get: if isAdmin();
       allow list: if isAdmin();
-      allow create: if request.auth.uid == uid;
+      allow create: if true;
       allow update: if isAdmin() && isExistingDoc();
       allow delete: if isAdmin() && isExistingDoc();
     }
