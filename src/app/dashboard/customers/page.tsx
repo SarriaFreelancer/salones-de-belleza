@@ -25,6 +25,11 @@ import { type Customer } from '@/lib/types';
 
 export default function CustomersPage() {
   const firestore = useFirestore();
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const customersCollection = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -33,7 +38,7 @@ export default function CustomersPage() {
   
   const { data: customers, isLoading } = useCollection<Customer>(customersCollection);
 
-  if (isLoading) {
+  if (!isClient || isLoading) {
     return (
        <Card>
         <CardHeader>
