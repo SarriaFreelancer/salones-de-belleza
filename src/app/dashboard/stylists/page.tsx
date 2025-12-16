@@ -140,9 +140,9 @@ function StylistsPage() {
               .filter(
                 (a) =>
                   a.stylistId === stylist.id &&
-                  (a.start as Date).toDateString() === today.toDateString() &&
+                  a.start.toDateString() === today.toDateString() &&
                   a.status !== 'cancelled'
-              ).sort((a,b) => (a.start as Date).getTime() - (b.start as Date).getTime());
+              ).sort((a,b) => a.start.getTime() - b.start.getTime());
 
             return (
               <Card key={stylist.id} className="relative">
@@ -202,7 +202,7 @@ function StylistsPage() {
                             <div className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
                                 <span>
-                                {format(appointment.start as Date, 'HH:mm')} - {format(appointment.end as Date, 'HH:mm')}
+                                {format(appointment.start, 'HH:mm')} - {format(appointment.end, 'HH:mm')}
                                 </span>
                             </div>
                           </div>

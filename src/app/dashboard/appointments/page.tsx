@@ -89,7 +89,7 @@ function AppointmentsPage() {
 
   const filteredAppointments = (appointments || [])
     .filter((appointment) => {
-      return (appointment.start as Date).toDateString() === date.toDateString();
+      return appointment.start.toDateString() === date.toDateString();
     })
     .filter((appointment) => {
       if (stylistFilter === 'all') return true;
@@ -187,7 +187,7 @@ function AppointmentsPage() {
                     <TableCell>{service?.name || 'N/A'}</TableCell>
                     <TableCell className="hidden md:table-cell">{stylist?.name || 'N/A'}</TableCell>
                     <TableCell>
-                      {format(appointment.start as Date, 'Pp', { locale: es })}
+                      {format(appointment.start, 'Pp', { locale: es })}
                     </TableCell>
                     <TableCell>
                       <Badge

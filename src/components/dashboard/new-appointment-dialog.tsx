@@ -142,19 +142,12 @@ export default function NewAppointmentDialog({
 
     const formattedDate = format(values.preferredDate, 'yyyy-MM-dd');
     const existingAppointmentsForDate = appointments
-      .filter((a) => {
-          const appDate = a.start instanceof Timestamp ? a.start.toDate() : new Date(a.start as any);
-          return format(appDate, 'yyyy-MM-dd') === formattedDate
-        })
-      .map((a) => {
-        const startDate = a.start instanceof Timestamp ? a.start.toDate() : new Date(a.start as any);
-        const endDate = a.end instanceof Timestamp ? a.end.toDate() : new Date(a.end as any);
-        return {
-          stylistId: a.stylistId,
-          start: format(startDate, 'HH:mm'),
-          end: format(endDate, 'HH:mm'),
-        }
-      });
+      .filter(a => format(a.start, 'yyyy-MM-dd') === formattedDate)
+      .map((a) => ({
+        stylistId: a.stylistId,
+        start: format(a.start, 'HH:mm'),
+        end: format(a.end, 'HH:mm'),
+      }));
       
     const dayIndex = values.preferredDate.getDay();
     const days: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -211,6 +204,7 @@ export default function NewAppointmentDialog({
 
     const newAppointment: Omit<Appointment, 'id'> = {
       customerName: values.customerName.trim(),
+      customerId: 'mock_customer_id', // Placeholder
       serviceId: serviceId, // Simplified for now
       stylistId: suggestion.stylistId,
       start: Timestamp.fromDate(startDate),
@@ -222,7 +216,7 @@ export default function NewAppointmentDialog({
     addDocumentNonBlocking(appointmentsCollection, newAppointment);
     
     // This is a mock customer id, in a real app you would get this from the logged in user
-    const customerAppointmentsCollection = collection(firestore, 'customers', 'mock_customer_id', 'appointments');
+    const customerAppointmentsCollection = collection(firestore, 'customers', newAppointment.customerId, 'appointments');
     addDocumentNonBlocking(customerAppointmentsCollection, newAppointment);
 
     const stylistAppointmentsCollection = collection(firestore, 'stylists', suggestion.stylistId, 'appointments');
@@ -497,5 +491,3 @@ export default function NewAppointmentDialog({
     </Dialog>
   );
 }
-
-    

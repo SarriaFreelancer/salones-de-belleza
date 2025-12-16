@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { Timestamp } from 'firebase/firestore';
 
 export interface Service {
   id: string;
@@ -29,8 +28,8 @@ export interface Appointment {
   customerId: string;
   serviceId: string;
   stylistId: string;
-  start: Date | Timestamp;
-  end: Date | Timestamp;
+  start: Date;
+  end: Date;
   status: 'scheduled' | 'confirmed' | 'cancelled';
 }
 

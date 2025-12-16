@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { type Appointment } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { format } from 'date-fns';
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useStylists } from '@/hooks/use-stylists';
 import { useServices } from '@/hooks/use-services';
@@ -33,16 +33,6 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const chartData = [
-  { date: 'Lunes', appointments: 5 },
-  { date: 'Martes', appointments: 8 },
-  { date: 'Miércoles', appointments: 6 },
-  { date: 'Jueves', appointments: 10 },
-  { date: 'Viernes', appointments: 12 },
-  { date: 'Sábado', appointments: 15 },
-  { date: 'Domingo', appointments: 2 },
-];
 
 const chartConfig = {
   appointments: {
@@ -69,6 +59,35 @@ function DashboardPage() {
   
   const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection);
 
+  const weeklyChartData = React.useMemo(() => {
+    if (!appointments || !today) {
+        // Provide a default structure for the skeleton loader
+        const weekDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+        return weekDays.map(day => ({ date: day, appointments: 0 }));
+    }
+
+    const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Week starts on Monday
+    const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+    const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+    
+    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+    return weekDays.map(day => {
+        const dayAppointments = appointments.filter(
+            a => a.start.toDateString() === day.toDateString() && a.status !== 'cancelled'
+        ).length;
+        
+        // getDay() returns 0 for Sunday, 1 for Monday, etc.
+        const dayIndex = getDay(day);
+        
+        return {
+            date: dayNames[dayIndex],
+            appointments: dayAppointments,
+        };
+    });
+  }, [appointments, today]);
+
+
   if (!today || !appointments || isLoadingStylists || isLoadingServices || isLoadingAppointments) {
     return (
       <div className="grid gap-6">
@@ -86,7 +105,7 @@ function DashboardPage() {
   }
 
   const todaysAppointments = appointments.filter(
-    (a) => (a.start as Date).toDateString() === today.toDateString() && a.status !== 'cancelled'
+    (a) => a.start.toDateString() === today.toDateString() && a.status !== 'cancelled'
   );
   const dailyRevenue = todaysAppointments.reduce((total, app) => {
     const service = services.find((s) => s.id === app.serviceId);
@@ -143,7 +162,7 @@ function DashboardPage() {
           </CardHeader>
           <CardContent className="pl-2">
             <ChartContainer config={chartConfig} className="h-[250px] w-full">
-              <BarChart accessibilityLayer data={chartData}>
+              <BarChart accessibilityLayer data={weeklyChartData}>
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="date"
@@ -156,6 +175,7 @@ function DashboardPage() {
                   tickLine={false}
                   axisLine={false}
                   tickMargin={10}
+                  allowDecimals={false}
                 />
                 <ChartTooltip
                   cursor={false}
@@ -184,7 +204,7 @@ function DashboardPage() {
             {todaysAppointments.length > 0 ? (
               <div className="space-y-4">
                 {todaysAppointments
-                  .sort((a, b) => (a.start as Date).getTime() - (b.start as Date).getTime())
+                  .sort((a, b) => a.start.getTime() - b.start.getTime())
                   .slice(0, 4)
                   .map((appointment) => {
                     const stylist = stylists.find(
@@ -214,7 +234,7 @@ function DashboardPage() {
                         </div>
                         <div className="ml-auto font-medium text-sm flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {format(appointment.start as Date, 'HH:mm')}
+                          {format(appointment.start, 'HH:mm')}
                         </div>
                       </div>
                     );
