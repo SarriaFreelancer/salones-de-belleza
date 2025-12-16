@@ -17,6 +17,8 @@ import { Logo } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LogOut } from 'lucide-react';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
 
 export default function LoginPage() {
   const [email, setEmail] = React.useState('admin@divas.com');
@@ -24,7 +26,7 @@ export default function LoginPage() {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
-  const auth = useAuth();
+  const authContext = useAuth();
   const { toast } = useToast();
 
   const [isClient, setIsClient] = React.useState(false);
@@ -34,43 +36,57 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) return;
-    
     setError('');
     setLoading(true);
 
+    const auth = getAuth();
+    const firestore = getFirestore();
+
     try {
-      // First, try to log in.
-      await auth.login(email, password);
-      // The login function now handles redirection via page reload.
+      // 1. Try to sign in
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({
+        title: 'Inicio de Sesión Exitoso',
+        description: 'Redirigiendo al panel de control...',
+      });
+      window.location.href = '/dashboard';
     } catch (loginError: any) {
-      // If login fails because the user doesn't exist, create the account.
-      if (loginError.code === 'auth/invalid-credential' || loginError.code === 'auth/user-not-found') {
+      // 2. If user does not exist, create a new admin user
+      if (loginError.code === 'auth/user-not-found' || loginError.code === 'auth/invalid-credential') {
         try {
-          // 1. Create user and assign admin role. Await its completion.
-          await auth.signupAndAssignAdminRole(email, password);
+          // Create the user
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const newUser = userCredential.user;
+
+          // CRITICAL: Create the admin role document
+          const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
+          await setDoc(adminRoleDoc, {});
+          
           toast({
             title: 'Cuenta de Admin Creada',
             description: 'Iniciando sesión por primera vez...',
           });
-          // 2. Now, log in with the newly created user. This will handle the redirect.
-          await auth.login(email, password);
+
+          // Now that user and role are created, sign in again to establish session
+          await signInWithEmailAndPassword(auth, email, password);
+          window.location.href = '/dashboard';
+
         } catch (signupError: any) {
-          const errorMessage = signupError.message || 'Ocurrió un error desconocido durante el registro.';
-          setError(`Error de registro: ${errorMessage}`);
-          setLoading(false); // Stop loading on signup failure.
+          console.error("Signup Error:", signupError);
+          setError(`Error de registro: ${signupError.message}`);
         }
       } else {
         // Handle other login errors (e.g., wrong password)
-        const errorMessage = loginError.message || 'Error al iniciar sesión.';
-        setError(errorMessage);
-        setLoading(false); // Stop loading on other login failures.
+        console.error("Login Error:", loginError);
+        setError(loginError.message || 'Error al iniciar sesión.');
       }
+    } finally {
+      setLoading(false);
     }
   };
 
 
-  if (!isClient || !auth || auth.isUserLoading) {
+  if (!isClient || !authContext || authContext.isUserLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted/40">
         <Card className="w-full max-w-sm">
@@ -97,19 +113,19 @@ export default function LoginPage() {
     );
   }
   
-  if (auth.user) {
+  if (authContext.user) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40">
             <Card className="w-full max-w-sm text-center">
                 <CardHeader>
                     <CardTitle>Ya has iniciado sesión</CardTitle>
                     <CardDescription>
-                        Has iniciado sesión como {auth.user.email}.
+                        Has iniciado sesión como {authContext.user.email}.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
                     <Button onClick={() => router.push('/dashboard')}>Ir al Panel de Control</Button>
-                    <Button variant="outline" onClick={auth.logout}>
+                    <Button variant="outline" onClick={authContext.logout}>
                         <LogOut className="mr-2 h-4 w-4" />
                         Cerrar Sesión
                     </Button>
@@ -165,7 +181,7 @@ export default function LoginPage() {
               Si es la primera vez que inicias sesión, la cuenta de administrador se creará automáticamente.
             </p>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Ingresando...' : 'Ingresar'}
+              {loading ? 'Verificando...' : 'Ingresar'}
             </Button>
           </form>
         </CardContent>
