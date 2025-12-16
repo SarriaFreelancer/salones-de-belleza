@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Logo } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { LogOut } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = React.useState('admin@divas.com');
@@ -31,12 +32,6 @@ export default function LoginPage() {
     setIsClient(true);
   }, []);
 
-  React.useEffect(() => {
-    if (auth && !auth.isUserLoading && auth.user) {
-      router.push('/dashboard');
-    }
-  }, [auth, router]);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth) return;
@@ -49,7 +44,7 @@ export default function LoginPage() {
         title: '¡Bienvenido de vuelta!',
         description: 'Has iniciado sesión correctamente.',
       });
-      // The useEffect will handle the redirect
+       router.push('/dashboard');
     } catch (loginError: any) {
       if (loginError.code === 'auth/invalid-credential' || loginError.code === 'auth/user-not-found') {
         try {
@@ -58,7 +53,7 @@ export default function LoginPage() {
             title: '¡Cuenta de Administrador Creada!',
             description: 'Bienvenido. Tu cuenta de administrador ha sido creada.',
           });
-          // After signup, the user state will change, and the useEffect will trigger the redirect.
+           router.push('/dashboard');
         } catch (signupError: any) {
           const errorMessage = signupError.message || 'Ocurrió un error desconocido durante el registro.';
           setError(`Error de registro: ${errorMessage}`);
@@ -82,7 +77,7 @@ export default function LoginPage() {
     }
   };
 
-  if (!isClient || !auth || auth.isUserLoading || auth.user) {
+  if (!isClient || !auth || auth.isUserLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted/40">
         <Card className="w-full max-w-sm">
@@ -108,6 +103,29 @@ export default function LoginPage() {
       </div>
     );
   }
+  
+  if (auth.user) {
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-muted/40">
+            <Card className="w-full max-w-sm text-center">
+                <CardHeader>
+                    <CardTitle>Ya has iniciado sesión</CardTitle>
+                    <CardDescription>
+                        Has iniciado sesión como {auth.user.email}.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                    <Button onClick={() => router.push('/dashboard')}>Ir al Panel de Control</Button>
+                    <Button variant="outline" onClick={auth.logout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Cerrar Sesión
+                    </Button>
+                </CardContent>
+            </Card>
+        </div>
+    );
+  }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40">
