@@ -28,8 +28,11 @@ import {
 import { Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
+import { StylistsProvider } from '@/hooks/use-stylists';
+import { ServicesProvider } from '@/hooks/use-services';
+import { GalleryProvider } from '@/hooks/use-gallery';
 
-export default function DashboardLayout({
+function DashboardLayoutContent({
   children,
 }: {
   children: React.ReactNode;
@@ -171,6 +174,23 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <StylistsProvider>
+      <ServicesProvider>
+        <GalleryProvider>
+          <DashboardLayoutContent>{children}</DashboardLayoutContent>
+        </GalleryProvider>
+      </ServicesProvider>
+    </StylistsProvider>
+  );
+}
+
 
 function getPageTitle(pathname: string): string {
   if (pathname.includes('/appointments')) return 'Gestión de Citas';

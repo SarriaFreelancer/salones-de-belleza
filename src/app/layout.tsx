@@ -3,9 +3,6 @@ import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { AuthProvider } from '@/hooks/use-auth';
-import { ServicesProvider } from '@/hooks/use-services';
-import { StylistsProvider } from '@/hooks/use-stylists';
-import { GalleryProvider } from '@/hooks/use-gallery';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
@@ -28,13 +25,7 @@ export default function RootLayout({
       <body className={cn('font-body antialiased', 'min-h-screen bg-background font-sans')}>
         <FirebaseClientProvider>
           <AuthProvider>
-            <StylistsProvider>
-              <ServicesProvider>
-                <GalleryProvider>
-                  {children}
-                </GalleryProvider>
-              </ServicesProvider>
-            </StylistsProvider>
+            {children}
           </AuthProvider>
         </FirebaseClientProvider>
         <Toaster />

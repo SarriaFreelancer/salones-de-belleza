@@ -3,9 +3,9 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent, CardDescription, CardFooter, CardTitle } from '@/components/ui/card';
-import { useServices } from '@/hooks/use-services';
-import { useStylists } from '@/hooks/use-stylists';
-import { useGallery } from '@/hooks/use-gallery';
+import { useServices, ServicesProvider } from '@/hooks/use-services';
+import { useStylists, StylistsProvider } from '@/hooks/use-stylists';
+import { useGallery, GalleryProvider } from '@/hooks/use-gallery';
 import { Flower2, Phone, Mail, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import { Logo } from '@/components/icons';
@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import PublicBookingForm from '@/components/public/public-booking-form';
 
 
-export default function HomePage() {
+function HomePageContent() {
     const { services } = useServices();
     const { stylists } = useStylists();
     const { galleryImages } = useGallery();
@@ -232,5 +232,17 @@ export default function HomePage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <StylistsProvider>
+      <ServicesProvider>
+        <GalleryProvider>
+          <HomePageContent />
+        </GalleryProvider>
+      </ServicesProvider>
+    </StylistsProvider>
   );
 }
