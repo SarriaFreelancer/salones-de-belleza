@@ -189,7 +189,7 @@ service cloud.firestore {
     /**
      * @description A centralized collection of all appointments, intended for use
      *              by the admin dashboard. Access is strictly limited to admins.
-     * @path /admin_appointments/{appointmentId}
+     * @path /admin_appointments/{docId}
      * @allow (list) An admin user lists all appointments for the dashboard.
      * @deny (get) Any non-admin user tries to read an appointment from this collection.
      * @principle Enforces a strictly admin-only access pattern for a sensitive data collection.
