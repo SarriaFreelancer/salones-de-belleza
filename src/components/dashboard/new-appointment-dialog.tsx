@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -105,8 +105,22 @@ export default function NewAppointmentDialog({
       serviceIds: [],
       customerName: '',
       customerEmail: '',
+      // preferredDate is intentionally left undefined here to avoid hydration mismatch.
+      // It will be set in the useEffect hook on the client side.
     },
   });
+
+  useEffect(() => {
+    // Set default date only on the client side to prevent hydration mismatch.
+    if (open) {
+      form.reset({
+        serviceIds: [],
+        customerName: '',
+        customerEmail: '',
+        preferredDate: new Date(),
+      });
+    }
+  }, [open, form]);
 
   const resetDialog = () => {
     form.reset();
