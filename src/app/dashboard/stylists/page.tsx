@@ -61,8 +61,8 @@ function StylistsPage() {
   const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
-    setIsClient(true);
     setToday(new Date());
+    setIsClient(true);
   }, []);
 
   const appointmentsCollection = useMemoFirebase(() => {
