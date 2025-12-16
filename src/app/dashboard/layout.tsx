@@ -25,6 +25,7 @@ import {
   ExternalLink,
   GalleryHorizontal,
   Contact,
+  Megaphone,
 } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { StylistsProvider } from '@/hooks/use-stylists';
 import { ServicesProvider } from '@/hooks/use-services';
 import { GalleryProvider } from '@/hooks/use-gallery';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function DashboardLayoutContent({
   children,
@@ -94,6 +96,18 @@ function DashboardLayoutContent({
                 <Link href="/dashboard/customers">
                   <Contact />
                   <span>Clientes</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === '/dashboard/marketing'}
+                tooltip={{ children: 'Marketing IA' }}
+              >
+                <Link href="/dashboard/marketing">
+                  <Megaphone />
+                  <span>Marketing IA</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -179,17 +193,51 @@ export default function DashboardLayout({
 }) {
   const { user, isUserLoading } = useAuth();
   const router = useRouter();
+  const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
-    if (!isUserLoading && !user) {
+    setIsClient(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (isClient && !isUserLoading && !user) {
       router.push('/login');
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, isClient]);
 
-  if (isUserLoading || !user) {
+  if (!isClient || isUserLoading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p>Cargando y verificando autenticación...</p>
+      <div className="flex min-h-screen w-full">
+        <div className="hidden md:block border-r border-border p-2">
+            <div className="flex flex-col h-full w-[16rem]">
+                 <div className="flex items-center gap-2 p-2">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-[120px]" />
+                         <Skeleton className="h-3 w-[80px]" />
+                    </div>
+                </div>
+                 <div className="flex-1 p-2 mt-4 space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                 </div>
+                 <div className="p-2">
+                    <Skeleton className="h-12 w-full" />
+                 </div>
+            </div>
+        </div>
+        <div className="flex-1 flex flex-col">
+            <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
+                 <Skeleton className="h-8 w-8 md:hidden" />
+                 <Skeleton className="h-6 w-48" />
+                 <Skeleton className="h-8 w-32 ml-auto" />
+            </header>
+             <main className="flex-1 p-4 lg:p-6">
+                <Skeleton className="h-64 w-full" />
+             </main>
+        </div>
       </div>
     );
   }
@@ -209,6 +257,7 @@ export default function DashboardLayout({
 function getPageTitle(pathname: string): string {
   if (pathname.includes('/appointments')) return 'Gestión de Citas';
   if (pathname.includes('/customers')) return 'Gestión de Clientes';
+  if (pathname.includes('/marketing')) return 'Asistente de Marketing IA';
   if (pathname.includes('/services')) return 'Nuestros Servicios';
   if (pathname.includes('/stylists')) return 'Equipo de Estilistas';
   if (pathname.includes('/gallery')) return 'Gestión de Galería';
