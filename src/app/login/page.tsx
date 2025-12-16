@@ -12,12 +12,11 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth as useAuthFromContext } from '@/hooks/use-auth';
 import { Logo } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LogOut } from 'lucide-react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { useAuth, useFirestore } from '@/firebase';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { useAuth, useUser, useFirestore } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
@@ -29,8 +28,7 @@ export default function LoginPage() {
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
   
-  const authContext = useAuthFromContext();
-  
+  const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -78,7 +76,8 @@ export default function LoginPage() {
 
         } catch (signUpError: any) {
           setError(`Error al crear la cuenta: ${signUpError.message}`);
-          setLoading(false);
+        } finally {
+            setLoading(false);
         }
       } else {
         // Handle other sign-in errors
@@ -87,9 +86,14 @@ export default function LoginPage() {
       }
     }
   };
+  
+  const logout = async () => {
+    await signOut(auth);
+    window.location.reload();
+  }
 
 
-  if (!isClient || !authContext || authContext.isUserLoading) {
+  if (!isClient || isUserLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted/40">
         <Card className="w-full max-w-sm">
@@ -116,19 +120,19 @@ export default function LoginPage() {
     );
   }
   
-  if (authContext.user) {
+  if (user) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40">
             <Card className="w-full max-w-sm text-center">
                 <CardHeader>
                     <CardTitle>Ya has iniciado sesión</CardTitle>
                     <CardDescription>
-                        Has iniciado sesión como {authContext.user.email}.
+                        Has iniciado sesión como {user.email}.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
                     <Button onClick={() => router.push('/dashboard')}>Ir al Panel de Control</Button>
-                    <Button variant="outline" onClick={authContext.logout}>
+                    <Button variant="outline" onClick={logout}>
                         <LogOut className="mr-2 h-4 w-4" />
                         Cerrar Sesión
                     </Button>

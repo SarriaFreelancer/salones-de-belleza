@@ -19,6 +19,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import type { Appointment } from '@/lib/types';
+import { AuthProvider } from '@/components/public/user-auth-context';
 
 
 function HomePageContent() {
@@ -251,12 +252,14 @@ function HomePageContent() {
 
 export default function HomePage() {
   return (
-    <StylistsProvider>
-      <ServicesProvider>
-        <GalleryProvider>
-          <HomePageContent />
-        </GalleryProvider>
-      </ServicesProvider>
-    </StylistsProvider>
+    <AuthProvider>
+      <StylistsProvider>
+        <ServicesProvider>
+          <GalleryProvider>
+            <HomePageContent />
+          </GalleryProvider>
+        </ServicesProvider>
+      </StylistsProvider>
+    </AuthProvider>
   );
 }

@@ -29,11 +29,13 @@ import {
 } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/use-auth';
+import { useUser, useAuth as useFirebaseAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
 import { StylistsProvider } from '@/hooks/use-stylists';
 import { ServicesProvider } from '@/hooks/use-services';
 import { GalleryProvider } from '@/hooks/use-gallery';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 function DashboardLayoutContent({
   children,
@@ -41,7 +43,23 @@ function DashboardLayoutContent({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user } = useUser();
+  const auth = useFirebaseAuth();
+  const { toast } = useToast();
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      window.location.href = '/login';
+    } catch (error) {
+      console.error("Firebase logout error:", error);
+       toast({
+        variant: "destructive",
+        title: 'Error al cerrar sesión',
+        description: 'Hubo un problema al cerrar la sesión. Inténtalo de nuevo.',
+      });
+    }
+  };
 
   return (
     <SidebarProvider>
@@ -187,7 +205,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isUserLoading } = useAuth();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
   const [isClient, setIsClient] = React.useState(false);
 

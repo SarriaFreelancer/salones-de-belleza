@@ -82,12 +82,21 @@ export default function MarketingPage() {
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedPost);
-    toast({
-      title: '¡Copiado!',
-      description: 'La publicación ha sido copiada al portapapeles.',
-    });
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedPost);
+      toast({
+        title: '¡Copiado!',
+        description: 'La publicación ha sido copiada al portapapeles.',
+      });
+    } catch (err) {
+       console.error('Failed to copy text: ', err);
+       toast({
+        variant: 'destructive',
+        title: 'Error al Copiar',
+        description: 'Tu navegador bloqueó la copia automática. Por favor, copia el texto manualmente.',
+      });
+    }
   };
 
   if (isLoadingServices) {
