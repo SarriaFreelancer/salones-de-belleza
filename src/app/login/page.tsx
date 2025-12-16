@@ -14,11 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
 import { Logo } from '@/components/icons';
-import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LogOut } from 'lucide-react';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+
 
 export default function LoginPage() {
   const [email, setEmail] = React.useState('admin@divas.com');
@@ -27,8 +25,7 @@ export default function LoginPage() {
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
   const authContext = useAuth();
-  const { toast } = useToast();
-
+  
   const [isClient, setIsClient] = React.useState(false);
   React.useEffect(() => {
     setIsClient(true);
@@ -39,50 +36,14 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    const auth = getAuth();
-    const firestore = getFirestore();
-
     try {
-      // 1. Try to sign in
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({
-        title: 'Inicio de Sesión Exitoso',
-        description: 'Redirigiendo al panel de control...',
-      });
-      window.location.href = '/dashboard';
-    } catch (loginError: any) {
-      // 2. If user does not exist, create a new admin user
-      if (loginError.code === 'auth/user-not-found' || loginError.code === 'auth/invalid-credential') {
-        try {
-          // Create the user
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          const newUser = userCredential.user;
-
-          // CRITICAL: Create the admin role document
-          const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
-          await setDoc(adminRoleDoc, {});
-          
-          toast({
-            title: 'Cuenta de Admin Creada',
-            description: 'Iniciando sesión por primera vez...',
-          });
-
-          // Now that user and role are created, sign in again to establish session
-          await signInWithEmailAndPassword(auth, email, password);
-          window.location.href = '/dashboard';
-
-        } catch (signupError: any) {
-          console.error("Signup Error:", signupError);
-          setError(`Error de registro: ${signupError.message}`);
-        }
-      } else {
-        // Handle other login errors (e.g., wrong password)
-        console.error("Login Error:", loginError);
-        setError(loginError.message || 'Error al iniciar sesión.');
-      }
-    } finally {
-      setLoading(false);
-    }
+      await authContext.login(email, password);
+      // The redirect is handled inside the login function now
+    } catch (err: any) {
+       setError(err.message || 'Ocurrió un error inesperado.');
+       setLoading(false);
+    } 
+    // No need for finally block to set loading to false, as redirect will happen
   };
 
 
