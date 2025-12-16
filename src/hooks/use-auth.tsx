@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   isUserLoading: boolean;
   logout: () => void;
+  // New methods for public clients
   clientSignup: (email: string, pass: string, firstName: string, lastName: string, phone: string) => Promise<void>;
   clientLogin: (email: string, pass: string) => Promise<void>;
 }
@@ -21,7 +22,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const auth = useFirebaseAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
-
+  
   const clientLogin = useCallback(async (email: string, pass: string): Promise<void> => {
     await signInWithEmailAndPassword(auth, email, pass);
     toast({
@@ -55,6 +56,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
+      // Determine where to redirect after logout
       if (window.location.pathname.startsWith('/dashboard')) {
         window.location.href = '/login';
       } else {
