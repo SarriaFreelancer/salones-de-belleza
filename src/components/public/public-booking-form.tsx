@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
+import { Card, CardContent } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
@@ -68,8 +69,8 @@ const formSchema = z.object({
   preferredDate: z.date({
     required_error: 'Debes seleccionar una fecha.',
   }),
-  customerName: z.string().optional(),
-  customerEmail: z.string().optional(),
+  customerName: z.string().min(2, 'Tu nombre es requerido.'),
+  customerEmail: z.string().email('El correo electrónico no es válido.').optional().or(z.literal('')),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -81,12 +82,10 @@ type Suggestion = {
 };
 
 interface PublicBookingFormProps {
-  appointments: Appointment[];
+  appointments: Appointment[]; // Pass appointments as a prop
 }
 
-export default function PublicBookingForm({
-  appointments,
-}: PublicBookingFormProps) {
+export default function PublicBookingForm({ appointments }: PublicBookingFormProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -95,22 +94,24 @@ export default function PublicBookingForm({
   const { services, isLoading: isLoadingServices } = useServices();
   const { stylists, isLoading: isLoadingStylists } = useStylists();
   const firestore = useFirestore();
-  const { user, isUserLoading } = useAuth();
+  const { user } = useAuth();
   
-  const [isClient, setIsClient] = React.useState(false);
-  React.useEffect(() => {
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
     setIsClient(true);
   }, []);
-
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       serviceIds: [],
+      customerName: '',
+      customerEmail: '',
     },
   });
-  
-  React.useEffect(() => {
+
+  // Effect to populate form with logged-in user's data
+  useEffect(() => {
     if (user) {
       form.setValue('customerName', user.displayName || '');
       form.setValue('customerEmail', user.email || '');
@@ -119,11 +120,23 @@ export default function PublicBookingForm({
 
 
   const resetDialog = () => {
-    form.reset();
+    // Don't reset customer name/email if user is logged in
+    form.reset({
+      ...form.getValues(),
+      serviceIds: [],
+      preferredDate: undefined,
+    });
     setStep(1);
     setIsLoading(false);
     setSuggestions([]);
-    setOpen(false);
+  };
+
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+      resetDialog();
+    }
   };
 
   const findSuggestions = async (values: FormValues) => {
@@ -146,19 +159,12 @@ export default function PublicBookingForm({
 
     const formattedDate = format(values.preferredDate, 'yyyy-MM-dd');
     const existingAppointmentsForDate = appointments
-      .filter((a) => {
-          const appDate = a.start instanceof Timestamp ? a.start.toDate() : new Date(a.start as any);
-          return format(appDate, 'yyyy-MM-dd') === formattedDate
-        })
-      .map((a) => {
-        const startDate = a.start instanceof Timestamp ? a.start.toDate() : new Date(a.start as any);
-        const endDate = a.end instanceof Timestamp ? a.end.toDate() : new Date(a.end as any);
-        return {
-          stylistId: a.stylistId,
-          start: format(startDate, 'HH:mm'),
-          end: format(endDate, 'HH:mm'),
-        }
-      });
+      .filter((a) => format(a.start as Date, 'yyyy-MM-dd') === formattedDate)
+      .map((a) => ({
+        stylistId: a.stylistId,
+        start: format(a.start as Date, 'HH:mm'),
+        end: format(a.end as Date, 'HH:mm'),
+      }));
       
     const dayIndex = values.preferredDate.getDay();
     const days: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -203,8 +209,6 @@ export default function PublicBookingForm({
     if (!firestore) return;
     const values = form.getValues();
     const selectedServices = services.filter(s => values.serviceIds.includes(s.id));
-    
-    // For simplicity, we'll assign the appointment to the first selected service
     const serviceId = selectedServices.length > 0 ? selectedServices[0].id : '';
 
     const [startHours, startMinutes] = suggestion.startTime.split(':').map(Number);
@@ -214,34 +218,28 @@ export default function PublicBookingForm({
     const [endHours, endMinutes] = suggestion.endTime.split(':').map(Number);
     const endDate = new Date(values.preferredDate);
     endDate.setHours(endHours, endMinutes, 0, 0);
-    
-    const customerName = user?.displayName || values.customerName || 'Cliente Anónimo';
-    const customerId = user?.uid || 'anonymous';
+
+    const customerId = user ? user.uid : 'anonymous';
 
     const newAppointment: Omit<Appointment, 'id'> = {
-      customerName,
-      customerId,
-      serviceId: serviceId,
+      customerName: values.customerName.trim(),
+      customerId: customerId,
+      serviceId: serviceId, 
       stylistId: suggestion.stylistId,
       start: Timestamp.fromDate(startDate),
       end: Timestamp.fromDate(endDate),
       status: 'scheduled',
     };
     
-    // Add to admin collection for global view
+    // Write to all three locations
     const adminAppointmentsCollection = collection(firestore, 'admin_appointments');
     addDocumentNonBlocking(adminAppointmentsCollection, newAppointment);
+
+    const customerAppointmentsCollection = collection(firestore, 'customers', customerId, 'appointments');
+    addDocumentNonBlocking(customerAppointmentsCollection, newAppointment);
     
-    // Add to stylist's subcollection
     const stylistAppointmentsCollection = collection(firestore, 'stylists', suggestion.stylistId, 'appointments');
     addDocumentNonBlocking(stylistAppointmentsCollection, newAppointment);
-    
-    // If user is logged in, add to their subcollection
-    if (user) {
-        const customerAppointmentsCollection = collection(firestore, 'customers', user.uid, 'appointments');
-        addDocumentNonBlocking(customerAppointmentsCollection, newAppointment);
-    }
-
 
     toast({
       title: '¡Cita Agendada!',
@@ -252,38 +250,85 @@ export default function PublicBookingForm({
       )}.`,
     });
 
-    resetDialog();
+    handleOpenChange(false);
   };
-
-   const selectedServices = services.filter((s) =>
-    form.watch('serviceIds').includes(s.id)
-  );
   
-  if (!isClient || isLoadingServices || isLoadingStylists || isUserLoading) {
+  if (!isClient || isLoadingServices || isLoadingStylists) {
       return (
-          <div className="space-y-4 text-center">
-                <Skeleton className="h-10 w-3/4 mx-auto" />
-                <Skeleton className="h-6 w-1/2 mx-auto" />
-                <Skeleton className="h-48 w-full" />
-                <Skeleton className="h-12 w-full" />
+        <div>
+            <div className="mx-auto flex max-w-5xl flex-col items-center justify-center space-y-4 text-center">
+                <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                Agenda tu Cita
+                </h2>
+                <p className="max-w-[900px] text-foreground/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                Elige tu servicio y encuentra el momento perfecto con nuestro asistente de IA.
+                </p>
             </div>
+            <Card className="mx-auto mt-8 max-w-2xl">
+                <CardContent className="pt-6">
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-10 w-full" />
+                        </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-10 w-full" />
+                        </div>
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
       )
   }
 
+  const selectedServices = services.filter((s) =>
+    form.watch('serviceIds').includes(s.id)
+  );
+
   return (
     <>
-        <div className="mx-auto flex max-w-2xl flex-col items-center justify-center space-y-4 text-center">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-center space-y-4 text-center">
             <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-                Agenda tu Cita
+            Agenda tu Cita
             </h2>
-            <p className="text-foreground/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Usa nuestro asistente de IA para encontrar el momento perfecto.
+            <p className="max-w-[900px] text-foreground/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+            Elige tu servicio y encuentra el momento perfecto con nuestro asistente de IA.
             </p>
         </div>
         <Card className="mx-auto mt-8 max-w-2xl">
             <CardContent className="pt-6">
                  <Form {...form}>
                     <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); setOpen(true); }}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                            control={form.control}
+                            name="customerName"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Tu Nombre</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Ej: Ana García" {...field} disabled={!!user} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                            <FormField
+                            control={form.control}
+                            name="customerEmail"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Tu Correo Electrónico</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="tu@correo.com" {...field} disabled={!!user} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
@@ -346,7 +391,7 @@ export default function PublicBookingForm({
                                     <FormMessage />
                                     </FormItem>
                                 )}
-                                />
+                            />
                             <FormField
                                 control={form.control}
                                 name="preferredDate"
@@ -393,166 +438,122 @@ export default function PublicBookingForm({
                                 )}
                             />
                         </div>
-                         {!user && (
-                            <div className="text-center text-sm text-muted-foreground">
-                                Inicia sesión para agendar más rápido la próxima vez.
-                            </div>
-                         )}
-                        <Button type="submit" className="w-full" size="lg" disabled={!form.formState.isValid}>
-                           Buscar Disponibilidad con IA
+                        <Button type="submit" className="w-full" size="lg">
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Buscar Horarios con IA
                         </Button>
                     </form>
                 </Form>
             </CardContent>
         </Card>
 
-    <Dialog open={open} onOpenChange={resetDialog}>
-      <DialogContent className="sm:max-w-md md:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="font-headline text-2xl flex items-center gap-2">
-            <Sparkles className="text-primary" /> Asistente de Citas IA
-          </DialogTitle>
-          <DialogDescription>
-            {step === 1 ? 'Confirma los detalles para buscar un horario.' : 'Elige el horario que prefieras.'}
-          </DialogDescription>
-        </DialogHeader>
-        {step === 1 && (
-             <Form {...form}>
-                <form className="space-y-8" onSubmit={form.handleSubmit(findSuggestions)}>
-                    <div className="space-y-4">
-                        {!user && (
-                            <>
-                                <p className="text-sm font-medium">Completa tus datos para continuar</p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField
-                                control={form.control}
-                                name="customerName"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Tu Nombre</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Ej: Ana García" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogContent className="sm:max-w-md md:max-w-2xl">
+                <DialogHeader>
+                <DialogTitle className="font-headline text-2xl flex items-center gap-2">
+                    <Sparkles className="text-primary" /> Sugerencias de Cita
+                </DialogTitle>
+                <DialogDescription>
+                    Estos son los mejores horarios que encontramos para ti.
+                </DialogDescription>
+                </DialogHeader>
+
+                {isLoading ? (
+                    <div className="flex items-center justify-center h-64">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                ) : (
+                <>
+                {step === 1 && (
+                    <div className="space-y-4 py-8">
+                        <p className="text-center text-muted-foreground">Completa el formulario para encontrar un horario.</p>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                onClick={form.handleSubmit(findSuggestions)}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Buscando...
+                                </>
+                                ) : (
+                                'Buscar Horarios Disponibles'
                                 )}
-                                />
-                                <FormField
-                                control={form.control}
-                                name="customerEmail"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Tu Correo Electrónico</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="tu@correo.com" {...field} />
-                                    </FormControl>
-                                     <FormDescription>Usaremos esto para enviar la confirmación.</FormDescription>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                                />
+                            </Button>
+                        </DialogFooter>
+                    </div>
+                )}
+                {step === 2 && (
+                <div className="space-y-4">
+                    <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-2">
+                        <h4 className="font-semibold">Resumen de la Cita</h4>
+                        <div className='text-sm'>
+                        <p><strong>Cliente:</strong> {form.getValues('customerName')}</p>
+                        <p><strong>Fecha:</strong> {format(form.getValues('preferredDate'), 'PPP', { locale: es })}</p>
+                        <div><strong>Servicios:</strong>
+                            <div className='flex flex-wrap gap-1 mt-1'>
+                                {selectedServices.map(s => <Badge key={s.id} variant="secondary">{s.name}</Badge>)}
                             </div>
-                            </>
-                        )}
-                        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-2">
-                            <h4 className="font-semibold">Resumen de la Cita</h4>
-                            <div className='text-sm'>
-                            <p><strong>Fecha:</strong> {form.getValues('preferredDate') ? format(form.getValues('preferredDate'), 'PPP', { locale: es }) : 'N/A'}</p>
-                            <div><strong>Servicios:</strong>
-                                <div className='flex flex-wrap gap-1 mt-1'>
-                                    {selectedServices.map(s => <Badge key={s.id} variant="secondary">{s.name}</Badge>)}
+                        </div>
+                        </div>
+                    </div>
+
+                    <h3 className="text-md font-medium pt-4">
+                    Horarios Sugeridos por la IA
+                    </h3>
+                    <ScrollArea className="h-64 pr-4">
+                    <div className="space-y-3">
+                        {suggestions.map((suggestion, index) => {
+                        const stylist = stylists.find(
+                            (s) => s.id === suggestion.stylistId
+                        );
+                        return (
+                            <div
+                            key={index}
+                            className="flex items-center justify-between p-3 rounded-lg border bg-accent/50"
+                            >
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2 font-semibold">
+                                <Clock className="h-4 w-4" />
+                                <span>
+                                    {suggestion.startTime} - {suggestion.endTime}
+                                </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <User className="h-4 w-4" />
+                                <span>
+                                    con {stylist?.name || 'Estilista desconocido'}
+                                </span>
                                 </div>
                             </div>
+                            <Button
+                                size="sm"
+                                onClick={() => selectSuggestion(suggestion)}
+                            >
+                                Agendar
+                            </Button>
                             </div>
-                        </div>
-
+                        );
+                        })}
                     </div>
+                    </ScrollArea>
                     <DialogFooter>
                     <Button
-                        type="submit"
-                        disabled={isLoading}
+                        type="button"
+                        variant="outline"
+                        onClick={() => { setStep(1); setOpen(false); resetDialog(); }}
                     >
-                        {isLoading ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Buscando...
-                        </>
-                        ) : (
-                        'Confirmar y Buscar Horarios'
-                        )}
+                        Volver
                     </Button>
                     </DialogFooter>
-                </form>
-            </Form>
-        )}
-
-        {step === 2 && (
-              <div className="space-y-4">
-                <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-2">
-                    <h4 className="font-semibold">Resumen de la Cita</h4>
-                    <div className='text-sm'>
-                    <p><strong>Cliente:</strong> {user?.displayName || form.getValues('customerName')}</p>
-                    <p><strong>Fecha:</strong> {format(form.getValues('preferredDate'), 'PPP', { locale: es })}</p>
-                    <div><strong>Servicios:</strong>
-                        <div className='flex flex-wrap gap-1 mt-1'>
-                            {selectedServices.map(s => <Badge key={s.id} variant="secondary">{s.name}</Badge>)}
-                        </div>
-                    </div>
-                    </div>
                 </div>
-
-                <h3 className="text-md font-medium pt-4">
-                  Horarios Sugeridos por la IA
-                </h3>
-                <ScrollArea className="h-64 pr-4">
-                  <div className="space-y-3">
-                    {suggestions.map((suggestion, index) => {
-                      const stylist = stylists.find(
-                        (s) => s.id === suggestion.stylistId
-                      );
-                      return (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 rounded-lg border bg-accent/50"
-                        >
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2 font-semibold">
-                              <Clock className="h-4 w-4" />
-                              <span>
-                                {suggestion.startTime} - {suggestion.endTime}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <User className="h-4 w-4" />
-                              <span>
-                                con {stylist?.name || 'Estilista desconocido'}
-                              </span>
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            onClick={() => selectSuggestion(suggestion)}
-                          >
-                            Agendar
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setStep(1)}
-                  >
-                    Volver
-                  </Button>
-                </DialogFooter>
-              </div>
-            )}
-      </DialogContent>
-    </Dialog>
+                )}
+                </>
+                )}
+            </DialogContent>
+        </Dialog>
     </>
   );
 }
