@@ -64,7 +64,7 @@ export default function LoginPage() {
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           const newUser = userCredential.user;
           
-          // 2b: Create the admin role document in Firestore
+          // 2b: Create the admin role document in Firestore and AWAIT its completion
           const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
           await setDoc(adminRoleDoc, {}); // The existence of the doc is enough
           
@@ -73,7 +73,7 @@ export default function LoginPage() {
               description: '¡Bienvenido! Has sido registrado como administrador.',
           });
           
-          // 2c: Force redirect. The layout guard will handle the session.
+          // 2c: Force redirect ONLY after role creation is confirmed
           window.location.href = '/dashboard';
 
         } catch (signUpError: any) {
