@@ -51,6 +51,11 @@ export default function MarketingPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [generatedPost, setGeneratedPost] = React.useState('');
   const { toast } = useToast();
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -99,7 +104,7 @@ export default function MarketingPage() {
     }
   };
 
-  if (isLoadingServices) {
+  if (!isClient || isLoadingServices) {
     return (
         <div className="grid md:grid-cols-3 gap-8">
             <div className="md:col-span-1 space-y-4">
@@ -276,3 +281,5 @@ export default function MarketingPage() {
     </div>
   );
 }
+
+    

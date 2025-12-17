@@ -61,8 +61,8 @@ function StylistsPage() {
   const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
-    setToday(new Date());
     setIsClient(true);
+    setToday(new Date());
   }, []);
 
   const appointmentsCollection = useMemoFirebase(() => {
@@ -265,3 +265,5 @@ function StylistsPage() {
 }
 
 export default StylistsPage;
+
+    

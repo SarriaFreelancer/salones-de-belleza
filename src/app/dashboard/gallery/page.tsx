@@ -40,6 +40,11 @@ export default function GalleryPage() {
   const { galleryImages, addImage, updateImage, deleteImage, isLoading } = useGallery();
   const [dialogState, setDialogState] = React.useState<DialogState>(null);
   const { toast } = useToast();
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleAddOrUpdateImage = (image: GalleryImage | Omit<GalleryImage, 'id'>) => {
     if ('id' in image) {
@@ -72,6 +77,22 @@ export default function GalleryPage() {
   const imageToEdit = dialogState?.type === 'edit' ? dialogState.image : null;
   const imageToDelete = dialogState?.type === 'delete' ? dialogState.image : null;
 
+   if (!isClient || isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="font-headline text-2xl">Imágenes de la Galería</h1>
+           <Skeleton className="h-10 w-36" />
+        </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-48 w-full" />
+            ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="space-y-6">
@@ -82,13 +103,7 @@ export default function GalleryPage() {
               Añadir Imagen
             </Button>
         </div>
-        {isLoading ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-48 w-full" />
-            ))}
-          </div>
-        ) : (
+        
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {galleryImages.map((image) => (
               <Card key={image.id} className="group relative overflow-hidden">
@@ -128,7 +143,7 @@ export default function GalleryPage() {
               </Card>
             ))}
           </div>
-        )}
+        
       </div>
       
       <NewGalleryImageDialog
@@ -155,3 +170,5 @@ export default function GalleryPage() {
     </>
   );
 }
+
+    

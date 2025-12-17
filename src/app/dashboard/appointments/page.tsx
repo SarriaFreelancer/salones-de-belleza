@@ -54,8 +54,8 @@ function AppointmentsPage() {
   const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
-    setDate(new Date());
     setIsClient(true);
+    setDate(new Date());
   }, []);
   
   const appointmentsCollection = useMemoFirebase(() => {
@@ -239,3 +239,5 @@ function AppointmentsPage() {
 }
 
 export default AppointmentsPage;
+
+    

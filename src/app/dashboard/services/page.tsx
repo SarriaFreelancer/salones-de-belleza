@@ -44,6 +44,11 @@ export default function ServicesPage() {
   const { services, addService, updateService, deleteService, isLoading } = useServices();
   const [dialogState, setDialogState] = React.useState<DialogState>(null);
   const { toast } = useToast();
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleAddOrUpdateService = (service: Service | Omit<Service, 'id'>) => {
     if ('id' in service) {
@@ -76,6 +81,22 @@ export default function ServicesPage() {
   const serviceToEdit = dialogState?.type === 'edit' ? dialogState.service : null;
   const serviceToDelete = dialogState?.type === 'delete' ? dialogState.service : null;
 
+   if (!isClient || isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="font-headline text-2xl">Nuestros Servicios</h1>
+           <Skeleton className="h-10 w-36" />
+        </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-60 w-full" />
+            ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       <div className="space-y-6">
@@ -86,13 +107,7 @@ export default function ServicesPage() {
               Añadir Servicio
             </Button>
         </div>
-        {isLoading ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-60 w-full" />
-            ))}
-          </div>
-        ) : (
+        
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {services.map((service) => (
               <Card key={service.id} className="flex flex-col relative">
@@ -140,7 +155,7 @@ export default function ServicesPage() {
               </Card>
             ))}
           </div>
-        )}
+        
       </div>
       
       <NewServiceDialog
@@ -168,3 +183,5 @@ export default function ServicesPage() {
     </>
   );
 }
+
+    
