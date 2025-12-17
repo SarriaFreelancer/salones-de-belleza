@@ -11,6 +11,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isAuthLoading: boolean; // Combines user loading and admin checking
   login: (email: string, pass: string) => Promise<void>;
+  signupAndAssignAdminRole: (email: string, pass: string) => Promise<User>;
   logout: () => void;
   clientSignup: (email: string, pass: string, firstName: string, lastName: string, phone: string) => Promise<void>;
   clientLogin: (email: string, pass: string) => Promise<void>;
@@ -67,6 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
+      // On successful login, the ProtectedDashboardLayout will handle redirection.
     } catch (signInError: any) {
       // Check if it's the very first user trying to log in
       if (signInError.code === 'auth/user-not-found' && firestore) {
@@ -74,22 +76,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const snapshot = await getCountFromServer(adminRolesCollection);
         if (snapshot.data().count === 0) {
             try {
+              // Attempt to create the first admin account
               await signupAndAssignAdminRole(email, pass);
               toast({
                 title: '¡Cuenta de Admin Creada!',
                 description: 'Bienvenida. Te hemos registrado como el primer administrador.',
               });
-              // Successful sign up, no need to throw
-              return;
+              // Successful sign up, no need to throw, the state change will trigger re-renders
+              return; 
             } catch (signUpError: any) {
+              // This error will be propagated to the calling component (LoginPage)
               console.error("Error creating first admin account:", signUpError);
               throw new Error(signUpError.message || `Error al crear la cuenta de admin.`);
             }
         }
       } 
-      // For any other error, just re-throw it to be displayed
+      // For any other error (like invalid-credential), just re-throw it to be handled by the UI
       console.error("Login error:", signInError);
-      throw new Error(signInError.message || 'Error de inicio de sesión.');
+      throw signInError; // Propagate the original Firebase error object
     }
   }, [auth, firestore, signupAndAssignAdminRole, toast]);
 
@@ -132,6 +136,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (window.location.pathname.startsWith('/dashboard')) {
         window.location.href = '/login';
       } else {
+        // For public pages, just reload to clear any user-specific state.
         window.location.reload();
       }
     } catch (error) {
@@ -147,7 +152,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAuthLoading = isUserLoading || isCheckingAdmin;
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, isAuthLoading, login, logout, clientSignup, clientLogin }}>
+    <AuthContext.Provider value={{ user, isAdmin, isAuthLoading, login, signupAndAssignAdminRole, logout, clientSignup, clientLogin }}>
       {children}
     </AuthContext.Provider>
   );

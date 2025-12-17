@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -26,7 +25,7 @@ export default function LoginPage() {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   
-  const { user, isAuthLoading, login, logout, isAdmin } = useAuth();
+  const { user, isAuthLoading, login, signupAndAssignAdminRole, logout, isAdmin } = useAuth();
   const { toast } = useToast();
   
   const [isClient, setIsClient] = React.useState(false);
@@ -40,14 +39,20 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // The login function now handles the entire flow, including first-admin creation
       await login(email, password);
-      // The useAuth hook and ProtectedDashboardLayout will handle redirection upon successful login and admin check.
+      // Successful login or signup will trigger a redirect via the layout
     } catch (err: any) {
-      setError(`Error: ${err.message}`);
+      console.error("Login page error:", err.message);
+      const errorMessage = err.code === 'auth/invalid-credential' 
+        ? 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.'
+        : err.message || 'Ha ocurrido un error inesperado.';
+
+      setError(errorMessage);
       toast({
         variant: 'destructive',
         title: 'Error de inicio de sesión',
-        description: err.message || 'Las credenciales son incorrectas o ha ocurrido un error.',
+        description: errorMessage,
       });
     } finally {
         setLoading(false);
