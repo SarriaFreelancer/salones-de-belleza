@@ -15,9 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LogOut } from 'lucide-react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { useAuth, useUser, useFirestore } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { useAuth as useAppAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -28,9 +26,7 @@ export default function LoginPage() {
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
   
-  const { user, isUserLoading } = useUser();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const { user, isUserLoading, login, logout } = useAppAuth();
   const { toast } = useToast();
   
   const [isClient, setIsClient] = React.useState(false);
@@ -43,54 +39,20 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    if (!firestore || !auth) {
-      setError("Los servicios de Firebase no están disponibles. Inténtalo más tarde.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Step 1: Try to sign in
-      await signInWithEmailAndPassword(auth, email, password);
-      // If successful, redirect to dashboard
-      window.location.href = '/dashboard';
-    } catch (signInError: any) {
-      // Step 2: If sign-in fails because user not found, create the user
-      if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
-        try {
-          // 2a: Create the user
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          const newUser = userCredential.user;
-          
-          // 2b: Create the admin role document in Firestore and AWAIT its completion
-          const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
-          await setDoc(adminRoleDoc, {}); // The existence of the doc is enough
-          
-          toast({
-              title: 'Cuenta de Admin Creada',
-              description: '¡Bienvenido! Has sido registrado como administrador.',
-          });
-          
-          // 2c: Force redirect ONLY after role creation is confirmed
-          window.location.href = '/dashboard';
-
-        } catch (signUpError: any) {
-          setError(`Error al crear la cuenta: ${signUpError.message}`);
-        } finally {
-            setLoading(false);
-        }
-      } else {
-        // Handle other sign-in errors
-        setError(`Error al iniciar sesión: ${signInError.message}`);
+      await login(email, password);
+      // The login function in useAuth now handles redirection.
+    } catch (err: any) {
+      setError(`Error: ${err.message}`);
+      toast({
+        variant: 'destructive',
+        title: 'Error de inicio de sesión',
+        description: 'Las credenciales son incorrectas o el usuario no existe aún. Si es el primer inicio de sesión, la cuenta se creará.',
+      });
+    } finally {
         setLoading(false);
-      }
     }
   };
-  
-  const logout = async () => {
-    await signOut(auth);
-    window.location.reload();
-  }
 
 
   if (!isClient || isUserLoading) {
@@ -121,6 +83,9 @@ export default function LoginPage() {
   }
   
   if (user) {
+    // This part is tricky because we need to know if they are an admin.
+    // The dashboard layout will handle redirection if they are not an admin.
+    // For now, we can just try to send them there.
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40">
             <Card className="w-full max-w-sm text-center">
@@ -132,7 +97,7 @@ export default function LoginPage() {
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
                     <Button onClick={() => router.push('/dashboard')}>Ir al Panel de Control</Button>
-                    <Button variant="outline" onClick={logout}>
+                    <Button variant="outline" onClick={() => logout()}>
                         <LogOut className="mr-2 h-4 w-4" />
                         Cerrar Sesión
                     </Button>
@@ -196,5 +161,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    

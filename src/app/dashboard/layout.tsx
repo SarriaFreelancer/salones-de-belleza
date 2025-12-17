@@ -31,6 +31,8 @@ import { Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
 function DashboardLayoutContent({
   children,
@@ -179,13 +181,56 @@ function DashboardLayoutContent({
   );
 }
 
+function LoadingScreen({ message }: { message: string }) {
+    return (
+        <div className="flex min-h-screen w-full">
+            <div className="hidden md:block border-r border-border p-2">
+                <div className="flex flex-col h-full w-[16rem]">
+                    <div className="flex items-center gap-2 p-2">
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-[120px]" />
+                            <Skeleton className="h-3 w-[80px]" />
+                        </div>
+                    </div>
+                    <div className="flex-1 p-2 mt-4 space-y-2">
+                        <Skeleton className="h-8 w-full" />
+                        <Skeleton className="h-8 w-full" />
+                        <Skeleton className="h-8 w-full" />
+                        <Skeleton className="h-8 w-full" />
+                    </div>
+                    <div className="p-2">
+                        <Skeleton className="h-12 w-full" />
+                    </div>
+                </div>
+            </div>
+            <div className="flex-1 flex flex-col">
+                <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
+                    <Skeleton className="h-8 w-8 md:hidden" />
+                    <Skeleton className="h-6 w-48" />
+                    <Skeleton className="h-8 w-32 ml-auto" />
+                </header>
+                <main className="flex-1 flex items-center justify-center p-4 lg:p-6">
+                    <div className="text-center text-muted-foreground">
+                        <p>{message}</p>
+                    </div>
+                </main>
+            </div>
+        </div>
+    );
+}
+
+
 function ProtectedDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const { user, isUserLoading } = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
+  const [isAdmin, setIsAdmin] = React.useState(false);
+  const [isVerifying, setIsVerifying] = React.useState(true);
   const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
@@ -193,48 +238,51 @@ function ProtectedDashboardLayout({
   }, []);
 
   React.useEffect(() => {
-    if (isClient && !isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router, isClient]);
+    if (!isClient) return;
 
-  if (!isClient || isUserLoading || !user) {
-    return (
-      <div className="flex min-h-screen w-full">
-        <div className="hidden md:block border-r border-border p-2">
-            <div className="flex flex-col h-full w-[16rem]">
-                 <div className="flex items-center gap-2 p-2">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="space-y-2">
-                        <Skeleton className="h-4 w-[120px]" />
-                         <Skeleton className="h-3 w-[80px]" />
-                    </div>
-                </div>
-                 <div className="flex-1 p-2 mt-4 space-y-2">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                 </div>
-                 <div className="p-2">
-                    <Skeleton className="h-12 w-full" />
-                 </div>
-            </div>
-        </div>
-        <div className="flex-1 flex flex-col">
-            <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
-                 <Skeleton className="h-8 w-8 md:hidden" />
-                 <Skeleton className="h-6 w-48" />
-                 <Skeleton className="h-8 w-32 ml-auto" />
-            </header>
-             <main className="flex-1 p-4 lg:p-6">
-                <Skeleton className="h-64 w-full" />
-             </main>
-        </div>
-      </div>
-    );
+    if (isUserLoading) {
+        setIsVerifying(true);
+        return;
+    }
+
+    if (!user) {
+        router.push('/login');
+        return;
+    }
+
+    const checkAdminStatus = async () => {
+        const adminRoleDoc = doc(firestore, 'roles_admin', user.uid);
+        try {
+            const docSnap = await getDoc(adminRoleDoc);
+            if (docSnap.exists()) {
+                setIsAdmin(true);
+            } else {
+                // If doc doesn't exist, they are not an admin.
+                // This could happen if they were an admin and their role was revoked.
+                // Or if a regular user tries to access the dashboard.
+                router.push('/login');
+            }
+        } catch (error) {
+            console.error("Error checking admin status:", error);
+            router.push('/login'); // Redirect on error for safety
+        } finally {
+            setIsVerifying(false);
+        }
+    };
+    
+    checkAdminStatus();
+
+  }, [user, isUserLoading, router, firestore, isClient]);
+
+  if (!isClient || isVerifying || isUserLoading) {
+    return <LoadingScreen message="Verificando permisos..." />;
   }
 
+  if (!isAdmin) {
+    // This state should ideally not be reached due to the redirect, but it's a good failsafe.
+    return <LoadingScreen message="Acceso denegado. Redirigiendo..." />;
+  }
+  
   return <DashboardLayoutContent>{children}</DashboardLayoutContent>;
 }
 

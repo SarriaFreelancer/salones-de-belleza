@@ -1,18 +1,18 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useCallback } from 'react';
-import { Auth, User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
+import { User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth as useFirebaseAuth, useUser, useFirestore } from '@/firebase';
 import { useToast } from './use-toast';
-import { doc, setDoc } from 'firebase/firestore'; 
+import { doc, setDoc, getDoc } from 'firebase/firestore'; 
 
 interface AuthContextType {
   user: User | null;
   isUserLoading: boolean;
+  isAdmin: boolean;
+  checkAdminStatus: () => Promise<boolean>;
   login: (email: string, pass: string) => Promise<void>;
-  signupAndAssignAdminRole: (email: string, pass: string) => Promise<void>;
   logout: () => void;
-  // New methods for public clients
   clientSignup: (email: string, pass: string, firstName: string, lastName: string, phone: string) => Promise<void>;
   clientLogin: (email: string, pass: string) => Promise<void>;
 }
@@ -24,24 +24,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const auth = useFirebaseAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const [isAdmin, setIsAdmin] = React.useState(false);
+
+  const checkAdminStatus = useCallback(async (): Promise<boolean> => {
+    if (!user || !firestore) {
+      setIsAdmin(false);
+      return false;
+    }
+    const adminRoleDoc = doc(firestore, 'roles_admin', user.uid);
+    const docSnap = await getDoc(adminRoleDoc);
+    const isAdminUser = docSnap.exists();
+    setIsAdmin(isAdminUser);
+    return isAdminUser;
+  }, [user, firestore]);
+
+  React.useEffect(() => {
+    if (user) {
+      checkAdminStatus();
+    } else {
+      setIsAdmin(false);
+    }
+  }, [user, checkAdminStatus]);
 
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
-    // This is for the ADMIN login
-    await signInWithEmailAndPassword(auth, email, pass);
-    window.location.href = '/dashboard';
-  }, [auth]);
-
-  const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<void> => {
-    // This function creates the user and assigns the admin role.
-    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-    const newUser = userCredential.user;
-    if (newUser && firestore) {
-      const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
-      await setDoc(adminRoleDoc, {});
-    } else {
-      throw new Error('No se pudo crear el usuario o la instancia de Firestore no está disponible.');
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      window.location.href = '/dashboard';
+    } catch (signInError: any) {
+      if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+          const newUser = userCredential.user;
+          const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
+          await setDoc(adminRoleDoc, {});
+          toast({
+              title: 'Cuenta de Admin Creada',
+              description: '¡Bienvenido! Te hemos registrado como administrador.',
+          });
+          window.location.href = '/dashboard';
+        } catch (signUpError: any) {
+          throw new Error(`Error al crear la cuenta de admin: ${signUpError.message}`);
+        }
+      } else {
+        throw new Error(`Error de inicio de sesión: ${signInError.message}`);
+      }
     }
-  }, [auth, firestore]);
+  }, [auth, firestore, toast]);
   
   const clientLogin = useCallback(async (email: string, pass: string): Promise<void> => {
     await signInWithEmailAndPassword(auth, email, pass);
@@ -72,11 +100,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [auth, firestore, toast]);
 
-
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
-      // Determine where to redirect after logout
       if (window.location.pathname.startsWith('/dashboard')) {
         window.location.href = '/login';
       } else {
@@ -93,7 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [auth, toast]);
 
   return (
-    <AuthContext.Provider value={{ user, isUserLoading, login, signupAndAssignAdminRole, logout, clientSignup, clientLogin }}>
+    <AuthContext.Provider value={{ user, isUserLoading, login, logout, clientSignup, clientLogin, isAdmin, checkAdminStatus }}>
       {children}
     </AuthContext.Provider>
   );
