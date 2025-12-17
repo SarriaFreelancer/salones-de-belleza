@@ -14,9 +14,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LogOut } from 'lucide-react';
+import { LogOut, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 
 export default function LoginPage() {
@@ -24,7 +25,6 @@ export default function LoginPage() {
   const [password, setPassword] = React.useState('12345678');
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
-  const router = useRouter();
   
   const { user, isAuthLoading, login, logout, isAdmin } = useAuth();
   const { toast } = useToast();
@@ -41,7 +41,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      // The ProtectedDashboardLayout will handle redirection upon successful login and admin check.
+      // The useAuth hook and ProtectedDashboardLayout will handle redirection upon successful login and admin check.
     } catch (err: any) {
       setError(`Error: ${err.message}`);
       toast({
@@ -53,13 +53,6 @@ export default function LoginPage() {
         setLoading(false);
     }
   };
-
-  // Redirect if user is already logged in and is an admin
-  React.useEffect(() => {
-    if (!isAuthLoading && user && isAdmin) {
-      router.push('/dashboard');
-    }
-  }, [user, isAdmin, isAuthLoading, router]);
   
   const LoginSkeleton = () => (
      <div className="flex min-h-screen items-center justify-center bg-muted/40">
@@ -90,9 +83,7 @@ export default function LoginPage() {
     return <LoginSkeleton />;
   }
   
-  // This state is for users who are logged in but NOT admins.
-  // Admins are already redirected by the useEffect above.
-  if (user && !isAdmin) {
+  if (user) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40">
             <Card className="w-full max-w-sm text-center">
@@ -103,6 +94,14 @@ export default function LoginPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
+                   {isAdmin && (
+                      <Button asChild>
+                         <Link href="/dashboard">
+                           <LayoutDashboard className="mr-2 h-4 w-4" />
+                           Ir al Panel de Control
+                         </Link>
+                      </Button>
+                   )}
                     <Button variant="outline" onClick={() => logout()}>
                         <LogOut className="mr-2 h-4 w-4" />
                         Cerrar Sesión
