@@ -1,8 +1,8 @@
 export const firebaseConfig = {
-  projectId: 'divas-aa-80247010',
-  appId: '1:914611598460:web:8d0b2f52c417c89f5f6537',
-  storageBucket: 'divas-aa-80247010.appspot.com',
-  apiKey: 'AIzaSyCIMXjDKeGYnnEc6eSD3R3zyJc8BnMy1o8',
-  authDomain: 'divas-aa-80247010.firebaseapp.com',
+  projectId: 'studio-5708924923-1285a',
+  appId: '1:914611598460:web:806a6c25b08c5e032549d4',
+  storageBucket: 'studio-5708924923-1285a.appspot.com',
+  apiKey: 'AIzaSyBN1vflPZgMqrD6DL22tX_7znx9yqL1J_4',
+  authDomain: 'studio-5708924923-1285a.firebaseapp.com',
   messagingSenderId: '914611598460',
 };
