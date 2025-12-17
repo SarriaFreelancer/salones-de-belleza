@@ -42,23 +42,17 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 function DashboardPage() {
-  const [today, setToday] = React.useState<Date | undefined>(undefined);
+  const [today, setToday] = React.useState<Date | undefined>(new Date());
   const { stylists, isLoading: isLoadingStylists } = useStylists();
   const { services, isLoading: isLoadingServices } = useServices();
   const firestore = useFirestore();
-  const [isClient, setIsClient] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsClient(true);
-    setToday(new Date());
-  }, []);
 
   const appointmentsCollection = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'admin_appointments');
   }, [firestore]);
   
-  const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection);
+  const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection, true);
 
   const weeklyChartData = React.useMemo(() => {
     if (!appointments || !today) {
@@ -91,8 +85,9 @@ function DashboardPage() {
     });
   }, [appointments, today]);
 
+  const isLoading = isLoadingStylists || isLoadingServices || isLoadingAppointments;
 
-  if (!isClient || isLoadingStylists || isLoadingServices || isLoadingAppointments) {
+  if (isLoading) {
     return (
       <div className="grid gap-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -263,5 +258,3 @@ function DashboardPage() {
 
 
 export default DashboardPage;
-
-    

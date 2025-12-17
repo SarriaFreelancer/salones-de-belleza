@@ -45,31 +45,27 @@ import { useFirestore, useMemoFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function AppointmentsPage() {
-  const [date, setDate] = React.useState<Date | undefined>(undefined);
+  const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [stylistFilter, setStylistFilter] = React.useState<string>('all');
   const [serviceFilter, setServiceFilter] = React.useState<string>('all');
-  const { stylists } = useStylists();
-  const { services } = useServices();
+  const { stylists, isLoading: isLoadingStylists } = useStylists();
+  const { services, isLoading: isLoadingServices } = useServices();
   const firestore = useFirestore();
-  const [isClient, setIsClient] = React.useState(false);
 
-  React.useEffect(() => {
-    setIsClient(true);
-    setDate(new Date());
-  }, []);
-  
   const appointmentsCollection = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'admin_appointments');
   }, [firestore]);
   
-  const { data: appointments, isLoading } = useCollection<Appointment>(appointmentsCollection);
+  const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection, true);
 
   const handleAppointmentCreated = () => {
     // No need to manually update state, useCollection handles it
   };
   
-  if (!isClient || isLoading) {
+  const isLoading = isLoadingAppointments || isLoadingStylists || isLoadingServices;
+  
+  if (isLoading) {
     return (
        <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -239,5 +235,3 @@ function AppointmentsPage() {
 }
 
 export default AppointmentsPage;
-
-    

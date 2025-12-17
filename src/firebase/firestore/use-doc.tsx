@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useUser } from '@/firebase';
 
 /** Utility type to add an 'id' field to a given type T. */
 type WithId<T> = T & { id: string };
@@ -36,18 +37,28 @@ export interface UseDocResult<T> {
  * @template T Optional type for document data. Defaults to any.
  * @param {DocumentReference<DocumentData> | null | undefined} docRef -
  * The Firestore DocumentReference. Waits if null/undefined.
+ * @param {boolean} [waitForUser=false] - If true, the hook will wait for a user to be authenticated before fetching.
  * @returns {UseDocResult<T>} Object with data, isLoading, error.
  */
 export function useDoc<T = any>(
   memoizedDocRef: DocumentReference<DocumentData> | null | undefined,
+  waitForUser: boolean = false
 ): UseDocResult<T> {
   type StateDataType = WithId<T> | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Start as loading
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const { user, isUserLoading } = useUser();
+
 
   useEffect(() => {
+    // If we're waiting for the user and they're not available yet (or still loading), do nothing.
+    if (waitForUser && (isUserLoading || !user)) {
+      setIsLoading(true); // Explicitly set loading state
+      return;
+    }
+
     if (!memoizedDocRef) {
       setData(null);
       setIsLoading(false);
@@ -87,7 +98,7 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef]); // Re-run if the memoizedDocRef changes.
+  }, [memoizedDocRef, user, isUserLoading, waitForUser]); // Re-run if the memoizedDocRef changes.
 
   return { data, isLoading, error };
 }

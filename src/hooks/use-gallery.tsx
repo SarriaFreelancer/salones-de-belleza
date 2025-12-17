@@ -26,7 +26,11 @@ export const GalleryProvider = ({ children }: { children: ReactNode }) => {
     return collection(firestore, 'gallery');
   }, [firestore]);
 
-  const { data: galleryImages, isLoading } = useCollection<GalleryImage>(galleryCollection);
+  // For admin dashboard, we need to wait for the user to be authenticated
+  // For public pages, we don't. We check the pathname to decide.
+  const isDashboard = typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard');
+  const { data: galleryImages, isLoading } = useCollection<GalleryImage>(galleryCollection, isDashboard);
+
 
   const addImage = (image: Omit<GalleryImage, 'id'>) => {
     if (!galleryCollection) return;
