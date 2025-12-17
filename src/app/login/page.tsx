@@ -26,7 +26,7 @@ export default function LoginPage() {
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
   
-  const { user, isUserLoading, login, logout } = useAuth();
+  const { user, isAuthLoading, login, logout, isAdmin } = useAuth();
   const { toast } = useToast();
   
   const [isClient, setIsClient] = React.useState(false);
@@ -42,7 +42,7 @@ export default function LoginPage() {
     try {
       // The login function now handles both sign-in and first-time admin creation.
       await login(email, password);
-      // Let the ProtectedDashboardLayout handle redirection.
+      // The ProtectedDashboardLayout will handle redirection upon successful login and admin check.
     } catch (err: any) {
       setError(`Error: ${err.message}`);
       toast({
@@ -55,8 +55,14 @@ export default function LoginPage() {
     }
   };
 
+  // Redirect if user is already logged in and is an admin
+  React.useEffect(() => {
+    if (!isAuthLoading && user && isAdmin) {
+      router.push('/dashboard');
+    }
+  }, [user, isAdmin, isAuthLoading, router]);
 
-  if (!isClient || isUserLoading) {
+  if (!isClient || isAuthLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted/40">
         <Card className="w-full max-w-sm">
@@ -68,25 +74,18 @@ export default function LoginPage() {
             <Skeleton className="h-4 w-48 mx-auto mt-2" />
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-            <Skeleton className="h-10 w-full mt-4" />
+             <div className="space-y-2">
+               <Skeleton className="h-4 w-full" />
+             </div>
+             <Skeleton className="h-10 w-full mt-4" />
           </CardContent>
         </Card>
       </div>
     );
   }
   
-  if (user) {
-    // This part is tricky because we need to know if they are an admin.
-    // The dashboard layout will handle redirection if they are not an admin.
-    // For now, we can just try to send them there.
+  // This state is for users who are logged in but NOT admins, or for admins who landed here by mistake.
+  if (user && !isAuthLoading) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40">
             <Card className="w-full max-w-sm text-center">
@@ -97,7 +96,7 @@ export default function LoginPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
-                    <Button onClick={() => router.push('/dashboard')}>Ir al Panel de Control</Button>
+                    {isAdmin && <Button onClick={() => router.push('/dashboard')}>Ir al Panel de Control</Button>}
                     <Button variant="outline" onClick={() => logout()}>
                         <LogOut className="mr-2 h-4 w-4" />
                         Cerrar Sesión

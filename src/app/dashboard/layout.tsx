@@ -224,7 +224,7 @@ function ProtectedDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isUserLoading, isAdmin, isAuthLoading } = useAuth();
+  const { user, isAdmin, isAuthLoading } = useAuth();
   const router = useRouter();
 
   React.useEffect(() => {
