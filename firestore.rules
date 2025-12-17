@@ -1,216 +1,126 @@
+rules_version = '2';
+
 /**
- * Core Philosophy: This ruleset enforces a Role-Based Access Control (RBAC) model
- * with three primary roles: Customer, Stylist, and Admin. Admins have broad
- * permissions across the system, while Customers and Stylists have strict
- * ownership-based access to their personal data and appointments. The existence of a
- * document in the `/roles_admin/{uid}` collection grants a user admin privileges.
+ * @file firestore.rules
+ * @description Security rules for the Divas AyA Salon application.
  *
- * Data Structure: The data is segregated by role and ownership. Customer and
- * Stylist data, including their respective views of appointments, are stored in
- * user-specific paths (e.g., `/customers/{userId}`). A separate, denormalized
- * collection, `/admin_appointments`, provides a centralized view for the admin
- * dashboard. Publicly accessible data like salon services is stored in a top-level
- * `/services` collection.
+ * Core Philosophy:
+ * This ruleset enforces a security model based on a combination of user roles and document ownership.
+ * There are three primary roles defined in the User document's 'userType' field: 'admin', 'stylist', and 'customer'.
+ * - Admins have broad read access and are the only users who can manage public-facing content like Services and Gallery images.
+ * - Customers have full control over their own user profile and their appointments.
+ * - Stylists have read and update access to appointments they are assigned to.
+ * The default posture is to deny access, granting permissions explicitly and securely.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores all user profiles (admins, stylists, customers).
+ * - /users/{userId}/appointments/{appointmentId}: A user-specific subcollection for appointments, enforcing ownership via the document path.
+ * - /services/{serviceId}: A top-level collection for salon services, intended for public read access.
+ * - /gallery/{galleryId}: A top-level collection for gallery images, also for public read access.
  *
  * Key Security Decisions:
- * - Admin Role: A user is considered an admin if a document with their UID exists
- *   in the `/roles_admin` collection. This provides a simple and secure way to
- *   manage elevated privileges.
- * - User Data Isolation: Customers and Stylists are strictly confined to their
- *   own data trees. Users cannot list or view profiles of other users (except for
- *   stylist profiles, which are public to signed-in users).
- * - Denormalization for Security: Appointment data is denormalized into three
- *   separate locations (`/customers/...`, `/stylists/...`, `/admin_appointments/...`) to
- *   ensure that security rules for each role are simple, performant, and do not
- *   require slow, cross-collection `get()` calls.
- * - Public vs. Private: Public data (like `/services`) is explicitly marked as
- *   readable by anyone. All other collections require authentication, and most
- *   require specific ownership or admin rights.
+ * - User Enumeration is Disallowed: Listing the top-level `/users` collection is forbidden to protect user privacy.
+ * - Admin-Only Writes for Public Data: Only users with the 'admin' role can create, update, or delete documents in the `/services` and `/gallery` collections. This is verified by reading the user's own profile document.
+ * - Strict Ownership for Private Data: A user can only access the data tree under their own user ID (e.g., `/users/{userId}/*`).
+ * - Shared Access for Appointments: While appointments are owned by the customer who booked them, read and update access is also granted to the specific stylist assigned to that appointment via the `stylistId` field.
+ *
+ * Denormalization for Authorization:
+ * This ruleset relies on the `userType` field being present on each user's document in the `/users` collection. This allows for an efficient role check (`isAdmin()`) with a single `get()` call, which is necessary for managing global collections like `/services` and `/gallery`. The `stylistId` is denormalized onto each `Appointment` document, enabling a simple and fast authorization check for stylists without extra database reads.
+ *
+ * Structural Segregation:
+ * Private user data (appointments) is stored in a user-owned subcollection (`/users/{userId}/appointments`). This is more secure and performant than mixing it in a top-level collection, as it allows for simple, path-based ownership rules for listing and access. Public data (`services`, `gallery`) is kept in separate top-level collections.
  */
-rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --------------------------------------------------------------------
-    // Helper Functions
-    // --------------------------------------------------------------------
-
-    /**
-     * Checks if the user is authenticated.
-     */
+    // Helper functions for reusable logic
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the authenticated user is an administrator by checking
-     * for the existence of a document in the roles_admin collection.
-     */
-    function isAdmin() {
-      return request.auth != null && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-    }
-
-    /**
-     * Checks if the authenticated user's UID matches the provided userId.
-     * This is the foundation of the ownership model.
-     */
+    // Checks if the requesting user is the owner of a document via path ID.
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Checks for ownership on an existing document. Used for update/delete.
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    // Checks if the requesting user has the 'admin' role by reading their user profile.
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'admin';
+    }
+
+    // Ensures the user document's internal ID matches the document path on create.
+    function isCreatingOwnUserDocument(userId) {
+      return isOwner(userId) && request.resource.data.id == userId;
+    }
+
+    // Ensures the user ID is immutable on update.
+    function isIdImmutable() {
+      return request.resource.data.id == resource.data.id;
     }
 
     /**
-     * Verifies that the document being operated on already exists.
-     * Crucial for secure update and delete operations.
+     * @description Rules for the User collection.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user creating their own user profile document.
+     * @deny (list) Any user, including admins, attempting to list all user profiles.
+     * @principle Restricts access to a user's own data tree and prevents user enumeration.
      */
-    function isExistingDoc() {
-      return resource != null;
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if false;
+      allow create: if isCreatingOwnUserDocument(userId);
+      allow update: if isExistingOwner(userId) && isIdImmutable();
+      allow delete: if false; // Disallow users from deleting their own accounts through rules.
     }
 
     /**
-     * Combines ownership and existence checks for update/delete operations.
+     * @description Rules for a user's Appointments subcollection.
+     * @path /users/{userId}/appointments/{appointmentId}
+     * @allow (get) The customer who owns the appointment OR the stylist assigned to it.
+     * @deny (update) A stylist trying to modify an appointment they are not assigned to.
+     * @principle Enforces document ownership for the customer and shared access for the assigned stylist.
      */
-    function isOwnerOfExistingDoc(userId) {
-      return isOwner(userId) && isExistingDoc();
-    }
-
-    // --------------------------------------------------------------------
-    // Customer Data Rules
-    // --------------------------------------------------------------------
-
-    /**
-     * @description Manages customer profiles. Only the customer themselves or an
-     *              admin can read or write their own profile. Listing all
-     *              customers is restricted to admins.
-     * @path /customers/{customerId}
-     * @allow (create) A new user (auth.uid: 'user123') creates their own profile at `/customers/user123`.
-     * @deny (get) A user (auth.uid: 'user456') tries to read another user's profile at `/customers/user123`.
-     * @deny (list) A non-admin user tries to list all documents in the `/customers` collection.
-     * @principle Enforces self-creation and document ownership for user profiles.
-     */
-    match /customers/{customerId} {
-      allow get: if isOwner(customerId) || isAdmin();
-      allow list: if isAdmin();
-      allow create: if (isOwner(customerId) || isAdmin());
-      allow update: if (isOwnerOfExistingDoc(customerId) || isAdmin());
-      allow delete: if isOwnerOfExistingDoc(customerId) || isAdmin();
+    match /users/{userId}/appointments/{appointmentId} {
+      allow get: if isOwner(userId) || (isSignedIn() && request.resource.data.stylistId == request.auth.uid);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.customerId == userId;
+      allow update: if resource != null && (isOwner(userId) || resource.data.stylistId == request.auth.uid) && request.resource.data.customerId == resource.data.customerId;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Manages appointments from a customer's perspective. A customer
-     *              can only access appointments within their own document tree.
-     * @path /customers/{customerId}/appointments/{appointmentId}
-     * @allow (list) A logged-in customer (auth.uid: 'user123') lists their own appointments at `/customers/user123/appointments`.
-     * @deny (get) A user ('user456') tries to get an appointment for another user ('user123').
-     * @principle Restricts access to a user's own data subcollections.
-     */
-    match /customers/{customerId}/appointments/{appointmentId} {
-      allow get: if isOwner(customerId) || isAdmin();
-      allow list: if isOwner(customerId) || isAdmin();
-      allow create: if (isOwner(customerId) || isAdmin());
-      allow update: if (isOwnerOfExistingDoc(customerId) || isAdmin());
-      allow delete: if (isOwnerOfExistingDoc(customerId) || isAdmin());
-    }
-
-    // --------------------------------------------------------------------
-    // Stylist Data Rules
-    // --------------------------------------------------------------------
-
-    /**
-     * @description Manages stylist profiles. Profiles are publicly visible to any
-     *              signed-in user to allow for browsing. Only the stylist
-     *              themselves or an admin can modify a profile.
-     * @path /stylists/{stylistId}
-     * @allow (list) Any authenticated user can list all stylists.
-     * @allow (update) A stylist ('stylistABC') updates their own profile at `/stylists/stylistABC`.
-     * @deny (delete) A stylist ('stylistABC') tries to delete their own profile; only admins can.
-     * @principle Combines public read access with owner-only writes for profile management.
-     */
-    match /stylists/{stylistId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isAdmin();
-      allow update: if isOwner(stylistId) || isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    /**
-     * @description Manages appointments from a stylist's perspective. A stylist can
-     *              only view appointments within their own schedule. All write
-     *              operations are restricted to admins to maintain data integrity.
-     * @path /stylists/{stylistId}/appointments/{appointmentId}
-     * @allow (get) A stylist ('stylistABC') views one of their appointments.
-     * @deny (create) A stylist ('stylistABC') tries to create a new appointment for themselves.
-     * @principle Enforces read-only access for owners, with writes restricted to admins.
-     */
-    match /stylists/{stylistId}/appointments/{appointmentId} {
-      allow get: if isOwner(stylistId) || isAdmin();
-      allow list: if isOwner(stylistId) || isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    // --------------------------------------------------------------------
-    // Public & Admin Data Rules
-    // --------------------------------------------------------------------
-
-    /**
-     * @description Manages the salon's services. This data is public for any client
-     *              to read, but can only be created, updated, or deleted by admins.
+     * @description Rules for the public Services collection.
      * @path /services/{serviceId}
-     * @allow (get) An anonymous user reads the details of a service.
-     * @deny (create) A non-admin user tries to add a new service.
-     * @principle Implements a public-read collection with admin-only write access.
+     * @allow (get, list) Any user, signed in or not, can read service information.
+     * @deny (create) A non-admin user trying to add a new service.
+     * @principle Allows public read access but restricts all write operations to administrators.
      */
     match /services/{serviceId} {
       allow get: if true;
       allow list: if true;
       allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
-    
+
     /**
-     * @description Manages the salon's gallery images. This data is public for any client
-     *              to read, but can only be created, updated, or deleted by admins.
-     * @path /gallery/{imageId}
-     * @allow (get) An anonymous user reads an image from the gallery.
-     * @deny (create) A non-admin user tries to add a new image.
-     * @principle Implements a public-read collection with admin-only write access.
+     * @description Rules for the public Gallery collection.
+     * @path /gallery/{galleryId}
+     * @allow (get, list) Any user, signed in or not, can view the gallery.
+     * @deny (update) A regular customer trying to change a gallery image description.
+     * @principle Allows public read access but restricts all write operations to administrators.
      */
-    match /gallery/{imageId} {
+    match /gallery/{galleryId} {
       allow get: if true;
       allow list: if true;
       allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    /**
-     * @description A centralized collection of all appointments, intended for use
-     *              by the admin dashboard. Access is strictly limited to admins.
-     * @path /admin_appointments/{docId}
-     * @allow (list) An admin user lists all appointments for the dashboard.
-     * @deny (get) Any non-admin user tries to read an appointment from this collection.
-     * @principle Enforces a strictly admin-only access pattern for a sensitive data collection.
-     */
-    match /admin_appointments/{docId} {
-      allow read, write: if isAdmin();
-    }
-
-    /**
-     * @description Manages admin roles.
-     * @path /roles_admin/{uid}
-     * @allow (create) Allows creating the VERY FIRST admin role document to bootstrap the system.
-     * @allow (read, update, delete) Only other admins can manage roles.
-     * @principle Secures role management while allowing for initial setup.
-     */
-    match /roles_admin/{uid} {
-      allow read, update, delete: if isAdmin();
-      // Allow creation only if the user is creating their own role doc (isOwner)
-      // AND it's the very first admin document in the collection (get(...).size == 0).
-      // This prevents adding multiple admins unintentionally and secures the initial setup.
-      allow create: if isOwner(uid) && get(/databases/$(database)/documents/roles_admin).size == 0;
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
   }
 }

@@ -1,26 +1,100 @@
 {
   "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Divas AyA system.  This could be an administrator, a stylist, or a customer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "userType": {
+          "type": "string",
+          "description": "The role of the user.  e.g., 'admin', 'stylist', 'customer'."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The phone number of the user."
+        }
+      },
+      "required": [
+        "id",
+        "userType",
+        "firstName",
+        "lastName",
+        "email"
+      ]
+    },
+    "Service": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Service",
+      "type": "object",
+      "description": "Represents a service offered by the salon.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Service entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the service (e.g., 'Haircut', 'Manicure')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the service."
+        },
+        "price": {
+          "type": "number",
+          "description": "The price of the service."
+        },
+        "duration": {
+          "type": "number",
+          "description": "The typical duration of the service in minutes."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "price",
+        "duration"
+      ]
+    },
     "Appointment": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Appointment",
       "type": "object",
-      "description": "Represents a scheduled appointment at the beauty salon.",
+      "description": "Represents a scheduled appointment.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the appointment."
+          "description": "Unique identifier for the Appointment entity."
         },
         "customerId": {
           "type": "string",
-          "description": "Reference to Customer. (Relationship: Customer 1:N Appointment)"
+          "description": "Reference to the Customer (User) associated with the appointment. (Relationship: User 1:N Appointment)"
         },
         "stylistId": {
           "type": "string",
-          "description": "Reference to Stylist. (Relationship: Stylist 1:N Appointment)"
+          "description": "Reference to the Stylist (User) assigned to the appointment. (Relationship: User 1:N Appointment)"
         },
         "serviceId": {
           "type": "string",
-          "description": "Reference to Service. (Relationship: Service 1:N Appointment)"
+          "description": "Reference to the Service to be performed during the appointment. (Relationship: Service 1:N Appointment)"
         },
         "startTime": {
           "type": "string",
@@ -34,12 +108,7 @@
         },
         "status": {
           "type": "string",
-          "description": "The status of the appointment (e.g., scheduled, confirmed, cancelled).",
-          "format": "string"
-        },
-        "notes": {
-          "type": "string",
-          "description": "Any notes or special requests for the appointment."
+          "description": "The status of the appointment (e.g., 'scheduled', 'confirmed', 'cancelled', 'completed')."
         }
       },
       "required": [
@@ -52,125 +121,29 @@
         "status"
       ]
     },
-    "Customer": {
+    "Gallery": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Customer",
+      "title": "Gallery",
       "type": "object",
-      "description": "Represents a customer of the beauty salon.",
+      "description": "Represents an image in the salon's gallery.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the customer."
+          "description": "Unique identifier for the Gallery entity."
         },
-        "firstName": {
+        "imageUrl": {
           "type": "string",
-          "description": "The customer's first name."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The customer's last name."
-        },
-        "email": {
-          "type": "string",
-          "description": "The customer's email address.",
-          "format": "email"
-        },
-        "phone": {
-          "type": "string",
-          "description": "The customer's phone number."
-        }
-      },
-      "required": [
-        "id",
-        "firstName",
-        "lastName",
-        "email",
-        "phone"
-      ]
-    },
-    "Stylist": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Stylist",
-      "type": "object",
-      "description": "Represents a stylist at the beauty salon.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the stylist."
-        },
-        "firstName": {
-          "type": "string",
-          "description": "The stylist's first name."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The stylist's last name."
-        },
-        "email": {
-          "type": "string",
-          "description": "The stylist's email address.",
-          "format": "email"
-        },
-        "phone": {
-          "type": "string",
-          "description": "The stylist's phone number."
-        },
-        "availability": {
-          "type": "string",
-          "description": "The stylist's availability (e.g., days and hours they are available).  Consider a more structured approach like a separate Availability entity."
-        },
-        "specializations": {
-          "type": "array",
-          "description": "A list of service IDs that this stylist is qualified to perform.",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "id",
-        "firstName",
-        "lastName",
-        "email",
-        "phone",
-        "availability"
-      ]
-    },
-    "Service": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Service",
-      "type": "object",
-      "description": "Represents a service offered by the beauty salon.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the service."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the service."
+          "description": "URL of the image file.",
+          "format": "uri"
         },
         "description": {
           "type": "string",
-          "description": "A description of the service."
-        },
-        "price": {
-          "type": "number",
-          "description": "The price of the service.",
-          "format": "number"
-        },
-        "duration": {
-          "type": "number",
-          "description": "The duration of the service in minutes.",
-          "format": "number"
+          "description": "A description of the image."
         }
       },
       "required": [
         "id",
-        "name",
-        "description",
-        "price",
-        "duration"
+        "imageUrl"
       ]
     }
   },
@@ -183,73 +156,17 @@
   "firestore": {
     "structure": [
       {
-        "path": "/customers/{customerId}",
+        "path": "/users/{userId}",
         "definition": {
-          "entityName": "Customer",
+          "entityName": "User",
           "schema": {
-            "$ref": "#/backend/entities/Customer"
+            "$ref": "#/backend/entities/User"
           },
-          "description": "Stores customer profiles.  Appointments are stored as a subcollection. Used for path-based ownership.",
+          "description": "Stores user profiles (admins, stylists, customers). The 'userType' field determines the user's role.",
           "params": [
             {
-              "name": "customerId",
-              "description": "The unique identifier for the customer."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/customers/{customerId}/appointments/{appointmentId}",
-        "definition": {
-          "entityName": "Appointment",
-          "schema": {
-            "$ref": "#/backend/entities/Appointment"
-          },
-          "description": "Stores appointment information for each customer. Includes denormalized `stylistId` to avoid cross-collection reads for security rules.",
-          "params": [
-            {
-              "name": "customerId",
-              "description": "The unique identifier for the customer."
-            },
-            {
-              "name": "appointmentId",
-              "description": "The unique identifier for the appointment."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/stylists/{stylistId}",
-        "definition": {
-          "entityName": "Stylist",
-          "schema": {
-            "$ref": "#/backend/entities/Stylist"
-          },
-          "description": "Stores stylist profiles. Appointments are stored as a subcollection.",
-          "params": [
-            {
-              "name": "stylistId",
-              "description": "The unique identifier for the stylist."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/stylists/{stylistId}/appointments/{appointmentId}",
-        "definition": {
-          "entityName": "Appointment",
-          "schema": {
-            "$ref": "#/backend/entities/Appointment"
-          },
-          "description": "Stores appointment information for each stylist. Includes denormalized `customerId` and `serviceId` to avoid cross-collection reads for security rules.",
-          "params": [
-            {
-              "name": "stylistId",
-              "description": "The unique identifier for the stylist."
-            },
-            {
-              "name": "appointmentId",
-              "description": "The unique identifier for the appointment."
+              "name": "userId",
+              "description": "The unique identifier of the user."
             }
           ]
         }
@@ -261,48 +178,52 @@
           "schema": {
             "$ref": "#/backend/entities/Service"
           },
-          "description": "Stores service information.",
+          "description": "Stores information about the salon's services.",
           "params": [
             {
               "name": "serviceId",
-              "description": "The unique identifier for the service."
+              "description": "The unique identifier of the service."
             }
           ]
         }
       },
       {
-        "path": "/roles_admin/{uid}",
-        "definition": {
-          "entityName": "roles_admin",
-          "schema": {
-            "$ref": "#/backend/entities/Customer"
-          },
-          "description": "Collection to store admin roles. Existence of document implies admin privileges.  No content required.",
-          "params": [
-            {
-              "name": "uid",
-              "description": "The unique identifier for the user (admin)."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/admin/appointments/{appointmentId}",
+        "path": "/users/{userId}/appointments/{appointmentId}",
         "definition": {
           "entityName": "Appointment",
           "schema": {
             "$ref": "#/backend/entities/Appointment"
           },
-          "description": "Stores all appointment information for the admin dashboard. Allows filtering, editing and deleting appointments.",
+          "description": "Stores appointment details associated with a specific user (customer).",
           "params": [
             {
+              "name": "userId",
+              "description": "The unique identifier of the user (customer) who booked the appointment."
+            },
+            {
               "name": "appointmentId",
-              "description": "The unique identifier for the appointment."
+              "description": "The unique identifier of the appointment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/gallery/{galleryId}",
+        "definition": {
+          "entityName": "Gallery",
+          "schema": {
+            "$ref": "#/backend/entities/Gallery"
+          },
+          "description": "Stores images for the salon's gallery.",
+          "params": [
+            {
+              "name": "galleryId",
+              "description": "The unique identifier of the gallery image."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore data structure is designed to support the beauty salon application's requirements, focusing on appointment scheduling, service management, stylist management, and an admin dashboard. The structure prioritizes Authorization Independence through denormalization and supports secure list operations. Since there are no roles explicitly defined, the data structure assumes the need for admin roles. The structure also uses path-based ownership for customers, stylists, and their respective appointments, while ensuring clear segregation between user-owned and admin-managed data.\n\n**Authorization Independence:** The `appointments` subcollection within each stylist's document includes denormalized fields like `customerId`, `serviceId`, and potentially a copy of the customer's name or other relevant information. This eliminates the need for `get()` calls to other collections when enforcing security rules related to appointments. The admin dashboard will be in a separate collection without user context.\n\n**QAPs Support:** The segregation of data into customer-owned and stylist-owned appointments supports secure `list` operations. Rules can easily filter appointments based on the requesting user's ID or based on admin roles within the `/roles_admin/{uid}` collection. The separation between stylists' appointments and the admin's view ensures that stylists only see their own schedules, while admins have a global view."
+    "reasoning": "This Firestore structure is designed to support the Divas AyA salon application, focusing on appointment scheduling, service management, and user/stylist management. It prioritizes authorization independence, clarity, and scalability. User roles (admin, stylist, customer) are managed through the 'users' collection, enabling DBAC (Database Access Control). Path-based ownership is used where applicable (e.g., appointments are stored under the user who booked them), and membership maps are not necessary for this application, as the main access control relies on user roles and path-based ownership. Segregation is used to separate user data and global data, ensuring that different types of data have different access requirements.\n\nThe 'users' collection stores user profiles with a 'userType' field indicating their role (admin, stylist, or customer). The 'services' collection stores details about each service offered. Appointments are nested under the respective customer's document for easy retrieval and management. The 'gallery' collection stores images for the salon's gallery.  No denormalization is required as roles are directly available on the user document."
   }
 }
