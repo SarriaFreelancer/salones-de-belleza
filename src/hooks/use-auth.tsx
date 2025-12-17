@@ -72,8 +72,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Admin status will be checked by the useEffect hook
     } catch (signInError: any) {
       // If user not found, it's the first login, so create admin account.
-      if (signInError.code === 'auth/user-not-found') {
-        try {
+      if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
+         try {
+          // Check if it's an invalid password for an existing user first
+           const userExistsSnap = await getDoc(doc(firestore, 'customers', auth.currentUser?.uid || ' '));
+           if (signInError.code === 'auth/invalid-credential' && !userExistsSnap.exists()){
+             throw new Error('La contraseña es incorrecta. Por favor, inténtalo de nuevo.');
+           }
+          
           await signupAndAssignAdminRole(email, pass);
           toast({
             title: '¡Cuenta de Admin Creada!',
@@ -81,17 +87,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           });
         } catch (signUpError: any) {
           console.error("Error creating admin account:", signUpError);
-          throw new Error(`Error al crear la cuenta de admin: ${signUpError.message}`);
+          // Don't re-throw the sign-in error, but the sign-up one if it happens
+          throw new Error(signUpError.message || `Error al crear la cuenta de admin.`);
         }
-      } else if (signInError.code === 'auth/invalid-credential') {
-         throw new Error('La contraseña es incorrecta. Por favor, inténtalo de nuevo.');
       }
       else {
         console.error("Login error:", signInError);
         throw new Error(`Error de inicio de sesión: ${signInError.message}`);
       }
     }
-  }, [auth, signupAndAssignAdminRole, toast]);
+  }, [auth, firestore, signupAndAssignAdminRole, toast]);
 
 
   const clientLogin = useCallback(async (email: string, pass: string): Promise<void> => {
