@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LogOut } from 'lucide-react';
-import { useAuth as useAppAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -26,7 +26,7 @@ export default function LoginPage() {
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
   
-  const { user, isUserLoading, login, logout } = useAppAuth();
+  const { user, isUserLoading, login, logout } = useAuth();
   const { toast } = useToast();
   
   const [isClient, setIsClient] = React.useState(false);
@@ -42,12 +42,13 @@ export default function LoginPage() {
     try {
       // The login function now handles both sign-in and first-time admin creation.
       await login(email, password);
+      // Let the ProtectedDashboardLayout handle redirection.
     } catch (err: any) {
       setError(`Error: ${err.message}`);
       toast({
         variant: 'destructive',
         title: 'Error de inicio de sesión',
-        description: 'Las credenciales son incorrectas o ha ocurrido un error.',
+        description: err.message || 'Las credenciales son incorrectas o ha ocurrido un error.',
       });
     } finally {
         setLoading(false);

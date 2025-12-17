@@ -251,15 +251,13 @@ function ProtectedDashboardLayout({
     }
 
     const checkAdminStatus = async () => {
+        if (!firestore) return; // Ensure firestore is available
         const adminRoleDoc = doc(firestore, 'roles_admin', user.uid);
         try {
             const docSnap = await getDoc(adminRoleDoc);
             if (docSnap.exists()) {
                 setIsAdmin(true);
             } else {
-                // If doc doesn't exist, they are not an admin.
-                // This could happen if they were an admin and their role was revoked.
-                // Or if a regular user tries to access the dashboard.
                 router.push('/login');
             }
         } catch (error) {
