@@ -40,7 +40,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // The login function now handles both sign-in and first-time admin creation.
       await login(email, password);
       // The ProtectedDashboardLayout will handle redirection upon successful login and admin check.
     } catch (err: any) {

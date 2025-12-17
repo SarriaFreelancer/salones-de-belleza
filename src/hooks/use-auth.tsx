@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const checkAdminStatus = async () => {
-      if (user) {
+      if (user && firestore) {
         setIsCheckingAdmin(true);
         const adminRoleDoc = doc(firestore, 'roles_admin', user.uid);
         try {
@@ -74,9 +74,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // If user not found, it's the first login, so create admin account.
       if (signInError.code === 'auth/user-not-found') {
         try {
-          const newUser = await signupAndAssignAdminRole(email, pass);
-          // Sign in is implicit after createUserWithEmailAndPassword, but this makes sure session is active.
-          // No need to call signInWithEmailAndPassword again.
+          await signupAndAssignAdminRole(email, pass);
           toast({
             title: '¡Cuenta de Admin Creada!',
             description: 'Bienvenida. Te hemos registrado como el primer administrador.',
