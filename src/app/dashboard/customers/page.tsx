@@ -31,7 +31,7 @@ export default function CustomersPage() {
     return collection(firestore, 'customers');
   }, [firestore]);
   
-  const { data: customers, isLoading } = useCollection<Customer>(customersCollection, true);
+  const { data: customers, isLoading } = useCollection<Customer>(customersCollection);
 
   if (isLoading) {
     return (

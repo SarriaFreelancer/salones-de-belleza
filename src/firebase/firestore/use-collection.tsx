@@ -11,7 +11,8 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { useUser } from '@/firebase';
+import { useUser } from '@/firebase/provider';
+
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -50,12 +51,10 @@ export interface InternalQuery extends Query<DocumentData> {
  * @template T Optional type for document data. Defaults to any.
  * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
  * The Firestore CollectionReference or Query. Waits if null/undefined.
- * @param {boolean} [waitForUser=false] - If true, the hook will wait for a user to be authenticated before fetching.
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
 export function useCollection<T = any>(
     memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
-    waitForUser: boolean = false
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
@@ -63,15 +62,8 @@ export function useCollection<T = any>(
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true); // Start as loading
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  const { user, isUserLoading } = useUser();
 
   useEffect(() => {
-    // If we're waiting for the user and they're not available yet (or still loading), do nothing.
-    if (waitForUser && (isUserLoading || !user)) {
-      setIsLoading(true); // Explicitly set loading state
-      return;
-    }
-
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
@@ -116,7 +108,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, user, isUserLoading, waitForUser]); // Re-run if query, user state, or wait condition changes.
+  }, [memoizedTargetRefOrQuery]);
   
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');

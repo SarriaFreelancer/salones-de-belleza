@@ -25,10 +25,7 @@ export const ServicesProvider = ({ children }: { children: ReactNode }) => {
     return collection(firestore, 'services');
   }, [firestore]);
 
-  // For admin dashboard, we might need to wait for the user to be authenticated
-  // For public pages, we don't. We check the pathname to decide.
-  const isDashboard = typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard');
-  const { data: services, isLoading } = useCollection<Service>(servicesCollection, isDashboard);
+  const { data: services, isLoading } = useCollection<Service>(servicesCollection);
 
 
   const addService = (service: Omit<Service, 'id'>) => {

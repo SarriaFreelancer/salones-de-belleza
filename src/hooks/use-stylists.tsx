@@ -25,10 +25,7 @@ export const StylistsProvider = ({ children }: { children: ReactNode }) => {
     return collection(firestore, 'stylists');
   }, [firestore]);
   
-  // For admin dashboard, we need to wait for the user to be authenticated
-  // For public pages, we don't. We check the pathname to decide.
-  const isDashboard = typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard');
-  const { data: stylists, isLoading } = useCollection<Stylist>(stylistsCollection, isDashboard);
+  const { data: stylists, isLoading } = useCollection<Stylist>(stylistsCollection);
 
 
   const addStylist = (stylist: Omit<Stylist, 'id' | 'availability'>) => {

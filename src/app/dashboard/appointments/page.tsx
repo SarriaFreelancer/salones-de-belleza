@@ -57,7 +57,7 @@ function AppointmentsPage() {
     return collection(firestore, 'admin_appointments');
   }, [firestore]);
   
-  const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection, true);
+  const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection);
 
   const handleAppointmentCreated = () => {
     // No need to manually update state, useCollection handles it
