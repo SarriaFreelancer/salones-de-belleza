@@ -19,7 +19,6 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import type { Appointment } from '@/lib/types';
-import { AuthProvider } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 
 
@@ -44,7 +43,6 @@ export default function HomePage() {
     const isLoading = isLoadingServices || isLoadingStylists || isLoadingGallery || isLoadingAppointments;
 
   return (
-     <AuthProvider>
     <div className="flex min-h-dvh w-full flex-col">
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
         <Link href="#" className="flex items-center gap-2 font-semibold">
@@ -251,8 +249,5 @@ export default function HomePage() {
         </div>
       </footer>
     </div>
-    </AuthProvider>
   );
 }
-
-    
