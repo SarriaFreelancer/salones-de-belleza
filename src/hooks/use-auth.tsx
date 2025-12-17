@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      window.location.href = '/dashboard';
+      // Let ProtectedDashboardLayout handle redirection.
     } catch (signInError: any) {
       if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
         try {
@@ -39,7 +39,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           });
           // Sign in the new user to establish a session before redirecting
           await signInWithEmailAndPassword(auth, email, pass);
-          window.location.href = '/dashboard';
         } catch (signUpError: any) {
           throw new Error(`Error al crear la cuenta de admin: ${signUpError.message}`);
         }
@@ -51,7 +50,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<void> => {
     // This function creates the user and assigns the admin role.
-    // The firestore rule allows this only if it's the very first admin.
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     const newUser = userCredential.user;
     if (newUser && firestore) {

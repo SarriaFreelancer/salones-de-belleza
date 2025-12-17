@@ -231,15 +231,8 @@ function ProtectedDashboardLayout({
   const router = useRouter();
   const [isAdmin, setIsAdmin] = React.useState(false);
   const [isVerifying, setIsVerifying] = React.useState(true);
-  const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  React.useEffect(() => {
-    if (!isClient) return;
-
     if (isUserLoading) {
         setIsVerifying(true);
         return;
@@ -258,6 +251,8 @@ function ProtectedDashboardLayout({
             if (docSnap.exists()) {
                 setIsAdmin(true);
             } else {
+                // If user is logged in but has no admin role, deny access
+                console.warn("Acceso denegado: El usuario no es administrador.");
                 router.push('/login');
             }
         } catch (error) {
@@ -270,9 +265,9 @@ function ProtectedDashboardLayout({
     
     checkAdminStatus();
 
-  }, [user, isUserLoading, router, firestore, isClient]);
+  }, [user, isUserLoading, router, firestore]);
 
-  if (!isClient || isVerifying || isUserLoading) {
+  if (isVerifying || isUserLoading) {
     return <LoadingScreen message="Verificando permisos..." />;
   }
 
