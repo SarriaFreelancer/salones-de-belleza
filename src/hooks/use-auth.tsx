@@ -8,9 +8,8 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
-  isUserLoading: boolean; // Firebase's user loading state
   isAdmin: boolean;
-  isAuthLoading: boolean; // Our combined loading state (user + admin check)
+  isAuthLoading: boolean; // Combines user loading and admin checking
   login: (email: string, pass: string) => Promise<void>;
   logout: () => void;
   clientSignup: (email: string, pass: string, firstName: string, lastName: string, phone: string) => Promise<void>;
@@ -53,7 +52,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user, firestore]);
 
   const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<User> => {
-    // This function creates the user and assigns the admin role.
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     const newUser = userCredential.user;
     if (newUser && firestore) {
@@ -69,9 +67,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // Admin status will be checked by the useEffect hook after login
     } catch (signInError: any) {
-      // If user not found, it's the first login, so create admin account.
       if (signInError.code === 'auth/user-not-found') {
         try {
           await signupAndAssignAdminRole(email, pass);
@@ -84,12 +80,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           throw new Error(signUpError.message || `Error al crear la cuenta de admin.`);
         }
       } else {
-        // For other errors like invalid credentials, just throw them.
         console.error("Login error:", signInError);
         throw new Error(signInError.message || 'Error de inicio de sesión.');
       }
     }
-  }, [auth, firestore, signupAndAssignAdminRole, toast]);
+  }, [auth, signupAndAssignAdminRole, toast]);
 
 
   const clientLogin = useCallback(async (email: string, pass: string): Promise<void> => {
@@ -127,7 +122,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await signOut(auth);
       // State will clear via onAuthStateChanged
       setIsAdmin(false);
-      // Determine where to redirect after logout
       if (window.location.pathname.startsWith('/dashboard')) {
         window.location.href = '/login';
       } else {
@@ -146,7 +140,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAuthLoading = isUserLoading || isCheckingAdmin;
 
   return (
-    <AuthContext.Provider value={{ user, isUserLoading, isAdmin, isAuthLoading, login, logout, clientSignup, clientLogin }}>
+    <AuthContext.Provider value={{ user, isAdmin, isAuthLoading, login, logout, clientSignup, clientLogin }}>
       {children}
     </AuthContext.Provider>
   );
