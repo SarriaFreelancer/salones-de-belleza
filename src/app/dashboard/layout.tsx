@@ -48,7 +48,7 @@ function DashboardLayoutContent({
             <Logo />
             <div className="flex flex-col">
               <h2 className="font-headline text-lg font-semibold leading-tight tracking-tight">
-                Divas A&A
+                Divas A&amp;A
               </h2>
               <p className="text-xs text-muted-foreground">Panel de Control</p>
             </div>
@@ -226,30 +226,33 @@ function ProtectedDashboardLayout({
 }) {
   const { user, isAdmin, isAuthLoading } = useAuth();
   const router = useRouter();
+  const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
-    // Si la autenticación ha terminado y no hay usuario, redirigir al login.
-    if (!isAuthLoading && !user) {
-      router.push('/login');
-    }
-    // Si la autenticación ha terminado, hay un usuario, pero no es admin, redirigir.
-    if (!isAuthLoading && user && !isAdmin) {
-      console.warn("Acceso denegado: El usuario no es administrador.");
-      router.push('/login');
-    }
-  }, [user, isAuthLoading, isAdmin, router]);
+    setIsClient(true);
+  }, []);
 
-  // Muestra la pantalla de carga mientras se carga la autenticación o se verifica el rol de admin.
-  if (isAuthLoading) {
+  React.useEffect(() => {
+    if (!isClient) return;
+
+    if (!isAuthLoading) {
+      if (!user) {
+        router.push('/login');
+      } else if (!isAdmin) {
+        console.warn("Acceso denegado: El usuario no es administrador.");
+        router.push('/login');
+      }
+    }
+  }, [user, isAuthLoading, isAdmin, router, isClient]);
+  
+  if (!isClient || isAuthLoading) {
     return <LoadingScreen message="Verificando permisos..." />;
   }
-
-  // Si después de cargar, el usuario no es admin (o no existe), muestra el mensaje de denegado mientras redirige.
+  
   if (!user || !isAdmin) {
     return <LoadingScreen message="Acceso denegado. Redirigiendo..." />;
   }
-  
-  // Si el usuario es admin, muestra el contenido del dashboard.
+
   return <DashboardLayoutContent>{children}</DashboardLayoutContent>;
 }
 
