@@ -1,8 +1,8 @@
 export const firebaseConfig = {
-  projectId: 'studio-5708924923-1285a',
-  appId: '1:914611598460:web:806a6c25b08c5e032549d4',
-  storageBucket: 'studio-5708924923-1285a.appspot.com',
-  apiKey: 'AIzaSyBN1vflPZgMqrD6DL22tX_7znx9yqL1J_4',
-  authDomain: 'studio-5708924923-1285a.firebaseapp.com',
-  messagingSenderId: '914611598460',
+  projectId: 'salon-de-belleza-5344218-af12a',
+  appId: '1:157310597400:web:89065c9e758c5b3173066d',
+  storageBucket: 'salon-de-belleza-5344218-af12a.appspot.com',
+  apiKey: 'AIzaSyC2q_xJ7v2L5C4n3B8f9G1hJk3r0D6yW9w',
+  authDomain: 'salon-de-belleza-5344218-af12a.firebaseapp.com',
+  messagingSenderId: '157310597400',
 };
