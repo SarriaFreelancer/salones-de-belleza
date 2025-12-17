@@ -60,10 +60,9 @@ export default function LoginPage() {
       router.push('/dashboard');
     }
   }, [user, isAdmin, isAuthLoading, router]);
-
-  if (!isClient || isAuthLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/40">
+  
+  const LoginSkeleton = () => (
+     <div className="flex min-h-screen items-center justify-center bg-muted/40">
         <Card className="w-full max-w-sm">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4">
@@ -74,17 +73,26 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent className="space-y-4">
              <div className="space-y-2">
-               <Skeleton className="h-4 w-full" />
+               <Skeleton className="h-4 w-24" />
+               <Skeleton className="h-10 w-full" />
+             </div>
+             <div className="space-y-2">
+               <Skeleton className="h-4 w-24" />
+               <Skeleton className="h-10 w-full" />
              </div>
              <Skeleton className="h-10 w-full mt-4" />
           </CardContent>
         </Card>
       </div>
-    );
+  );
+
+  if (!isClient || isAuthLoading) {
+    return <LoginSkeleton />;
   }
   
-  // This state is for users who are logged in but NOT admins, or for admins who landed here by mistake.
-  if (user && !isAuthLoading) {
+  // This state is for users who are logged in but NOT admins.
+  // Admins are already redirected by the useEffect above.
+  if (user && !isAdmin) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40">
             <Card className="w-full max-w-sm text-center">
@@ -95,7 +103,6 @@ export default function LoginPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
-                    {isAdmin && <Button onClick={() => router.push('/dashboard')}>Ir al Panel de Control</Button>}
                     <Button variant="outline" onClick={() => logout()}>
                         <LogOut className="mr-2 h-4 w-4" />
                         Cerrar Sesión
