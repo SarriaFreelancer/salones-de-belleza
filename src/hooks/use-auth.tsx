@@ -49,23 +49,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
+      // Successful login, redirection will be handled by the dashboard layout check.
       window.location.href = '/dashboard';
     } catch (signInError: any) {
+      // If user does not exist, try to create them as the first admin.
       if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
         try {
           const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
           const newUser = userCredential.user;
+          // The firestore rule now allows the very first admin role to be created.
           const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
           await setDoc(adminRoleDoc, {});
           toast({
               title: 'Cuenta de Admin Creada',
-              description: '¡Bienvenido! Te hemos registrado como administrador.',
+              description: '¡Bienvenido! Te hemos registrado como el primer administrador.',
           });
+          // Redirect after successful creation and role assignment.
           window.location.href = '/dashboard';
         } catch (signUpError: any) {
+          // This might happen if an admin already exists, or other sign-up error.
           throw new Error(`Error al crear la cuenta de admin: ${signUpError.message}`);
         }
       } else {
+        // Handle other sign-in errors
         throw new Error(`Error de inicio de sesión: ${signInError.message}`);
       }
     }

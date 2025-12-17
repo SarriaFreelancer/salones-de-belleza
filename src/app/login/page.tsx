@@ -40,14 +40,14 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // The login function now handles both sign-in and first-time admin creation.
       await login(email, password);
-      // The login function in useAuth now handles redirection.
     } catch (err: any) {
       setError(`Error: ${err.message}`);
       toast({
         variant: 'destructive',
         title: 'Error de inicio de sesión',
-        description: 'Las credenciales son incorrectas o el usuario no existe aún. Si es el primer inicio de sesión, la cuenta se creará.',
+        description: 'Las credenciales son incorrectas o ha ocurrido un error.',
       });
     } finally {
         setLoading(false);

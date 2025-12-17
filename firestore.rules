@@ -199,23 +199,18 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages admin roles. The existence of a document in this
-     *              collection grants a user admin privileges throughout the app.
-     *              Only admins can create, update, or delete roles, except for
-     *              the initial admin creation.
+     * @description Manages admin roles.
      * @path /roles_admin/{uid}
-     * @allow (create) if true; // Allows initial admin creation.
-     * @allow (read) if isAdmin();
-     * @allow (update, delete) if isAdmin();
-    */
+     * @allow (create) Allows creating the VERY FIRST admin role document to bootstrap the system.
+     * @allow (read, update, delete) Only other admins can manage roles.
+     * @principle Secures role management while allowing for initial setup.
+     */
     match /roles_admin/{uid} {
-      allow read: if isAdmin();
-      // Allow creation for anyone. This is safe because a user can only create
-      // a document with their OWN uid, which they only get after creating an
-      // account. An attacker cannot guess a future UID. This rule resolves
-      // a race condition during the first admin sign-up.
-      allow create: if true;
-      allow update, delete: if isAdmin();
+      allow read, update, delete: if isAdmin();
+      // Allow creation only if the user is creating their own role doc (isOwner)
+      // AND it's the very first admin document in the collection (get(...).size == 0).
+      // This prevents adding multiple admins unintentionally and secures the initial setup.
+      allow create: if isOwner(uid) && get(/databases/$(database)/documents/roles_admin).size == 0;
     }
   }
 }
