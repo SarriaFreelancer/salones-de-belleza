@@ -28,21 +28,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // Let ProtectedDashboardLayout handle redirection.
     } catch (signInError: any) {
-      if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
+      if (signInError.code === 'auth/user-not-found') {
         try {
           await signupAndAssignAdminRole(email, pass);
-          toast({
-              title: 'Cuenta de Admin Creada',
-              description: '¡Bienvenido! Te hemos registrado como el primer administrador.',
-          });
-          // Sign in the new user to establish a session before redirecting
+          // After creation, sign in the new user to establish the session
           await signInWithEmailAndPassword(auth, email, pass);
+          toast({
+            title: 'Cuenta de Admin Creada',
+            description: '¡Bienvenido! Te hemos registrado como el primer administrador.',
+          });
         } catch (signUpError: any) {
+          console.error("Error creating admin account:", signUpError);
           throw new Error(`Error al crear la cuenta de admin: ${signUpError.message}`);
         }
-      } else {
+      } else if (signInError.code === 'auth/invalid-credential') {
+          // This error means the email exists but the password is wrong, or the user does not exist.
+          // Since we already check for user-not-found, we can be more specific.
+          // However, to be safe, we'll try to create it if it doesn't exist.
+           try {
+              await signupAndAssignAdminRole(email, pass);
+              await signInWithEmailAndPassword(auth, email, pass);
+               toast({
+                title: 'Cuenta de Admin Creada',
+                description: '¡Bienvenido! Te hemos registrado como el primer administrador.',
+              });
+           } catch (e) {
+             throw new Error('Las credenciales son incorrectas o el usuario no existe.');
+           }
+      }
+      else {
+        console.error("Login error:", signInError);
         throw new Error(`Error de inicio de sesión: ${signInError.message}`);
       }
     }
