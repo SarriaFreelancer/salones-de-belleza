@@ -31,6 +31,9 @@ import { Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
+import { StylistsProvider } from '@/hooks/use-stylists';
+import { ServicesProvider } from '@/hooks/use-services';
+import { GalleryProvider } from '@/hooks/use-gallery';
 
 function DashboardLayoutContent({
   children,
@@ -234,7 +237,7 @@ function ProtectedDashboardLayout({
       } else if (!isAdmin) {
         // If not loading, user exists, but is not an admin
         console.warn("Acceso denegado: El usuario no es administrador.");
-        router.replace('/login'); // Or a specific "access-denied" page
+        router.replace('/login?error=access-denied');
       }
     }
   }, [user, isAuthLoading, isAdmin, router]);
@@ -261,7 +264,13 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-      <ProtectedDashboardLayout>{children}</ProtectedDashboardLayout>
+    <StylistsProvider>
+      <ServicesProvider>
+        <GalleryProvider>
+          <ProtectedDashboardLayout>{children}</ProtectedDashboardLayout>
+        </GalleryProvider>
+      </ServicesProvider>
+    </StylistsProvider>
   )
 }
 

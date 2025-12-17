@@ -4,7 +4,7 @@ import React, { createContext, useContext, ReactNode, useCallback, useState, use
 import { Auth, User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth as useFirebaseAuth, useUser, useFirestore } from '@/firebase';
 import { useToast } from './use-toast';
-import { doc, setDoc, getDoc } from 'firebase/firestore'; 
+import { doc, setDoc, getDoc, collection, getCountFromServer } from 'firebase/firestore'; 
 
 interface AuthContextType {
   user: User | null;
@@ -68,23 +68,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
     } catch (signInError: any) {
-      if (signInError.code === 'auth/user-not-found') {
-        try {
-          await signupAndAssignAdminRole(email, pass);
-          toast({
-            title: '¡Cuenta de Admin Creada!',
-            description: 'Bienvenida. Te hemos registrado como el primer administrador.',
-          });
-        } catch (signUpError: any) {
-          console.error("Error creating admin account:", signUpError);
-          throw new Error(signUpError.message || `Error al crear la cuenta de admin.`);
+      // Check if it's the very first user trying to log in
+      if (signInError.code === 'auth/user-not-found' && firestore) {
+        const adminRolesCollection = collection(firestore, 'roles_admin');
+        const snapshot = await getCountFromServer(adminRolesCollection);
+        if (snapshot.data().count === 0) {
+            try {
+              await signupAndAssignAdminRole(email, pass);
+              toast({
+                title: '¡Cuenta de Admin Creada!',
+                description: 'Bienvenida. Te hemos registrado como el primer administrador.',
+              });
+              // Successful sign up, no need to throw
+              return;
+            } catch (signUpError: any) {
+              console.error("Error creating first admin account:", signUpError);
+              throw new Error(signUpError.message || `Error al crear la cuenta de admin.`);
+            }
         }
-      } else {
-        console.error("Login error:", signInError);
-        throw new Error(signInError.message || 'Error de inicio de sesión.');
-      }
+      } 
+      // For any other error, just re-throw it to be displayed
+      console.error("Login error:", signInError);
+      throw new Error(signInError.message || 'Error de inicio de sesión.');
     }
-  }, [auth, signupAndAssignAdminRole, toast]);
+  }, [auth, firestore, signupAndAssignAdminRole, toast]);
 
 
   const clientLogin = useCallback(async (email: string, pass: string): Promise<void> => {

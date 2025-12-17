@@ -3,9 +3,6 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent, CardDescription, CardFooter, CardTitle } from '@/components/ui/card';
-import { useServices } from '@/hooks/use-services';
-import { useStylists } from '@/hooks/use-stylists';
-import { useGallery } from '@/hooks/use-gallery';
 import { Flower2, Phone, Mail, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import { Logo } from '@/components/icons';
@@ -18,29 +15,29 @@ import UserAuth from '@/components/public/user-auth';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
-import type { Appointment } from '@/lib/types';
+import type { Appointment, Service, Stylist, GalleryImage } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 
 export default function HomePage() {
-    const { services, isLoading: isLoadingServices } = useServices();
-    const { stylists, isLoading: isLoadingStylists } = useStylists();
-    const { galleryImages, isLoading: isLoadingGallery } = useGallery();
-    const [isClient, setIsClient] = React.useState(false);
     const firestore = useFirestore();
+    const [isClient, setIsClient] = React.useState(false);
 
     React.useEffect(() => {
         setIsClient(true);
     }, []);
 
-    const appointmentsCollection = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return collection(firestore, 'admin_appointments');
-    }, [firestore]);
-    
+    const servicesCollection = useMemoFirebase(() => firestore ? collection(firestore, 'services') : null, [firestore]);
+    const stylistsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'stylists') : null, [firestore]);
+    const galleryCollection = useMemoFirebase(() => firestore ? collection(firestore, 'gallery') : null, [firestore]);
+    const appointmentsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'admin_appointments') : null, [firestore]);
+
+    const { data: services, isLoading: isLoadingServices } = useCollection<Service>(servicesCollection);
+    const { data: stylists, isLoading: isLoadingStylists } = useCollection<Stylist>(stylistsCollection);
+    const { data: galleryImages, isLoading: isLoadingGallery } = useCollection<GalleryImage>(galleryCollection);
     const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection);
     
-    const isLoading = isLoadingServices || isLoadingStylists || isLoadingGallery || isLoadingAppointments;
+    const isLoading = !isClient || isLoadingServices || isLoadingStylists || isLoadingGallery || isLoadingAppointments;
 
   return (
     <div className="flex min-h-dvh w-full flex-col">
@@ -106,7 +103,7 @@ export default function HomePage() {
               </p>
             </div>
             <div className="mx-auto mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {isLoading ? Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-60 w-full" />) : services.map((service) => (
+              {isLoading || !services ? Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-60 w-full" />) : services.map((service) => (
                 <Card key={service.id} className="flex flex-col transition-transform hover:scale-105 hover:shadow-lg">
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -140,7 +137,7 @@ export default function HomePage() {
                     </p>
                 </div>
                 <div className="mx-auto mt-12 grid grid-cols-2 gap-6 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4">
-                    {isLoading ? Array.from({length: 4}).map((_, i) => <div key={i} className="flex flex-col items-center gap-4"><Skeleton className="h-40 w-40 rounded-full" /><Skeleton className="h-6 w-24" /></div>) : stylists.map((stylist) => (
+                    {isLoading || !stylists ? Array.from({length: 4}).map((_, i) => <div key={i} className="flex flex-col items-center gap-4"><Skeleton className="h-40 w-40 rounded-full" /><Skeleton className="h-6 w-24" /></div>) : stylists.map((stylist) => (
                         <div key={stylist.id} className="group relative flex flex-col items-center text-center">
                             <Avatar className="h-40 w-40 border-4 border-background shadow-lg transition-transform group-hover:scale-105">
                                 <AvatarImage src={stylist.avatarUrl} alt={stylist.name} data-ai-hint="woman portrait" />
@@ -165,7 +162,7 @@ export default function HomePage() {
               </p>
             </div>
             <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {isLoading ? Array.from({length: 6}).map((_, i) => <Skeleton key={i} className="h-48 w-full" />) : galleryImages.map(img => (
+                {isLoading || !galleryImages ? Array.from({length: 6}).map((_, i) => <Skeleton key={i} className="h-48 w-full" />) : galleryImages.map(img => (
                     <Image 
                         key={img.id}
                         src={img.src} 
@@ -182,7 +179,7 @@ export default function HomePage() {
 
         <section id="agendar" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
             <div className="container px-4 md:px-6">
-                {isClient && !isLoadingAppointments ? <PublicBookingForm appointments={appointments || []} /> : <Skeleton className="h-96 w-full max-w-4xl mx-auto" />}
+                {isLoading || !isClient ? <Skeleton className="h-96 w-full max-w-4xl mx-auto" /> : <PublicBookingForm appointments={appointments || []} services={services || []} stylists={stylists || []} />}
             </div>
         </section>
 
