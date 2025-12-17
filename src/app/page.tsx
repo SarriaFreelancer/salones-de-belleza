@@ -3,9 +3,9 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent, CardDescription, CardFooter, CardTitle } from '@/components/ui/card';
-import { useServices, ServicesProvider } from '@/hooks/use-services';
-import { useStylists, StylistsProvider } from '@/hooks/use-stylists';
-import { useGallery, GalleryProvider } from '@/hooks/use-gallery';
+import { useServices } from '@/hooks/use-services';
+import { useStylists } from '@/hooks/use-stylists';
+import { useGallery } from '@/hooks/use-gallery';
 import { Flower2, Phone, Mail, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import { Logo } from '@/components/icons';
@@ -19,10 +19,9 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import type { Appointment } from '@/lib/types';
-import { AuthProvider } from '@/components/public/user-auth-context';
 
 
-function HomePageContent() {
+export default function HomePage() {
     const { services } = useServices();
     const { stylists } = useStylists();
     const { galleryImages } = useGallery();
@@ -247,19 +246,5 @@ function HomePageContent() {
         </div>
       </footer>
     </div>
-  );
-}
-
-export default function HomePage() {
-  return (
-    <AuthProvider>
-      <StylistsProvider>
-        <ServicesProvider>
-          <GalleryProvider>
-            <HomePageContent />
-          </GalleryProvider>
-        </ServicesProvider>
-      </StylistsProvider>
-    </AuthProvider>
   );
 }

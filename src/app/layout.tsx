@@ -3,6 +3,10 @@ import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase';
+import { StylistsProvider } from '@/hooks/use-stylists';
+import { ServicesProvider } from '@/hooks/use-services';
+import { GalleryProvider } from '@/hooks/use-gallery';
+import { AuthProvider } from '@/hooks/use-auth';
 
 export const metadata: Metadata = {
   title: 'Divas A&A',
@@ -23,7 +27,15 @@ export default function RootLayout({
       </head>
       <body className={cn('font-body antialiased', 'min-h-screen bg-background font-sans')}>
         <FirebaseClientProvider>
-            {children}
+          <AuthProvider>
+            <StylistsProvider>
+              <ServicesProvider>
+                <GalleryProvider>
+                  {children}
+                </GalleryProvider>
+              </ServicesProvider>
+            </StylistsProvider>
+          </AuthProvider>
         </FirebaseClientProvider>
         <Toaster />
       </body>

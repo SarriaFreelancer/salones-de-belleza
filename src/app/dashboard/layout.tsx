@@ -29,13 +29,8 @@ import {
 } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { useUser, useAuth as useFirebaseAuth } from '@/firebase';
-import { signOut } from 'firebase/auth';
-import { StylistsProvider } from '@/hooks/use-stylists';
-import { ServicesProvider } from '@/hooks/use-services';
-import { GalleryProvider } from '@/hooks/use-gallery';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 function DashboardLayoutContent({
   children,
@@ -43,23 +38,7 @@ function DashboardLayoutContent({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { user } = useUser();
-  const auth = useFirebaseAuth();
-  const { toast } = useToast();
-
-  const logout = async () => {
-    try {
-      await signOut(auth);
-      window.location.href = '/login';
-    } catch (error) {
-      console.error("Firebase logout error:", error);
-       toast({
-        variant: "destructive",
-        title: 'Error al cerrar sesión',
-        description: 'Hubo un problema al cerrar la sesión. Inténtalo de nuevo.',
-      });
-    }
-  };
+  const { user, logout } = useAuth();
 
   return (
     <SidebarProvider>
@@ -200,12 +179,12 @@ function DashboardLayoutContent({
   );
 }
 
-export default function DashboardLayout({
+function ProtectedDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading } = useAuth();
   const router = useRouter();
   const [isClient, setIsClient] = React.useState(false);
 
@@ -256,15 +235,18 @@ export default function DashboardLayout({
     );
   }
 
+  return <DashboardLayoutContent>{children}</DashboardLayoutContent>;
+}
+
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <StylistsProvider>
-      <ServicesProvider>
-        <GalleryProvider>
-          <DashboardLayoutContent>{children}</DashboardLayoutContent>
-        </GalleryProvider>
-      </ServicesProvider>
-    </StylistsProvider>
-  );
+      <ProtectedDashboardLayout>{children}</ProtectedDashboardLayout>
+  )
 }
 
 
