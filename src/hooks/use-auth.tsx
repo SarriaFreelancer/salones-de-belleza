@@ -1,18 +1,18 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, ReactNode, useCallback, useState, useEffect } from 'react';
 import { Auth, User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth as useFirebaseAuth, useUser, useFirestore } from '@/firebase';
 import { useToast } from './use-toast';
-import { doc, setDoc } from 'firebase/firestore'; 
+import { doc, setDoc, getDoc } from 'firebase/firestore'; 
 
 interface AuthContextType {
   user: User | null;
-  isUserLoading: boolean;
+  isUserLoading: boolean; // Firebase's user loading state
+  isAdmin: boolean;
+  isAuthLoading: boolean; // Our combined loading state (user + admin check)
   login: (email: string, pass: string) => Promise<void>;
-  signupAndAssignAdminRole: (email: string, pass: string) => Promise<void>;
   logout: () => void;
-  // New methods for public clients
   clientSignup: (email: string, pass: string, firstName: string, lastName: string, phone: string) => Promise<void>;
   clientLogin: (email: string, pass: string) => Promise<void>;
 }
@@ -24,58 +24,78 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const auth = useFirebaseAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
+  
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
 
-  const login = useCallback(async (email: string, pass: string): Promise<void> => {
-    try {
-      await signInWithEmailAndPassword(auth, email, pass);
-    } catch (signInError: any) {
-      if (signInError.code === 'auth/user-not-found') {
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (user) {
+        setIsCheckingAdmin(true);
+        const adminRoleDoc = doc(firestore, 'roles_admin', user.uid);
         try {
-          await signupAndAssignAdminRole(email, pass);
-          // After creation, sign in the new user to establish the session
-          await signInWithEmailAndPassword(auth, email, pass);
-          toast({
-            title: 'Cuenta de Admin Creada',
-            description: '¡Bienvenido! Te hemos registrado como el primer administrador.',
-          });
-        } catch (signUpError: any) {
-          console.error("Error creating admin account:", signUpError);
-          throw new Error(`Error al crear la cuenta de admin: ${signUpError.message}`);
+          const docSnap = await getDoc(adminRoleDoc);
+          setIsAdmin(docSnap.exists());
+        } catch (error) {
+          console.error("Error checking admin status:", error);
+          setIsAdmin(false);
+        } finally {
+          setIsCheckingAdmin(false);
         }
-      } else if (signInError.code === 'auth/invalid-credential') {
-          // This error means the email exists but the password is wrong, or the user does not exist.
-          // Since we already check for user-not-found, we can be more specific.
-          // However, to be safe, we'll try to create it if it doesn't exist.
-           try {
-              await signupAndAssignAdminRole(email, pass);
-              await signInWithEmailAndPassword(auth, email, pass);
-               toast({
-                title: 'Cuenta de Admin Creada',
-                description: '¡Bienvenido! Te hemos registrado como el primer administrador.',
-              });
-           } catch (e) {
-             throw new Error('Las credenciales son incorrectas o el usuario no existe.');
-           }
+      } else {
+        // No user, not an admin, and not checking
+        setIsAdmin(false);
+        setIsCheckingAdmin(false);
       }
-      else {
-        console.error("Login error:", signInError);
-        throw new Error(`Error de inicio de sesión: ${signInError.message}`);
-      }
-    }
-  }, [auth, firestore, toast]);
+    };
 
-  const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<void> => {
+    checkAdminStatus();
+  }, [user, firestore]);
+
+  const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<User> => {
     // This function creates the user and assigns the admin role.
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     const newUser = userCredential.user;
     if (newUser && firestore) {
       const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
       await setDoc(adminRoleDoc, {});
+      setIsAdmin(true); // Immediately set admin state for the new user
+      return newUser;
     } else {
       throw new Error('No se pudo crear el usuario o la instancia de Firestore no está disponible.');
     }
   }, [auth, firestore]);
   
+  const login = useCallback(async (email: string, pass: string): Promise<void> => {
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      // Admin status will be checked by the useEffect hook
+    } catch (signInError: any) {
+      // If user not found, it's the first login, so create admin account.
+      if (signInError.code === 'auth/user-not-found') {
+        try {
+          const newUser = await signupAndAssignAdminRole(email, pass);
+          // Sign in is implicit after createUserWithEmailAndPassword, but this makes sure session is active.
+          // No need to call signInWithEmailAndPassword again.
+          toast({
+            title: '¡Cuenta de Admin Creada!',
+            description: 'Bienvenida. Te hemos registrado como el primer administrador.',
+          });
+        } catch (signUpError: any) {
+          console.error("Error creating admin account:", signUpError);
+          throw new Error(`Error al crear la cuenta de admin: ${signUpError.message}`);
+        }
+      } else if (signInError.code === 'auth/invalid-credential') {
+         throw new Error('La contraseña es incorrecta. Por favor, inténtalo de nuevo.');
+      }
+      else {
+        console.error("Login error:", signInError);
+        throw new Error(`Error de inicio de sesión: ${signInError.message}`);
+      }
+    }
+  }, [auth, signupAndAssignAdminRole, toast]);
+
+
   const clientLogin = useCallback(async (email: string, pass: string): Promise<void> => {
     await signInWithEmailAndPassword(auth, email, pass);
     toast({
@@ -109,6 +129,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
+      // State will clear via onAuthStateChanged
+      setIsAdmin(false);
       // Determine where to redirect after logout
       if (window.location.pathname.startsWith('/dashboard')) {
         window.location.href = '/login';
@@ -124,9 +146,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
     }
   }, [auth, toast]);
+  
+  const isAuthLoading = isUserLoading || isCheckingAdmin;
 
   return (
-    <AuthContext.Provider value={{ user, isUserLoading, login, signupAndAssignAdminRole, logout, clientSignup, clientLogin }}>
+    <AuthContext.Provider value={{ user, isUserLoading, isAdmin, isAuthLoading, login, logout, clientSignup, clientLogin }}>
       {children}
     </AuthContext.Provider>
   );

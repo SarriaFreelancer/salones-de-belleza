@@ -31,8 +31,6 @@ import { Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
 
 function DashboardLayoutContent({
   children,
@@ -226,56 +224,32 @@ function ProtectedDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isUserLoading } = useAuth();
-  const firestore = useFirestore();
+  const { user, isUserLoading, isAdmin, isAuthLoading } = useAuth();
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = React.useState(false);
-  const [isVerifying, setIsVerifying] = React.useState(true);
 
   React.useEffect(() => {
-    if (isUserLoading) {
-        setIsVerifying(true);
-        return;
+    // Si la autenticación ha terminado y no hay usuario, redirigir al login.
+    if (!isAuthLoading && !user) {
+      router.push('/login');
     }
-
-    if (!user) {
-        router.push('/login');
-        return;
+    // Si la autenticación ha terminado, hay un usuario, pero no es admin, redirigir.
+    if (!isAuthLoading && user && !isAdmin) {
+      console.warn("Acceso denegado: El usuario no es administrador.");
+      router.push('/login');
     }
+  }, [user, isAuthLoading, isAdmin, router]);
 
-    const checkAdminStatus = async () => {
-        if (!firestore) return; // Ensure firestore is available
-        const adminRoleDoc = doc(firestore, 'roles_admin', user.uid);
-        try {
-            const docSnap = await getDoc(adminRoleDoc);
-            if (docSnap.exists()) {
-                setIsAdmin(true);
-            } else {
-                // If user is logged in but has no admin role, deny access
-                console.warn("Acceso denegado: El usuario no es administrador.");
-                router.push('/login');
-            }
-        } catch (error) {
-            console.error("Error checking admin status:", error);
-            router.push('/login'); // Redirect on error for safety
-        } finally {
-            setIsVerifying(false);
-        }
-    };
-    
-    checkAdminStatus();
-
-  }, [user, isUserLoading, router, firestore]);
-
-  if (isVerifying || isUserLoading) {
+  // Muestra la pantalla de carga mientras se carga la autenticación o se verifica el rol de admin.
+  if (isAuthLoading) {
     return <LoadingScreen message="Verificando permisos..." />;
   }
 
-  if (!isAdmin) {
-    // This state should ideally not be reached due to the redirect, but it's a good failsafe.
+  // Si después de cargar, el usuario no es admin (o no existe), muestra el mensaje de denegado mientras redirige.
+  if (!user || !isAdmin) {
     return <LoadingScreen message="Acceso denegado. Redirigiendo..." />;
   }
   
+  // Si el usuario es admin, muestra el contenido del dashboard.
   return <DashboardLayoutContent>{children}</DashboardLayoutContent>;
 }
 
