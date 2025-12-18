@@ -73,6 +73,7 @@ export default function HomePage() {
                 src="https://picsum.photos/seed/hero/1200/800" 
                 alt="Salón de belleza Divas A&A" 
                 fill
+                priority
                 className="object-cover"
                 data-ai-hint="beauty salon interior"
             />
