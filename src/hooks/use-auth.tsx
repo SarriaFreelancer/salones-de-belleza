@@ -30,15 +30,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
 
   useEffect(() => {
-    // If there's no user, they can't be an admin.
-    if (!user || isFirebaseUserLoading) {
+    if (isFirebaseUserLoading) {
+      // If the user object is still loading, we are definitely not ready.
+      setIsCheckingAdmin(true);
+      return;
+    }
+
+    if (!user) {
+      // If there's no user, they can't be an admin. Stop checking.
       setIsAdmin(false);
-      setIsCheckingAdmin(false); // No admin to check for if no user.
+      setIsCheckingAdmin(false);
       return;
     }
 
     // When a user is authenticated, check their admin status in Firestore.
-    setIsCheckingAdmin(true);
     const checkAdminStatus = async () => {
       if (firestore) {
         try {
@@ -64,7 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
     // This is for the ADMIN login
     await signInWithEmailAndPassword(auth, email, pass);
-    window.location.href = '/dashboard';
+    // Let the layout effect handle the redirect
   }, [auth]);
 
   const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<void> => {
@@ -74,7 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (newUser && firestore) {
       const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
       await setDoc(adminRoleDoc, {});
-      // After setting the role, the onAuthStateChanged should redirect to dashboard
+      // The useEffect will now correctly see the user and check for the admin role.
     } else {
       throw new Error('No se pudo crear el usuario o la instancia de Firestore no está disponible.');
     }
