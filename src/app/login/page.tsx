@@ -130,17 +130,14 @@ export default function LoginPage() {
       </div>
   );
 
+  // Wait until client-side hydration and auth state is fully resolved
   if (!isClient || isAuthLoading) {
     return <LoginSkeleton />;
   }
   
   if (user) {
-    // If the user is logged in, but we are still checking the admin status, show a loading state.
-    // The ProtectedDashboardLayout will handle the redirection once `isAuthLoading` is false.
-    if (isAuthLoading) {
-        return <LoginSkeleton />;
-    }
-
+    // If a user is logged in, show the appropriate message based on their admin status.
+    // The redirect to /dashboard is handled by ProtectedDashboardLayout.
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40">
             <Card className="w-full max-w-sm text-center">
