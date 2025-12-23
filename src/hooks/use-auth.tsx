@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode, useCallback, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, ReactNode, useCallback, useState, useEffect } from 'react';
 import { Auth, User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth as useFirebaseAuth, useUser, useFirestore } from '@/firebase';
 import { useToast } from './use-toast';
@@ -11,7 +11,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isAuthLoading: boolean; // Combines user loading and admin checking
   logout: () => void;
-  // Login and signup logic is moved to the component level to handle specific cases like first admin creation.
+  // Client-specific auth methods remain
   clientSignup: (email: string, pass: string, firstName: string, lastName: string, phone: string) => Promise<void>;
   clientLogin: (email: string, pass: string) => Promise<void>;
 }
@@ -26,48 +26,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
-  const adminFixApplied = useRef(false);
 
   useEffect(() => {
-    if (!user) {
+    // If there's no user, they can't be an admin.
+    if (!user || isFirebaseUserLoading) {
       setIsAdmin(false);
-      setIsCheckingAdmin(false);
+      setIsCheckingAdmin(false); // No admin to check for if no user.
       return;
     }
 
+    // When a user is authenticated, check their admin status in Firestore.
     setIsCheckingAdmin(true);
     const checkAdminStatus = async () => {
       if (firestore) {
         try {
           const adminRoleDocRef = doc(firestore, 'roles_admin', user.uid);
           const docSnap = await getDoc(adminRoleDocRef);
-          
-          if (docSnap.exists()) {
-            setIsAdmin(true);
-          } else {
-            setIsAdmin(false);
-            // Self-correction logic for the specific admin user
-            if (user.email === 'admin@divas.com' && !adminFixApplied.current) {
-              await setDoc(adminRoleDocRef, {});
-              setIsAdmin(true); // Assume it worked and update state immediately
-              adminFixApplied.current = true; // Ensure this runs only once
-              console.log('Permissions granted to admin@divas.com');
-            }
-          }
+          setIsAdmin(docSnap.exists());
         } catch (error) {
-          console.error("Error checking or setting admin status:", error);
-          setIsAdmin(false);
+          console.error("Error checking admin status:", error);
+          setIsAdmin(false); // Assume not admin on error
         } finally {
           setIsCheckingAdmin(false);
         }
       } else {
+        // If firestore is not ready, we can't check.
         setIsAdmin(false);
         setIsCheckingAdmin(false);
       }
     };
 
     checkAdminStatus();
-  }, [user, firestore]);
+  }, [user, firestore, isFirebaseUserLoading]);
 
   const clientLogin = useCallback(async (email: string, pass: string): Promise<void> => {
     await signInWithEmailAndPassword(auth, email, pass);
@@ -98,16 +88,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [auth, firestore, toast]);
 
-
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
-      // State will clear via onAuthStateChanged from the core firebase provider
-      setIsAdmin(false);
+      // Let onAuthStateChanged handle user state clearing
+      // and redirect if necessary
       if (window.location.pathname.startsWith('/dashboard')) {
         window.location.href = '/login';
       } else {
-        // For public pages, just reload to clear any user-specific state.
         window.location.reload();
       }
     } catch (error) {

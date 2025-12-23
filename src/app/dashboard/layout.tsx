@@ -230,33 +230,34 @@ function ProtectedDashboardLayout({
   const router = useRouter();
 
   React.useEffect(() => {
-    // Only perform actions once authentication state is fully resolved
+    // This effect runs whenever the auth state changes.
+    // It will redirect the user if they are not authenticated or not an admin.
     if (!isAuthLoading) {
       if (!user) {
-        // If not authenticated, redirect to login
+        // If not logged in, redirect to the login page.
         router.replace('/login');
       } else if (!isAdmin) {
-        // If authenticated but not an admin, show access denied and redirect
-        console.warn("Acceso denegado: El usuario no es administrador.");
+        // If logged in but not an admin, redirect with an error.
+        console.warn("Access denied: User is not an admin.");
         router.replace('/login?error=access-denied');
       }
     }
-  }, [user, isAuthLoading, isAdmin, router]);
+  }, [user, isAdmin, isAuthLoading, router]);
 
-  // While authentication is loading, show a full-page loader.
-  // This is the key to preventing premature data fetching.
+  // While authentication is being verified, show a loading screen.
+  // This is the key to preventing premature data fetches in child components.
   if (isAuthLoading) {
     return <LoadingScreen message="Verificando permisos..." />;
   }
 
-  // If, after loading, the user is still not an admin (or not logged in),
-  // they will be redirected by the useEffect. Show a message in the meantime.
-  if (!user || !isAdmin) {
-    return <LoadingScreen message="Acceso denegado. Redirigiendo..." />;
+  // If the user is authenticated and is an admin, render the dashboard content.
+  if (user && isAdmin) {
+    return <DashboardLayoutContent>{children}</DashboardLayoutContent>;
   }
 
-  // If authentication is complete and the user is an admin, render the dashboard.
-  return <DashboardLayoutContent>{children}</DashboardLayoutContent>;
+  // If the user is not an admin (or not logged in), they will be redirected by the useEffect.
+  // Show a message while the redirection happens.
+  return <LoadingScreen message="Acceso denegado. Redirigiendo..." />;
 }
 
 
