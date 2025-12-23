@@ -80,8 +80,9 @@ service cloud.firestore {
     match /roles_admin/{userId} {
       allow read: if isAdmin();
       allow list: if isAdmin();
-      // Allow creating the first admin document, or allow if the requester is already an admin.
-      allow create: if !exists(/databases/$(database)/documents/roles_admin) || isAdmin();
+      // Allow user to create their own admin role document.
+      // This solves the chicken-and-egg problem of the first admin.
+      allow create: if request.auth.uid == userId;
       allow delete: if isAdmin();
     }
   }
