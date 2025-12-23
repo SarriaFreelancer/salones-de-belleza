@@ -10,6 +10,8 @@ interface AuthContextType {
   user: User | null;
   isAdmin: boolean;
   isAuthLoading: boolean; // Combines user loading and admin checking
+  login: (email: string, pass: string) => Promise<void>;
+  signupAndAssignAdminRole: (email: string, pass: string) => Promise<void>;
   logout: () => void;
   // Client-specific auth methods remain
   clientSignup: (email: string, pass: string, firstName: string, lastName: string, phone: string) => Promise<void>;
@@ -58,6 +60,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     checkAdminStatus();
   }, [user, firestore, isFirebaseUserLoading]);
+
+  const login = useCallback(async (email: string, pass: string): Promise<void> => {
+    // This is for the ADMIN login
+    await signInWithEmailAndPassword(auth, email, pass);
+    window.location.href = '/dashboard';
+  }, [auth]);
+
+  const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<void> => {
+    // This function creates the user and assigns the admin role.
+    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+    const newUser = userCredential.user;
+    if (newUser && firestore) {
+      const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
+      await setDoc(adminRoleDoc, {});
+      // After setting the role, the onAuthStateChanged should redirect to dashboard
+    } else {
+      throw new Error('No se pudo crear el usuario o la instancia de Firestore no está disponible.');
+    }
+  }, [auth, firestore]);
 
   const clientLogin = useCallback(async (email: string, pass: string): Promise<void> => {
     await signInWithEmailAndPassword(auth, email, pass);
@@ -112,7 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAuthLoading = isFirebaseUserLoading || isCheckingAdmin;
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, isAuthLoading, logout, clientSignup, clientLogin }}>
+    <AuthContext.Provider value={{ user, isAdmin, isAuthLoading, login, signupAndAssignAdminRole, logout, clientSignup, clientLogin }}>
       {children}
     </AuthContext.Provider>
   );

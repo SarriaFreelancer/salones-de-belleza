@@ -17,10 +17,6 @@ import { LogOut, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { useFirebase } from '@/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-
 
 export default function LoginPage() {
   const [email, setEmail] = React.useState('admin@divas.com');
@@ -28,8 +24,7 @@ export default function LoginPage() {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   
-  const { user, isAuthLoading, isAdmin, logout } = useAuth();
-  const { auth, firestore } = useFirebase(); // Get auth and firestore instances
+  const { user, isAuthLoading, isAdmin, logout, login, signupAndAssignAdminRole } = useAuth();
   const { toast } = useToast();
   
   const [isClient, setIsClient] = React.useState(false);
@@ -43,31 +38,22 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // First, try to sign in
-      await signInWithEmailAndPassword(auth, email, password);
-      // Let the auth provider and protected layout handle the rest
-      
+      await login(email, password);
+      // Successful login will redirect via the AuthProvider/layout effect
     } catch (err: any) {
-      if (err.code === 'auth/user-not-found') {
-        // If the user does not exist, try to create it as the first admin
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        // If user doesn't exist, try to sign them up as the first admin
         try {
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          const newUser = userCredential.user;
-          if (newUser && firestore) {
-            // Assign the admin role
-            const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
-            await setDoc(adminRoleDoc, {});
-            toast({
-              title: '¡Cuenta de Admin Creada!',
-              description: 'Bienvenida. Te hemos registrado como el primer administrador.',
-            });
-            // Successful sign-up will trigger onAuthStateChanged, and the app will react.
-          }
+          await signupAndAssignAdminRole(email, password);
+          // onAuthStateChanged will handle the redirect to the dashboard
+          toast({
+            title: '¡Cuenta de Admin Creada!',
+            description: 'Bienvenida. Te hemos registrado como el primer administrador.',
+          });
+
         } catch (creationError: any) {
-          // This might happen if the rules don't allow creating the first admin
-          // or another error occurred during creation.
           console.error("Admin creation error:", creationError);
-          const errorMessage = 'No se pudo crear la cuenta de administrador. ' + (creationError.message || '');
+          const errorMessage = 'No se pudo crear la cuenta de administrador. ¿Ya existe un administrador?';
           setError(errorMessage);
           toast({
             variant: 'destructive',
@@ -82,7 +68,6 @@ export default function LoginPage() {
         if (err.code) {
           switch (err.code) {
             case 'auth/wrong-password':
-            case 'auth/invalid-credential':
               errorMessage = 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.';
               break;
             case 'auth/too-many-requests':
@@ -136,8 +121,6 @@ export default function LoginPage() {
   }
   
   if (user) {
-    // If a user is logged in, show the appropriate message based on their admin status.
-    // The redirect to /dashboard is handled by ProtectedDashboardLayout.
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40">
             <Card className="w-full max-w-sm text-center">
