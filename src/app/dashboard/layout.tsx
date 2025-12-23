@@ -228,36 +228,41 @@ function ProtectedDashboardLayout({
 }) {
   const { user, isAdmin, isAuthLoading } = useAuth();
   const router = useRouter();
+  const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
-    // This effect runs whenever the auth state changes.
-    // It will redirect the user if they are not authenticated or not an admin.
-    if (!isAuthLoading) {
-      if (!user) {
-        // If not logged in, redirect to the login page.
-        router.replace('/login');
-      } else if (!isAdmin) {
-        // If logged in but not an admin, redirect with an error.
-        console.warn("Access denied: User is not an admin.");
-        router.replace('/login?error=access-denied');
-      }
-    }
-  }, [user, isAdmin, isAuthLoading, router]);
+    setIsClient(true);
+  }, []);
 
-  // While authentication is being verified, show a loading screen.
-  // This is the key to preventing premature data fetches in child components.
+  // While checking auth state on client, show nothing to prevent flashes of content
+  if (!isClient) {
+    return null; 
+  }
+
+  // If auth is still loading, show the main loading screen.
   if (isAuthLoading) {
     return <LoadingScreen message="Verificando permisos..." />;
   }
 
-  // If the user is authenticated and is an admin, render the dashboard content.
+  // After loading, if there's no user, redirect to login.
+  if (!user) {
+    router.replace('/login');
+    return <LoadingScreen message="Redirigiendo al login..." />;
+  }
+
+  // After loading, if there's a user but they are not an admin, redirect.
+  if (user && !isAdmin) {
+    router.replace('/login?error=access-denied');
+    return <LoadingScreen message="Acceso denegado. Redirigiendo..." />;
+  }
+
+  // If auth has loaded, a user exists, and they are an admin, render the dashboard.
   if (user && isAdmin) {
     return <DashboardLayoutContent>{children}</DashboardLayoutContent>;
   }
 
-  // If the user is not an admin (or not logged in), they will be redirected by the useEffect.
-  // Show a message while the redirection happens.
-  return <LoadingScreen message="Acceso denegado. Redirigiendo..." />;
+  // This is a fallback case, should ideally not be reached.
+  return <LoadingScreen message="Redirigiendo..." />;
 }
 
 
