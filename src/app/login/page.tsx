@@ -25,7 +25,7 @@ export default function LoginPage() {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   
-  const { user, isAuthLoading, login, signupAndAssignAdminRole, logout, isAdmin } = useAuth();
+  const { user, isAuthLoading, login, logout, isAdmin } = useAuth();
   const { toast } = useToast();
   
   const [isClient, setIsClient] = React.useState(false);
@@ -40,12 +40,26 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
+      // On successful login or signup, the AuthProvider's onAuthStateChanged
+      // will trigger, and the ProtectedDashboardLayout will handle redirection.
     } catch (err: any) {
       console.error("Login page error:", err.code, err.message);
-      const errorMessage = err.code === 'auth/invalid-credential' 
-        ? 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.'
-        : err.message || 'Ha ocurrido un error inesperado.';
-
+      let errorMessage = 'Ha ocurrido un error inesperado.';
+      if (err.code) {
+        switch (err.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+            errorMessage = 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.';
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = 'Has intentado iniciar sesión demasiadas veces. Inténtalo de nuevo más tarde.';
+            break;
+          default:
+            errorMessage = err.message || errorMessage;
+            break;
+        }
+      }
       setError(errorMessage);
       toast({
         variant: 'destructive',
@@ -87,6 +101,12 @@ export default function LoginPage() {
   }
   
   if (user) {
+    // If the user is logged in, but we are still checking the admin status, show a loading state.
+    // The ProtectedDashboardLayout will handle the redirection once `isAuthLoading` is false.
+    if (isAuthLoading) {
+        return <LoginSkeleton />;
+    }
+
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40">
             <Card className="w-full max-w-sm text-center">
@@ -105,7 +125,7 @@ export default function LoginPage() {
                          </Link>
                       </Button>
                    ) : (
-                     <p className="text-sm text-muted-foreground">Verificando permisos de administrador...</p>
+                     <p className="text-sm text-muted-foreground">No tienes permisos de administrador.</p>
                    )}
                     <Button variant="outline" onClick={() => logout()}>
                         <LogOut className="mr-2 h-4 w-4" />
@@ -160,7 +180,7 @@ export default function LoginPage() {
               <p className="text-sm font-medium text-destructive">{error}</p>
             )}
             <p className="text-xs text-center text-muted-foreground pt-2">
-              Si es la primera vez que inicias sesión, la cuenta de administrador se creará automáticamente.
+              Si es la primera vez que inicias sesión con credenciales de administrador, se creará una cuenta automáticamente.
             </p>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Verificando...' : 'Ingresar'}
