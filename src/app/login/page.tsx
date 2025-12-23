@@ -17,6 +17,9 @@ import { LogOut, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { useFirebase } from '@/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 
 export default function LoginPage() {
@@ -25,7 +28,8 @@ export default function LoginPage() {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   
-  const { user, isAuthLoading, login, logout, isAdmin } = useAuth();
+  const { user, isAuthLoading, isAdmin, logout } = useAuth();
+  const { auth, firestore } = useFirebase(); // Get auth and firestore instances
   const { toast } = useToast();
   
   const [isClient, setIsClient] = React.useState(false);
@@ -39,33 +43,63 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      // On successful login or signup, the AuthProvider's onAuthStateChanged
-      // will trigger, and the ProtectedDashboardLayout will handle redirection.
+      // First, try to sign in
+      await signInWithEmailAndPassword(auth, email, password);
+      // Let the auth provider and protected layout handle the rest
+      
     } catch (err: any) {
-      console.error("Login page error:", err.code, err.message);
-      let errorMessage = 'Ha ocurrido un error inesperado.';
-      if (err.code) {
-        switch (err.code) {
-          case 'auth/user-not-found':
-          case 'auth/wrong-password':
-          case 'auth/invalid-credential':
-            errorMessage = 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.';
-            break;
-          case 'auth/too-many-requests':
-            errorMessage = 'Has intentado iniciar sesión demasiadas veces. Inténtalo de nuevo más tarde.';
-            break;
-          default:
-            errorMessage = err.message || errorMessage;
-            break;
+      if (err.code === 'auth/user-not-found') {
+        // If the user does not exist, try to create it as the first admin
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const newUser = userCredential.user;
+          if (newUser && firestore) {
+            // Assign the admin role
+            const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
+            await setDoc(adminRoleDoc, {});
+            toast({
+              title: '¡Cuenta de Admin Creada!',
+              description: 'Bienvenida. Te hemos registrado como el primer administrador.',
+            });
+            // Successful sign-up will trigger onAuthStateChanged, and the app will react.
+          }
+        } catch (creationError: any) {
+          // This might happen if the rules don't allow creating the first admin
+          // or another error occurred during creation.
+          console.error("Admin creation error:", creationError);
+          const errorMessage = 'No se pudo crear la cuenta de administrador. ' + (creationError.message || '');
+          setError(errorMessage);
+          toast({
+            variant: 'destructive',
+            title: 'Error de Registro',
+            description: errorMessage,
+          });
         }
+      } else {
+        // Handle other login errors (wrong password, etc.)
+        console.error("Login page error:", err.code, err.message);
+        let errorMessage = 'Ha ocurrido un error inesperado.';
+        if (err.code) {
+          switch (err.code) {
+            case 'auth/wrong-password':
+            case 'auth/invalid-credential':
+              errorMessage = 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.';
+              break;
+            case 'auth/too-many-requests':
+              errorMessage = 'Has intentado iniciar sesión demasiadas veces. Inténtalo de nuevo más tarde.';
+              break;
+            default:
+              errorMessage = err.message || errorMessage;
+              break;
+          }
+        }
+        setError(errorMessage);
+        toast({
+          variant: 'destructive',
+          title: 'Error de inicio de sesión',
+          description: errorMessage,
+        });
       }
-      setError(errorMessage);
-      toast({
-        variant: 'destructive',
-        title: 'Error de inicio de sesión',
-        description: errorMessage,
-      });
     } finally {
         setLoading(false);
     }
@@ -180,7 +214,7 @@ export default function LoginPage() {
               <p className="text-sm font-medium text-destructive">{error}</p>
             )}
             <p className="text-xs text-center text-muted-foreground pt-2">
-              Si es la primera vez que inicias sesión con credenciales de administrador, se creará una cuenta automáticamente.
+              Si es la primera vez que inicias sesión, se creará una cuenta de administrador.
             </p>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Verificando...' : 'Ingresar'}
