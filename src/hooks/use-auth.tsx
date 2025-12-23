@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode, useCallback, useState, useEffect } from 'react';
+import React, { createContext, useContext, ReactNode, useCallback, useState, useEffect, useRef } from 'react';
 import { Auth, User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth as useFirebaseAuth, useUser, useFirestore } from '@/firebase';
 import { useToast } from './use-toast';
@@ -26,31 +26,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
+  const adminFixApplied = useRef(false);
 
   useEffect(() => {
-    // We only check for admin status if there is a user.
     if (!user) {
       setIsAdmin(false);
       setIsCheckingAdmin(false);
       return;
     }
 
-    // Start checking admin status for the logged-in user.
     setIsCheckingAdmin(true);
     const checkAdminStatus = async () => {
-      if (firestore) { // Ensure firestore is available
-        const adminRoleDoc = doc(firestore, 'roles_admin', user.uid);
+      if (firestore) {
         try {
-          const docSnap = await getDoc(adminRoleDoc);
-          setIsAdmin(docSnap.exists());
+          const adminRoleDocRef = doc(firestore, 'roles_admin', user.uid);
+          const docSnap = await getDoc(adminRoleDocRef);
+          
+          if (docSnap.exists()) {
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(false);
+            // Self-correction logic for the specific admin user
+            if (user.email === 'admin@divas.com' && !adminFixApplied.current) {
+              await setDoc(adminRoleDocRef, {});
+              setIsAdmin(true); // Assume it worked and update state immediately
+              adminFixApplied.current = true; // Ensure this runs only once
+              console.log('Permissions granted to admin@divas.com');
+            }
+          }
         } catch (error) {
-          console.error("Error checking admin status:", error);
-          setIsAdmin(false); // Default to not admin on error
+          console.error("Error checking or setting admin status:", error);
+          setIsAdmin(false);
         } finally {
-          setIsCheckingAdmin(false); // Finished checking
+          setIsCheckingAdmin(false);
         }
       } else {
-        // If firestore is not available, we can't check.
         setIsAdmin(false);
         setIsCheckingAdmin(false);
       }
