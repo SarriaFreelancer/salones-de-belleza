@@ -67,31 +67,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
     try {
-      await signInWithEmailAndPassword(auth, email, pass);
-      // On successful login, the ProtectedDashboardLayout will handle redirection.
+      const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+      // After login, check if the user is an admin. If not, make them one.
+      // This covers the case where the first user was created but something failed.
+      if (userCredential.user && firestore) {
+          const adminRoleDoc = doc(firestore, 'roles_admin', userCredential.user.uid);
+          const docSnap = await getDoc(adminRoleDoc);
+          if (!docSnap.exists()) {
+              // This user is not an admin, let's check if they should be the first one.
+               const adminRolesCollection = collection(firestore, 'roles_admin');
+               const snapshot = await getCountFromServer(adminRolesCollection);
+                if (snapshot.data().count === 0) {
+                    await setDoc(adminRoleDoc, {});
+                    setIsAdmin(true); // Manually update state
+                     toast({
+                        title: 'Permisos de Admin Asignados',
+                        description: 'Se te han concedido permisos de administrador.',
+                    });
+                }
+          }
+           // The ProtectedDashboardLayout will handle redirection based on the now-correct admin state.
+      }
     } catch (signInError: any) {
       // Check if it's the very first user trying to log in
-      if (signInError.code === 'auth/user-not-found' && firestore) {
-        const adminRolesCollection = collection(firestore, 'roles_admin');
-        const snapshot = await getCountFromServer(adminRolesCollection);
-        if (snapshot.data().count === 0) {
-            try {
-              // Attempt to create the first admin account
-              await signupAndAssignAdminRole(email, pass);
-              toast({
-                title: '¡Cuenta de Admin Creada!',
-                description: 'Bienvenida. Te hemos registrado como el primer administrador.',
-              });
-              // Successful sign up, no need to throw, the state change will trigger re-renders
-              return; 
-            } catch (signUpError: any) {
-              // This error will be propagated to the calling component (LoginPage)
-              console.error("Error creating first admin account:", signUpError);
-              throw new Error(signUpError.message || `Error al crear la cuenta de admin.`);
+      if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
+        if (firestore) {
+            const adminRolesCollection = collection(firestore, 'roles_admin');
+            const snapshot = await getCountFromServer(adminRolesCollection);
+            if (snapshot.data().count === 0 && signInError.code !== 'auth/invalid-credential') {
+                try {
+                  // Attempt to create the first admin account
+                  await signupAndAssignAdminRole(email, pass);
+                  toast({
+                    title: '¡Cuenta de Admin Creada!',
+                    description: 'Bienvenida. Te hemos registrado como el primer administrador.',
+                  });
+                  return; 
+                } catch (signUpError: any) {
+                  console.error("Error creating first admin account:", signUpError);
+                  throw new Error(signUpError.message || `Error al crear la cuenta de admin.`);
+                }
             }
         }
       } 
-      // For any other error (like invalid-credential), just re-throw it to be handled by the UI
       console.error("Login error:", signInError);
       throw signInError; // Propagate the original Firebase error object
     }

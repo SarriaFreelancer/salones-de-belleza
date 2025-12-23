@@ -39,11 +39,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // The login function now handles the entire flow, including first-admin creation
       await login(email, password);
-      // Successful login or signup will trigger a redirect via the layout
     } catch (err: any) {
-      console.error("Login page error:", err.message);
+      console.error("Login page error:", err.code, err.message);
       const errorMessage = err.code === 'auth/invalid-credential' 
         ? 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.'
         : err.message || 'Ha ocurrido un error inesperado.';
@@ -99,13 +97,15 @@ export default function LoginPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
-                   {isAdmin && (
+                   {isAdmin ? (
                       <Button asChild>
                          <Link href="/dashboard">
                            <LayoutDashboard className="mr-2 h-4 w-4" />
                            Ir al Panel de Control
                          </Link>
                       </Button>
+                   ) : (
+                     <p className="text-sm text-muted-foreground">Verificando permisos de administrador...</p>
                    )}
                     <Button variant="outline" onClick={() => logout()}>
                         <LogOut className="mr-2 h-4 w-4" />
