@@ -80,9 +80,9 @@ service cloud.firestore {
     match /roles_admin/{userId} {
       allow read: if isAdmin();
       allow list: if isAdmin();
-      // Allow user to create their own admin role document.
-      // This solves the chicken-and-egg problem of the first admin.
-      allow create: if request.auth.uid == userId;
+      // Allow any authenticated user to create/update their OWN admin role document.
+      // This is the key to solving the chicken-and-egg problem of the first admin.
+      allow write: if request.auth.uid == userId;
       allow delete: if isAdmin();
     }
   }
