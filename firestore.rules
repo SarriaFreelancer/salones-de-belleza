@@ -75,13 +75,12 @@ service cloud.firestore {
 
     // ADMIN ROLES
     // This collection is highly restricted.
-    // A user can be made an admin only if it's the VERY FIRST admin being created.
-    // After that, only other admins can add/remove admins.
+    // Any authenticated user can create/update their OWN admin role document.
+    // This solves the chicken-and-egg problem for the first admin.
+    // Only other admins can manage other user's roles.
     match /roles_admin/{userId} {
       allow read: if isAdmin();
       allow list: if isAdmin();
-      // Allow any authenticated user to create/update their OWN admin role document.
-      // This is the key to solving the chicken-and-egg problem of the first admin.
       allow write: if request.auth.uid == userId;
       allow delete: if isAdmin();
     }
