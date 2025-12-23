@@ -233,35 +233,31 @@ function ProtectedDashboardLayout({
   React.useEffect(() => {
     setIsClient(true);
   }, []);
+  
+  React.useEffect(() => {
+    if (isAuthLoading || !isClient) {
+      // While loading or on the server, do nothing.
+      return;
+    }
 
-  // While checking auth state on client, show nothing to prevent flashes of content
-  if (!isClient) {
-    return null; 
-  }
+    if (!user) {
+      router.replace('/login');
+    } else if (!isAdmin) {
+      router.replace('/login?error=access-denied');
+    }
+  }, [user, isAdmin, isAuthLoading, router, isClient]);
 
-  // If auth is still loading, show the main loading screen.
-  if (isAuthLoading) {
+  // While checking auth state on client, show a loading screen
+  if (isAuthLoading || !isClient) {
     return <LoadingScreen message="Verificando permisos..." />;
   }
 
-  // After loading, if there's no user, redirect to login.
-  if (!user) {
-    router.replace('/login');
-    return <LoadingScreen message="Redirigiendo al login..." />;
-  }
-
-  // After loading, if there's a user but they are not an admin, redirect.
-  if (user && !isAdmin) {
-    router.replace('/login?error=access-denied');
-    return <LoadingScreen message="Acceso denegado. Redirigiendo..." />;
-  }
-
-  // If auth has loaded, a user exists, and they are an admin, render the dashboard.
+  // If user is logged in and is an admin, show the dashboard
   if (user && isAdmin) {
     return <DashboardLayoutContent>{children}</DashboardLayoutContent>;
   }
 
-  // This is a fallback case, should ideally not be reached.
+  // Fallback loading screen while redirecting
   return <LoadingScreen message="Redirigiendo..." />;
 }
 
