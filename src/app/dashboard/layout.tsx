@@ -235,29 +235,33 @@ function ProtectedDashboardLayout({
   }, []);
   
   React.useEffect(() => {
+    // Wait until authentication status is fully resolved and we are on the client
     if (isAuthLoading || !isClient) {
-      // While loading or on the server, do nothing.
       return;
     }
 
+    // If auth is resolved, but there's no user, redirect to login.
     if (!user) {
       router.replace('/login');
-    } else if (!isAdmin) {
+    }
+    // If there is a user, but they are not an admin, redirect to login with an error.
+    else if (!isAdmin) {
       router.replace('/login?error=access-denied');
     }
   }, [user, isAdmin, isAuthLoading, router, isClient]);
 
-  // While checking auth state on client, show a loading screen
+  // While checking auth state on client, show a consistent loading screen.
   if (isAuthLoading || !isClient) {
     return <LoadingScreen message="Verificando permisos..." />;
   }
 
-  // If user is logged in and is an admin, show the dashboard
+  // If user is logged in and is an admin, show the dashboard.
+  // This part is only reached if the useEffect above doesn't redirect.
   if (user && isAdmin) {
     return <DashboardLayoutContent>{children}</DashboardLayoutContent>;
   }
 
-  // Fallback loading screen while redirecting
+  // As a fallback while redirecting, show a message.
   return <LoadingScreen message="Redirigiendo..." />;
 }
 
