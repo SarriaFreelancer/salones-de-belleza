@@ -230,30 +230,32 @@ function ProtectedDashboardLayout({
   const router = useRouter();
 
   React.useEffect(() => {
+    // Only perform actions once authentication state is fully resolved
     if (!isAuthLoading) {
       if (!user) {
-        // If not loading and no user, redirect to login
+        // If not authenticated, redirect to login
         router.replace('/login');
       } else if (!isAdmin) {
-        // If not loading, user exists, but is not an admin
+        // If authenticated but not an admin, show access denied and redirect
         console.warn("Acceso denegado: El usuario no es administrador.");
         router.replace('/login?error=access-denied');
       }
     }
   }, [user, isAuthLoading, isAdmin, router]);
 
-  // While authentication is loading, show a full-page loader
+  // While authentication is loading, show a full-page loader.
+  // This is the key to preventing premature data fetching.
   if (isAuthLoading) {
     return <LoadingScreen message="Verificando permisos..." />;
   }
 
-  // If after loading, there's still no user or they aren't an admin,
-  // show a redirecting message while router does its job.
-  if (!user || !isAdmin) {
+  // If, after loading, the user is still not an admin (or not logged in),
+  // they will be redirected by the useEffect. Show a message in the meantime.
+  if (!isAdmin) {
     return <LoadingScreen message="Acceso denegado. Redirigiendo..." />;
   }
 
-  // If everything is fine, render the actual dashboard layout
+  // If authentication is complete and the user is an admin, render the dashboard.
   return <DashboardLayoutContent>{children}</DashboardLayoutContent>;
 }
 

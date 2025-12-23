@@ -19,7 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading: isFirebaseUserLoading } = useUser();
   const auth = useFirebaseAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -28,21 +28,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
 
   useEffect(() => {
+    // We only check for admin status if there is a user.
+    if (!user) {
+      setIsAdmin(false);
+      setIsCheckingAdmin(false);
+      return;
+    }
+
+    // Start checking admin status for the logged-in user.
+    setIsCheckingAdmin(true);
     const checkAdminStatus = async () => {
-      if (user && firestore) {
-        setIsCheckingAdmin(true);
+      if (firestore) { // Ensure firestore is available
         const adminRoleDoc = doc(firestore, 'roles_admin', user.uid);
         try {
           const docSnap = await getDoc(adminRoleDoc);
           setIsAdmin(docSnap.exists());
         } catch (error) {
           console.error("Error checking admin status:", error);
-          setIsAdmin(false);
+          setIsAdmin(false); // Default to not admin on error
         } finally {
-          setIsCheckingAdmin(false);
+          setIsCheckingAdmin(false); // Finished checking
         }
       } else {
-        // No user, not an admin, and not checking
+        // If firestore is not available, we can't check.
         setIsAdmin(false);
         setIsCheckingAdmin(false);
       }
@@ -84,7 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
-      // State will clear via onAuthStateChanged
+      // State will clear via onAuthStateChanged from the core firebase provider
       setIsAdmin(false);
       if (window.location.pathname.startsWith('/dashboard')) {
         window.location.href = '/login';
@@ -102,7 +110,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [auth, toast]);
   
-  const isAuthLoading = isUserLoading || isCheckingAdmin;
+  // The overall authentication is loading if the firebase user is loading OR we are still checking the admin status
+  const isAuthLoading = isFirebaseUserLoading || isCheckingAdmin;
 
   return (
     <AuthContext.Provider value={{ user, isAdmin, isAuthLoading, logout, clientSignup, clientLogin }}>
