@@ -30,6 +30,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
 
   useEffect(() => {
+    // Reset admin status when user logs out or changes
+    setIsAdmin(false);
+    
+    // Start checking admin status only when firebase user loading is done
+    if (isFirebaseUserLoading) {
+        setIsCheckingAdmin(true);
+        return;
+    }
+
     const checkAdminStatus = async () => {
       if (user && firestore) {
         try {
@@ -38,24 +47,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsAdmin(docSnap.exists());
         } catch (error) {
           console.error("Error checking admin status:", error);
-          setIsAdmin(false);
+          setIsAdmin(false); // Ensure admin is false on error
         } finally {
-          setIsCheckingAdmin(false);
+          setIsCheckingAdmin(false); // Finished checking
         }
       } else {
-        // No user or firestore not ready
-        setIsAdmin(false);
+        // No user, so not an admin, and we are done checking.
         setIsCheckingAdmin(false);
       }
     };
     
-    // Only check admin status if the initial user loading is complete
-    if (!isFirebaseUserLoading) {
-        checkAdminStatus();
-    } else {
-        // While firebase user is loading, we are also implicitly 'checking admin'
-        setIsCheckingAdmin(true);
-    }
+    checkAdminStatus();
+
   }, [user, firestore, isFirebaseUserLoading]);
 
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
