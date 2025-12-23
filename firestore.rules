@@ -38,11 +38,10 @@ service cloud.firestore {
     }
     
     // STYLISTS
-    // Anyone can read stylist profiles.
-    // Only admins can create, update, or delete stylists.
+    // Publicly readable, but only authenticated users (admins) can write.
     match /stylists/{stylistId} {
       allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if isSignedIn();
     }
     
     // STYLIST APPOINTMENTS
@@ -54,17 +53,17 @@ service cloud.firestore {
     }
 
     // SERVICES
-    // Publicly readable, but only admins can write.
+    // Publicly readable, but only authenticated users (admins) can write.
     match /services/{serviceId} {
       allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if isSignedIn();
     }
     
     // GALLERY
-    // Publicly readable, but only admins can write.
+    // Publicly readable, but only authenticated users (admins) can write.
     match /gallery/{galleryId} {
       allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     // ADMIN APPOINTMENTS
