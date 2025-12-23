@@ -251,7 +251,7 @@ function ProtectedDashboardLayout({
 
   // If, after loading, the user is still not an admin (or not logged in),
   // they will be redirected by the useEffect. Show a message in the meantime.
-  if (!isAdmin) {
+  if (!user || !isAdmin) {
     return <LoadingScreen message="Acceso denegado. Redirigiendo..." />;
   }
 
