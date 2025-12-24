@@ -237,7 +237,7 @@ export default function HomePage() {
       <footer className="w-full shrink-0 border-t py-6 px-4 md:px-6">
         <div className="flex flex-col items-center justify-center gap-2 sm:flex-row sm:justify-between">
           <p className="flex-1 text-center text-xs text-muted-foreground">
-            &copy; 2024 Divas A&A. Todos los derechos reservados.
+            &copy; 2025 SarriaTech Solutions S.A.S. Todos los derechos reservados.
           </p>
           <nav className="flex gap-4 sm:gap-6">
             <Button variant="outline" size="sm" asChild>

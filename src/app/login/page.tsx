@@ -13,10 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LogOut, LayoutDashboard } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
@@ -34,6 +33,7 @@ export default function LoginPage() {
     setIsClient(true);
   }, []);
   
+  // This effect handles redirection AFTER authentication state is fully resolved.
   React.useEffect(() => {
     if (!isAuthLoading && user && isAdmin) {
       router.replace('/dashboard');
@@ -47,45 +47,41 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
+      // After a successful login, the useEffect above will handle the redirect.
+      // We don't need to manually redirect here anymore.
     } catch (err: any) {
+      // If user doesn't exist, create them and assign the admin role.
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         try {
           await signupAndAssignAdminRole(email, password);
-          toast({
+           toast({
             title: '¡Cuenta de Admin Creada!',
             description: 'Bienvenida. Te hemos registrado como el primer administrador.',
           });
+          // The useEffect will handle redirect after the new user state is processed.
         } catch (creationError: any) {
           console.error("Admin creation error:", creationError);
-          const errorMessage = 'Error al crear la cuenta de administrador. ¿Ya existe un administrador?';
+          const errorMessage = 'Error al crear la cuenta. ¿Contraseña incorrecta o el usuario ya existe con otras credenciales?';
           setError(errorMessage);
-          toast({
-            variant: 'destructive',
-            title: 'Error de Registro',
-            description: errorMessage,
-          });
+          toast({ variant: 'destructive', title: 'Error de Registro', description: errorMessage });
         }
       } else {
+        // Handle other login errors
         console.error("Login page error:", err.code, err.message);
         let errorMessage = 'Ha ocurrido un error inesperado.';
         switch (err.code) {
           case 'auth/wrong-password':
-          case 'auth/invalid-credential':
-            errorMessage = 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.';
+             errorMessage = 'La contraseña es incorrecta. Por favor, inténtalo de nuevo.';
             break;
           case 'auth/too-many-requests':
             errorMessage = 'Has intentado iniciar sesión demasiadas veces. Inténtalo de nuevo más tarde.';
             break;
           default:
-            errorMessage = err.message || errorMessage;
+            errorMessage = 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.';
             break;
         }
         setError(errorMessage);
-        toast({
-          variant: 'destructive',
-          title: 'Error de inicio de sesión',
-          description: errorMessage,
-        });
+        toast({ variant: 'destructive', title: 'Error de inicio de sesión', description: errorMessage });
       }
     } finally {
         setLoading(false);
@@ -121,6 +117,7 @@ export default function LoginPage() {
     return <LoginSkeleton />;
   }
   
+  // This state is for regular users who are logged in but are not admins.
   if (user && !isAdmin) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40">
@@ -143,7 +140,8 @@ export default function LoginPage() {
     );
   }
 
-  // Render login form if no user, or if user is not admin yet but auth is resolving
+  // Render login form if no user, or if user is not admin yet and auth is resolving.
+  // The redirection logic in useEffect will handle moving an authenticated admin away from this page.
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">
