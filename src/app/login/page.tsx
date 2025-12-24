@@ -34,7 +34,6 @@ export default function LoginPage() {
     setIsClient(true);
   }, []);
   
-  // Effect to redirect if user is already logged in and is an admin
   React.useEffect(() => {
     if (!isAuthLoading && user && isAdmin) {
       router.replace('/dashboard');
@@ -48,7 +47,6 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      // Success will trigger the useEffect above to redirect
     } catch (err: any) {
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         try {
@@ -57,7 +55,6 @@ export default function LoginPage() {
             title: '¡Cuenta de Admin Creada!',
             description: 'Bienvenida. Te hemos registrado como el primer administrador.',
           });
-          // Success will trigger the useEffect above to redirect
         } catch (creationError: any) {
           console.error("Admin creation error:", creationError);
           const errorMessage = 'Error al crear la cuenta de administrador. ¿Ya existe un administrador?';
@@ -120,13 +117,11 @@ export default function LoginPage() {
       </div>
   );
 
-  // Wait until client-side hydration and auth state is fully resolved
   if (!isClient || isAuthLoading) {
     return <LoginSkeleton />;
   }
   
-  // This state is now more reliable due to isAuthLoading
-  if (user) {
+  if (user && !isAdmin) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40">
             <Card className="w-full max-w-sm text-center">
@@ -137,16 +132,7 @@ export default function LoginPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
-                   {isAdmin ? (
-                      <Button asChild>
-                         <Link href="/dashboard">
-                           <LayoutDashboard className="mr-2 h-4 w-4" />
-                           Ir al Panel de Control
-                         </Link>
-                      </Button>
-                   ) : (
-                     <p className="text-sm text-destructive">No tienes permisos de administrador.</p>
-                   )}
+                   <p className="text-sm text-destructive">No tienes permisos de administrador.</p>
                     <Button variant="outline" onClick={() => logout()}>
                         <LogOut className="mr-2 h-4 w-4" />
                         Cerrar Sesión
@@ -157,7 +143,7 @@ export default function LoginPage() {
     );
   }
 
-  // Render login form if no user
+  // Render login form if no user, or if user is not admin yet but auth is resolving
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">

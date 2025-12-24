@@ -30,29 +30,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
 
   useEffect(() => {
-    // Reset admin status when user logs out or changes
-    setIsAdmin(false);
-    
-    // Start checking admin status only when firebase user loading is done
-    if (isFirebaseUserLoading) {
+    const checkAdminStatus = async () => {
+      if (isFirebaseUserLoading) {
         setIsCheckingAdmin(true);
         return;
-    }
-
-    const checkAdminStatus = async () => {
+      }
+      
       if (user && firestore) {
+        setIsCheckingAdmin(true);
         try {
           const adminRoleDocRef = doc(firestore, 'roles_admin', user.uid);
           const docSnap = await getDoc(adminRoleDocRef);
           setIsAdmin(docSnap.exists());
         } catch (error) {
           console.error("Error checking admin status:", error);
-          setIsAdmin(false); // Ensure admin is false on error
+          setIsAdmin(false);
         } finally {
-          setIsCheckingAdmin(false); // Finished checking
+          setIsCheckingAdmin(false);
         }
       } else {
-        // No user, so not an admin, and we are done checking.
+        setIsAdmin(false);
         setIsCheckingAdmin(false);
       }
     };
@@ -62,19 +59,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user, firestore, isFirebaseUserLoading]);
 
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
-    // This is for the ADMIN login
     await signInWithEmailAndPassword(auth, email, pass);
-    // Let the layout effect handle the redirect
   }, [auth]);
 
   const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<void> => {
-    // This function creates the user and assigns the admin role.
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     const newUser = userCredential.user;
     if (newUser && firestore) {
       const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
       await setDoc(adminRoleDoc, {});
-      // The useEffect will now correctly see the user and check for the admin role.
     } else {
       throw new Error('No se pudo crear el usuario o la instancia de Firestore no está disponible.');
     }
@@ -112,8 +105,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
-      // Let onAuthStateChanged handle user state clearing
-      // and redirect if necessary
       if (window.location.pathname.startsWith('/dashboard')) {
         window.location.href = '/login';
       } else {
@@ -129,7 +120,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [auth, toast]);
   
-  // The overall authentication is loading if the firebase user is loading OR we are still checking the admin status
   const isAuthLoading = isFirebaseUserLoading || isCheckingAdmin;
 
   return (
