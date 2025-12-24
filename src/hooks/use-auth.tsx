@@ -53,6 +53,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Don't check admin status until the initial user loading is finished.
     if (!isFirebaseUserLoading) {
       checkAdminStatus();
+    } else {
+      // While firebase user is loading, we are implicitly also waiting to check admin
+      setIsCheckingAdmin(true);
     }
   }, [user, firestore, isFirebaseUserLoading]);
 
