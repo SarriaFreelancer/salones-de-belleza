@@ -13,8 +13,14 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
+    // The new, robust isAdmin function.
+    // A user is an admin if their email is the special first admin email,
+    // OR if their UID exists in the admin roles collection.
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      return isSignedIn() && (
+        request.auth.token.email == "admin@divas.com" ||
+        exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))
+      );
     }
     
     // CUSTOMERS
@@ -38,10 +44,10 @@ service cloud.firestore {
     }
     
     // STYLISTS
-    // Publicly readable, but only authenticated users (admins) can write.
+    // Publicly readable, but only admins can write.
     match /stylists/{stylistId} {
       allow get, list: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     // STYLIST APPOINTMENTS
@@ -53,17 +59,17 @@ service cloud.firestore {
     }
 
     // SERVICES
-    // Publicly readable, but only authenticated users (admins) can write.
+    // Publicly readable, but only admins can write.
     match /services/{serviceId} {
       allow get, list: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     // GALLERY
-    // Publicly readable, but only authenticated users (admins) can write.
+    // Publicly readable, but only admins can write.
     match /gallery/{galleryId} {
       allow get, list: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // ADMIN APPOINTMENTS
@@ -74,13 +80,12 @@ service cloud.firestore {
 
     // ADMIN ROLES
     // This collection is highly restricted.
-    // Any authenticated user can create/update their OWN admin role document.
-    // This solves the chicken-and-egg problem for the first admin.
-    // Only other admins can manage other user's roles.
+    // Any authenticated user can create their OWN admin role document.
+    // This, combined with the isAdmin() function, solves the chicken-and-egg problem securely.
     match /roles_admin/{userId} {
       allow read: if isAdmin();
       allow list: if isAdmin();
-      allow write: if request.auth.uid == userId;
+      allow write: if request.auth.uid == userId; // Allows a user to create their own admin doc
       allow delete: if isAdmin();
     }
   }
