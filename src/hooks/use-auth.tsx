@@ -31,31 +31,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const checkAdminStatus = async () => {
-      // If there's a user and a firestore instance, check their role.
       if (user && firestore) {
+        setIsCheckingAdmin(true);
         try {
           const adminRoleDocRef = doc(firestore, 'roles_admin', user.uid);
           const docSnap = await getDoc(adminRoleDocRef);
           setIsAdmin(docSnap.exists());
         } catch (error) {
           console.error("Error checking admin status:", error);
-          setIsAdmin(false); // Default to not admin on error
+          setIsAdmin(false);
         } finally {
           setIsCheckingAdmin(false);
         }
       } else {
-        // If there's no user, they are definitely not an admin.
+        // No user, not an admin, and no need to check.
         setIsAdmin(false);
         setIsCheckingAdmin(false);
       }
     };
     
-    // Don't check admin status until the initial user loading is finished.
+    // Only check admin status after the initial user loading is complete.
     if (!isFirebaseUserLoading) {
       checkAdminStatus();
-    } else {
-      // While firebase user is loading, we are implicitly also waiting to check admin
-      setIsCheckingAdmin(true);
     }
   }, [user, firestore, isFirebaseUserLoading]);
 
@@ -121,8 +118,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [auth, toast]);
   
-  // The overall authentication is loading if either Firebase is checking the user,
-  // or we are still checking the admin role.
+  // Overall auth is loading if Firebase is loading the user OR if we are still checking the admin role.
   const isAuthLoading = isFirebaseUserLoading || isCheckingAdmin;
 
   return (
