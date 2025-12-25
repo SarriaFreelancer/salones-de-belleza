@@ -14,45 +14,43 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))
-      );
+      // An admin is defined as any authenticated user with the specific email 'admin@divas.com'.
+      return request.auth != null && request.auth.token.email == "admin@divas.com";
     }
     
     // --- Customer Data ---
+    // A user can manage their own customer profile. Admins can read them.
     match /customers/{customerId} {
       allow read: if isAdmin() || isOwner(customerId);
       allow create, update: if isOwner(customerId);
       allow delete: if false; 
     }
 
+    // A user can manage their own appointments. Admins have full access.
     match /customers/{customerId}/appointments/{appointmentId} {
-      allow read: if isOwner(customerId) || isAdmin();
-      allow create, update: if isOwner(customerId);
-      allow delete: if isOwner(customerId) || isAdmin();
+      allow read, write: if isAdmin() || isOwner(customerId);
     }
     
     // --- Admin-Managed Collections ---
-    // Admins have full control. Public can only read services and gallery.
+    // Admins have full control over stylists, services, and the gallery.
     
     match /stylists/{stylistId} {
       allow read, write: if isAdmin();
     }
     
     match /services/{serviceId} {
-        allow read: if true;
+        allow read: if true; // Public can read services
         allow write: if isAdmin();
     }
     
     match /gallery/{galleryId} {
-        allow read: if true;
+        allow read: if true; // Public can read gallery
         allow write: if isAdmin();
     }
     
-    // This subcollection is for aggregated views, only for admins or the stylist themselves
+    // This subcollection is for aggregated views, only for admins.
     match /stylists/{stylistId}/appointments/{appointmentId} {
-        allow read: if isOwner(stylistId) || isAdmin();
-        allow write: if isAdmin();
+        allow read, write: if isAdmin();
     }
 
     // --- Centralized Admin Collections ---
@@ -62,10 +60,10 @@ service cloud.firestore {
         allow read, write: if isAdmin();
     }
 
-    // Only admins can manage roles, but a user can create their own doc on signup.
+    // Admins can manage roles. A user can create their own doc on signup.
     match /roles_admin/{userId} {
-      allow create: if isSignedIn() && isOwner(userId);
-      allow read, delete: if isAdmin();
+      allow read, write: if isAdmin();
+      allow create: if isOwner(userId);
     }
   }
 }
