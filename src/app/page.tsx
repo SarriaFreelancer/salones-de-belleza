@@ -1,4 +1,3 @@
-
 'use client';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
@@ -17,9 +16,10 @@ import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import type { Appointment, Service, Stylist, GalleryImage } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ServicesProvider, useServices } from '@/hooks/use-services';
+import { StylistsProvider, useStylists } from '@/hooks/use-stylists';
 
-
-export default function HomePage() {
+function HomePageContent() {
     const firestore = useFirestore();
     const [isClient, setIsClient] = React.useState(false);
 
@@ -27,12 +27,10 @@ export default function HomePage() {
         setIsClient(true);
     }, []);
 
-    const servicesCollection = useMemoFirebase(() => firestore ? collection(firestore, 'services') : null, [firestore]);
-    const stylistsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'stylists') : null, [firestore]);
-    const galleryCollection = useMemoFirebase(() => firestore ? collection(firestore, 'gallery') : null, [firestore]);
+    const { services, isLoading: isLoadingServices } = useServices();
+    const { stylists, isLoading: isLoadingStylists } = useStylists();
     
-    const { data: services, isLoading: isLoadingServices } = useCollection<Service>(servicesCollection);
-    const { data: stylists, isLoading: isLoadingStylists } = useCollection<Stylist>(stylistsCollection);
+    const galleryCollection = useMemoFirebase(() => firestore ? collection(firestore, 'gallery') : null, [firestore]);
     const { data: galleryImages, isLoading: isLoadingGallery } = useCollection<GalleryImage>(galleryCollection);
     
     const isLoading = !isClient || isLoadingServices || isLoadingStylists || isLoadingGallery;
@@ -63,7 +61,7 @@ export default function HomePage() {
             Contacto
           </Link>
         </nav>
-        <UserAuth />
+        <UserAuth services={services || []} stylists={stylists || []} />
       </header>
       <main className="flex-1">
         <section id="hero" className="relative h-[60vh] w-full">
@@ -248,4 +246,12 @@ export default function HomePage() {
   );
 }
 
-    
+export default function HomePage() {
+    return (
+        <StylistsProvider>
+            <ServicesProvider>
+                <HomePageContent />
+            </ServicesProvider>
+        </StylistsProvider>
+    )
+}
