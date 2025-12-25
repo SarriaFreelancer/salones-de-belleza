@@ -116,8 +116,8 @@ export default function DashboardLayout({
     <StylistsProvider>
       <ServicesProvider>
         <GalleryProvider>
-          <div className="flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar">
-            <SidebarProvider>
+          <SidebarProvider>
+            <div className="flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar">
               <Sidebar>
                 <SidebarHeader>
                   <div className="flex items-center gap-2">
@@ -263,8 +263,8 @@ export default function DashboardLayout({
                 </header>
                 <main className="flex-1 p-4 lg:p-6">{children}</main>
               </SidebarInset>
-            </SidebarProvider>
-          </div>
+            </div>
+          </SidebarProvider>
         </GalleryProvider>
       </ServicesProvider>
     </StylistsProvider>
