@@ -27,6 +27,12 @@ function HomePageContent() {
     const galleryCollection = useMemoFirebase(() => firestore ? collection(firestore, 'gallery') : null, [firestore]);
     const { data: galleryImages, isLoading: isLoadingGallery } = useCollection<GalleryImage>(galleryCollection);
 
+    const [isClient, setIsClient] = React.useState(false);
+
+    React.useEffect(() => {
+        setIsClient(true);
+    }, []);
+
     const isLoading = isLoadingServices || isLoadingStylists || isLoadingGallery;
 
   return (
@@ -55,11 +61,11 @@ function HomePageContent() {
             Contacto
           </Link>
         </nav>
-        <UserAuth services={services || []} stylists={stylists || []} />
+        {isClient ? <UserAuth services={services || []} stylists={stylists || []} /> : <Skeleton className="h-10 w-28" />}
       </header>
-      <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-4">
-            <section id="hero" className="relative h-[60vh] w-full -mx-4">
+      <main>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <section id="hero" className="relative h-[60vh] w-full">
                 <Image 
                     src="https://picsum.photos/seed/hero/1200/800" 
                     alt="Salón de belleza Divas A&A" 
@@ -69,7 +75,7 @@ function HomePageContent() {
                     data-ai-hint="beauty salon interior"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-                <div className="container relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
+                <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
                     <h2 className="font-headline text-5xl font-bold tracking-tighter sm:text-6xl md:text-7xl">
                     Realza tu Belleza Natural
                     </h2>
@@ -118,7 +124,7 @@ function HomePageContent() {
               </div>
             </section>
 
-            <section id="equipo" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32 -mx-4 sm:-mx-6 md:-mx-8">
+            <section id="equipo" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
                 <div className="container px-4 md:px-6">
                     <div className="mx-auto max-w-3xl space-y-4 text-center">
                         <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
@@ -170,13 +176,13 @@ function HomePageContent() {
               </div>
             </section>
 
-            <section id="agendar" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32 -mx-4 sm:-mx-6 md:-mx-8">
+            <section id="agendar" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
                 <div className="container px-4 md:px-6">
-                    <PublicBookingForm services={services || []} stylists={stylists || []} />
+                    {isClient ? <PublicBookingForm services={services || []} stylists={stylists || []} /> : <Skeleton className="h-96 w-full" />}
                 </div>
             </section>
 
-            <section id="contacto" className="w-full border-t bg-card py-12 md:py-24 lg:py-32 -mx-4 sm:-mx-6 md:-mx-8">
+            <section id="contacto" className="w-full border-t bg-card py-12 md:py-24 lg:py-32">
               <div className="container grid items-center gap-8 px-4 md:px-6 lg:grid-cols-2 lg:gap-16">
                 <div className="space-y-4">
                   <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
