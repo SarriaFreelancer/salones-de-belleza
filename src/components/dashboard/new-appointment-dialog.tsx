@@ -37,9 +37,15 @@ import {
   Calendar as CalendarIcon,
   Clock,
   User,
-  ChevronsUpDown,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { format from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import type { Appointment, DayOfWeek } from '@/lib/types';
@@ -51,11 +57,9 @@ import { useStylists } from '@/hooks/use-stylists';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, Timestamp } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import { Checkbox } from '../ui/checkbox';
-
 
 const formSchema = z.object({
-  serviceIds: z.array(z.string()).min(1, 'Debes seleccionar al menos un servicio.'),
+  serviceId: z.string().min(1, 'Debes seleccionar un servicio.'),
   preferredDate: z.date({
     required_error: 'Debes seleccionar una fecha.',
   }),
@@ -94,7 +98,7 @@ export default function NewAppointmentDialog({
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      serviceIds: [],
+      serviceId: '',
       customerName: '',
       customerEmail: '',
     },
@@ -108,7 +112,7 @@ export default function NewAppointmentDialog({
 
   const resetDialog = () => {
     form.reset({
-        serviceIds: [],
+        serviceId: '',
         customerName: '',
         customerEmail: '',
         preferredDate: new Date(),
@@ -129,8 +133,8 @@ export default function NewAppointmentDialog({
     setIsLoading(true);
     setSuggestions([]);
     
-    const selectedServices = services.filter((s) => values.serviceIds.includes(s.id));
-    if (selectedServices.length === 0) {
+    const selectedService = services.find((s) => values.serviceId === s.id);
+    if (!selectedService) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -139,9 +143,6 @@ export default function NewAppointmentDialog({
       setIsLoading(false);
       return;
     }
-
-    const totalDuration = selectedServices.reduce((acc, s) => acc + s.duration, 0);
-    const serviceNames = selectedServices.map(s => s.name).join(', ');
 
     const formattedDate = format(values.preferredDate, 'yyyy-MM-dd');
     const existingAppointmentsForDate = appointments
@@ -158,8 +159,8 @@ export default function NewAppointmentDialog({
 
     try {
       const result = await suggestAppointment({
-        service: serviceNames,
-        duration: totalDuration,
+        service: selectedService.name,
+        duration: selectedService.duration,
         preferredDate: formattedDate,
         stylistAvailability: stylists.map((s) => ({
           stylistId: s.id,
@@ -194,8 +195,6 @@ export default function NewAppointmentDialog({
   const selectSuggestion = (suggestion: Suggestion) => {
     if (!firestore) return;
     const values = form.getValues();
-    const selectedServices = services.filter(s => values.serviceIds.includes(s.id));
-    const serviceId = selectedServices.length > 0 ? selectedServices[0].id : '';
 
     const [startHours, startMinutes] = suggestion.startTime.split(':').map(Number);
     const startDate = new Date(values.preferredDate);
@@ -208,7 +207,7 @@ export default function NewAppointmentDialog({
     const newAppointment: Omit<Appointment, 'id'> = {
       customerName: values.customerName.trim(),
       customerId: 'mock_customer_id', // Placeholder
-      serviceId: serviceId, // Simplified for now
+      serviceId: values.serviceId,
       stylistId: suggestion.stylistId,
       start: Timestamp.fromDate(startDate),
       end: Timestamp.fromDate(endDate),
@@ -238,10 +237,8 @@ export default function NewAppointmentDialog({
 
     handleOpenChange(false);
   };
-
-   const selectedServices = services.filter((s) =>
-    form.watch('serviceIds').includes(s.id)
-  );
+  
+  const selectedService = services.find((s) => form.watch('serviceId') === s.id);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -293,62 +290,28 @@ export default function NewAppointmentDialog({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="serviceIds"
+                  name="serviceId"
                   render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                      <FormLabel>Servicios</FormLabel>
-                      <Popover>
-                          <PopoverTrigger asChild>
-                          <FormControl>
-                              <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn(
-                                  'w-full justify-between',
-                                  !field.value.length && 'text-muted-foreground'
-                              )}
-                              >
-                              <span className="truncate">
-                                  {selectedServices.length > 0
-                                  ? selectedServices.map((s) => s.name).join(', ')
-                                  : 'Selecciona uno o más servicios'}
-                              </span>
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                          </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <ScrollArea className="h-48">
-                                <div className="p-2 space-y-1">
-                                {services.map((service) => (
-                                    <div key={service.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-accent">
-                                        <Checkbox
-                                            id={`service-${service.id}`}
-                                            checked={field.value.includes(service.id)}
-                                            onCheckedChange={(checked) => {
-                                                const currentValues = form.getValues('serviceIds');
-                                                const newValues = checked
-                                                    ? [...currentValues, service.id]
-                                                    : currentValues.filter((id) => id !== service.id);
-                                                form.setValue('serviceIds', newValues, { shouldValidate: true });
-                                            }}
-                                        />
-                                        <label htmlFor={`service-${service.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 w-full">
-                                            {service.name}
-                                        </label>
-                                    </div>
-                                ))}
-                                </div>
-                            </ScrollArea>
-                          </PopoverContent>
-                      </Popover>
-                        <FormDescription>
-                          Puedes seleccionar múltiples servicios.
-                      </FormDescription>
+                    <FormItem>
+                      <FormLabel>Servicio</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona un servicio" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {services.map((service) => (
+                            <SelectItem key={service.id} value={service.id}>
+                              {service.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
-                      </FormItem>
+                    </FormItem>
                   )}
-                  />
+                />
                 <FormField
                   control={form.control}
                   name="preferredDate"
@@ -424,10 +387,7 @@ export default function NewAppointmentDialog({
                 <div className='text-sm'>
                 <p><strong>Cliente:</strong> {form.getValues('customerName')}</p>
                 <p><strong>Fecha:</strong> {form.getValues('preferredDate') ? format(form.getValues('preferredDate'), 'PPP', { locale: es }) : ''}</p>
-                <div><strong>Servicios:</strong>
-                    <div className='flex flex-wrap gap-1 mt-1'>
-                        {selectedServices.map(s => <Badge key={s.id} variant="secondary">{s.name}</Badge>)}
-                    </div>
+                <div><strong>Servicio:</strong> <Badge variant="secondary">{selectedService?.name}</Badge>
                 </div>
                 </div>
             </div>
