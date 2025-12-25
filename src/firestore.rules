@@ -14,21 +14,24 @@ service cloud.firestore {
     }
     
     function isAdmin() {
+      // The only admin is the one with this specific email.
       return request.auth != null && request.auth.token.email == "admin@divas.com";
     }
     
     // --- Customer Data ---
     match /customers/{customerId} {
-      allow read, update, delete: if isAdmin() || isOwner(customerId);
-      // Let any signed-in user create a customer profile for themselves
-      allow create: if isSignedIn();
+      // Admin can do anything. A user can read or update their own profile.
+      allow read, update: if isAdmin() || isOwner(customerId);
+      // Let any signed-in user create their own customer profile.
+      // Admin can also delete profiles.
+      allow create: if isOwner(customerId);
+      allow delete: if isAdmin();
     }
 
     match /customers/{customerId}/appointments/{appointmentId} {
-      // isOwner can do anything to their own appointments
-      allow read, write: if isOwner(customerId);
-      // Admin can only read customer appointments, not change them
-      allow get, list: if isAdmin();
+      // A user can manage their own appointments. Admin can only read them from this view.
+      allow write: if isOwner(customerId);
+      allow read: if isAdmin() || isOwner(customerId);
     }
     
     // --- Publicly Readable / Admin-Managed Collections ---
@@ -55,10 +58,8 @@ service cloud.firestore {
     match /stylists/{stylistId}/appointments/{appointmentId} {
         // Any signed in user can read to check for availability
         allow read: if isSignedIn();
-        // Any signed in user can create an appointment to block off time
-        allow create: if isSignedIn();
-        // Only an admin can modify or delete existing appointment slots
-        allow update, delete: if isAdmin();
+        // Only an admin can write to a stylist's schedule (create/update/delete)
+        allow write: if isAdmin();
     }
 
     // --- Centralized Admin Collections ---
