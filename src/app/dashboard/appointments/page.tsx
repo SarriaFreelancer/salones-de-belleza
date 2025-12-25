@@ -14,6 +14,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,7 @@ import {
   PlusCircle,
   Edit,
   Trash2,
+  XCircle,
   AlertTriangle,
 } from 'lucide-react';
 import type { Appointment } from '@/lib/types';
@@ -43,7 +45,7 @@ import NewAppointmentDialog from '@/components/dashboard/new-appointment-dialog'
 import { useStylists } from '@/hooks/use-stylists';
 import { useServices } from '@/hooks/use-services';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -58,11 +60,17 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 
+type DialogState = 
+  | { type: 'delete'; appointment: Appointment }
+  | { type: 'cancel'; appointment: Appointment }
+  | null;
+
+
 function AppointmentsPage() {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [stylistFilter, setStylistFilter] = React.useState<string>('all');
   const [serviceFilter, setServiceFilter] = React.useState<string>('all');
-  const [dialogState, setDialogState] = React.useState<{type: 'delete', appointment: Appointment} | null>(null);
+  const [dialogState, setDialogState] = React.useState<DialogState>(null);
   
   const { stylists, isLoading: isLoadingStylists } = useStylists();
   const { services, isLoading: isLoadingServices } = useServices();
@@ -79,16 +87,41 @@ function AppointmentsPage() {
   const handleAppointmentCreated = () => {
     // No need to manually update state, useCollection handles it
   };
+
+  const handleCancelAppointment = async () => {
+    if (dialogState?.type === 'cancel' && firestore) {
+      const { appointment } = dialogState;
+      try {
+        const appointmentRef = doc(firestore, 'admin_appointments', appointment.id);
+        await updateDoc(appointmentRef, { status: 'cancelled' });
+
+        const stylistAppointmentRef = doc(firestore, 'stylists', appointment.stylistId, 'appointments', appointment.id);
+        await updateDoc(stylistAppointmentRef, { status: 'cancelled' });
+        
+        toast({
+          title: 'Cita Cancelada',
+          description: `La cita de ${appointment.customerName} ha sido marcada como cancelada.`,
+        });
+      } catch (error) {
+        console.error("Error cancelling appointment: ", error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'No se pudo cancelar la cita. Inténtalo de nuevo.',
+        });
+      } finally {
+        setDialogState(null);
+      }
+    }
+  };
   
   const handleDeleteAppointment = async () => {
     if (dialogState?.type === 'delete' && firestore) {
       const { appointment } = dialogState;
       try {
-        // Reference to the main appointment document
         const appointmentRef = doc(firestore, 'admin_appointments', appointment.id);
         await deleteDoc(appointmentRef);
         
-        // Reference to the mirrored appointment for the stylist
         const stylistAppointmentRef = doc(firestore, 'stylists', appointment.stylistId, 'appointments', appointment.id);
         await deleteDoc(stylistAppointmentRef);
         
@@ -236,8 +269,9 @@ function AppointmentsPage() {
                   const service = services.find(s => s.id === appointment.serviceId);
                   const stylist = stylists.find(s => s.id === appointment.stylistId);
                   const appointmentDate = appointment.start instanceof Date ? appointment.start : appointment.start.toDate();
+                  const isCancelled = appointment.status === 'cancelled';
                   return (
-                    <TableRow key={appointment.id}>
+                    <TableRow key={appointment.id} data-state={isCancelled ? 'disabled' : ''} className={isCancelled ? 'opacity-50' : ''}>
                       <TableCell className="font-medium">{appointment.customerName}</TableCell>
                       <TableCell>{service?.name || 'N/A'}</TableCell>
                       <TableCell className="hidden md:table-cell">{stylist?.name || 'N/A'}</TableCell>
@@ -261,7 +295,7 @@ function AppointmentsPage() {
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <Button aria-haspopup="true" size="icon" variant="ghost" disabled={isCancelled}>
                               <MoreHorizontal className="h-4 w-4" />
                               <span className="sr-only">Toggle menu</span>
                             </Button>
@@ -272,6 +306,11 @@ function AppointmentsPage() {
                                 <Edit className="mr-2 h-4 w-4" />
                                 Editar
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDialogState({ type: 'cancel', appointment })}>
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Cancelar Cita
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => setDialogState({ type: 'delete', appointment })} className="text-destructive">
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Eliminar Cita
@@ -293,17 +332,26 @@ function AppointmentsPage() {
           </Table>
         </div>
       </div>
-      <AlertDialog open={dialogState?.type === 'delete'} onOpenChange={(isOpen) => !isOpen && setDialogState(null)}>
+      <AlertDialog open={!!dialogState} onOpenChange={(isOpen) => !isOpen && setDialogState(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás realmente seguro?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {dialogState?.type === 'delete' ? '¿Estás realmente seguro?' : 'Confirmar Cancelación'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. La cita será eliminada permanentemente de la base de datos.
+              {dialogState?.type === 'delete' 
+                ? 'Esta acción no se puede deshacer. La cita será eliminada permanentemente de la base de datos.'
+                : 'Esto cambiará el estado de la cita a "Cancelada". Esta acción se puede revertir editando la cita.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cerrar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteAppointment} className="bg-destructive hover:bg-destructive/90">Confirmar Eliminación</AlertDialogAction>
+            <AlertDialogAction 
+              onClick={dialogState?.type === 'delete' ? handleDeleteAppointment : handleCancelAppointment} 
+              className={dialogState?.type === 'delete' ? 'bg-destructive hover:bg-destructive/90' : ''}
+            >
+              {dialogState?.type === 'delete' ? 'Confirmar Eliminación' : 'Confirmar Cancelación'}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
