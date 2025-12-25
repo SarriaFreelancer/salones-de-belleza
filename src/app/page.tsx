@@ -61,7 +61,7 @@ function HomePageContent() {
             Contacto
           </Link>
         </nav>
-         {isClient ? <UserAuth services={services || []} stylists={stylists || []} /> : <Skeleton className="h-10 w-24" />}
+        {isClient ? <UserAuth services={services || []} stylists={stylists || []} /> : <Skeleton className="h-10 w-24" />}
       </header>
       <main className="flex-1">
         <section id="hero" className="relative h-[60vh] w-full">
