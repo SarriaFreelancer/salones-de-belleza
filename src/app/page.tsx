@@ -14,7 +14,7 @@ import UserAuth from '@/components/public/user-auth';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
-import type { Appointment, Service, Stylist, GalleryImage } from '@/lib/types';
+import type { GalleryImage } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ServicesProvider, useServices } from '@/hooks/use-services';
 import { StylistsProvider, useStylists } from '@/hooks/use-stylists';
@@ -74,7 +74,7 @@ function HomePageContent() {
                 data-ai-hint="beauty salon interior"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-            <div className="relative container mx-auto z-10 flex h-full flex-col items-center justify-center text-center">
+            <div className="container relative z-10 flex h-full flex-col items-center justify-center text-center">
                 <h2 className="font-headline text-5xl font-bold tracking-tighter sm:text-6xl md:text-7xl">
                 Realza tu Belleza Natural
                 </h2>
@@ -90,7 +90,7 @@ function HomePageContent() {
         </section>
 
         <section id="servicios" className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container mx-auto px-4 md:px-6">
+          <div className="container px-4 md:px-6">
             <div className="mb-12 text-center">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Nuestros Servicios
@@ -124,7 +124,7 @@ function HomePageContent() {
         </section>
 
         <section id="equipo" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
-            <div className="container mx-auto px-4 md:px-6">
+            <div className="container px-4 md:px-6">
                 <div className="mb-12 text-center">
                     <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                         Conoce a Nuestro Equipo
@@ -149,7 +149,7 @@ function HomePageContent() {
         </section>
 
         <section id="galeria" className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container mx-auto px-4 md:px-6">
+          <div className="container px-4 md:px-6">
             <div className="mb-12 text-center">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Galería de Estilos
@@ -176,13 +176,13 @@ function HomePageContent() {
         </section>
 
         <section id="agendar" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
-            <div className="container mx-auto px-4 md:px-6">
+            <div className="container px-4 md:px-6">
                 {isLoading || !isClient ? <Skeleton className="h-96 w-full max-w-4xl mx-auto" /> : <PublicBookingForm services={services || []} stylists={stylists || []} />}
             </div>
         </section>
 
         <section id="contacto" className="w-full border-t bg-card py-12 md:py-24 lg:py-32">
-          <div className="container mx-auto grid items-center justify-center gap-8 px-4 md:px-6 lg:grid-cols-2 lg:gap-16">
+          <div className="container grid items-center gap-8 px-4 md:px-6 lg:grid-cols-2 lg:gap-16">
             <div className="space-y-4">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Ponte en Contacto
@@ -232,7 +232,7 @@ function HomePageContent() {
         </section>
       </main>
       <footer className="w-full shrink-0 border-t py-6 px-4 md:px-6">
-        <div className="container mx-auto flex flex-col items-center justify-center gap-2 sm:flex-row sm:justify-between">
+        <div className="container flex flex-col items-center justify-center gap-2 sm:flex-row sm:justify-between">
           <p className="flex-1 text-center text-xs text-muted-foreground sm:text-left">
             &copy; 2025 SarriaTech Solutions S.A.S. Todos los derechos reservados.
           </p>
