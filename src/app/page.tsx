@@ -33,7 +33,7 @@ function HomePageContent() {
     const galleryCollection = useMemoFirebase(() => firestore ? collection(firestore, 'gallery') : null, [firestore]);
     const { data: galleryImages, isLoading: isLoadingGallery } = useCollection<GalleryImage>(galleryCollection);
     
-    const isLoading = !isClient || isLoadingServices || isLoadingStylists || isLoadingGallery;
+    const isLoading = isLoadingServices || isLoadingStylists || isLoadingGallery;
 
   return (
     <>
@@ -61,7 +61,7 @@ function HomePageContent() {
             Contacto
           </Link>
         </nav>
-        <UserAuth services={services || []} stylists={stylists || []} />
+         {isClient ? <UserAuth services={services || []} stylists={stylists || []} /> : <Skeleton className="h-10 w-24" />}
       </header>
       <main className="flex-1">
         <section id="hero" className="relative h-[60vh] w-full">
@@ -100,7 +100,7 @@ function HomePageContent() {
               </p>
             </div>
             <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {isLoading || !services ? Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-60 w-full" />) : services.map((service) => (
+              {isLoading ? Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-60 w-full" />) : (services || []).map((service) => (
                 <Card key={service.id} className="flex flex-col text-left transition-transform hover:scale-105 hover:shadow-lg">
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -134,7 +134,7 @@ function HomePageContent() {
                     </p>
                 </div>
                 <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-8">
-                    {isLoading || !stylists ? Array.from({length: 4}).map((_, i) => <div key={i} className="flex flex-col items-center gap-4"><Skeleton className="h-40 w-40 rounded-full" /><Skeleton className="h-6 w-24" /></div>) : stylists.map((stylist) => (
+                    {isLoading ? Array.from({length: 4}).map((_, i) => <div key={i} className="flex flex-col items-center gap-4"><Skeleton className="h-40 w-40 rounded-full" /><Skeleton className="h-6 w-24" /></div>) : (stylists || []).map((stylist) => (
                         <div key={stylist.id} className="group relative flex flex-col items-center text-center w-40">
                             <Avatar className="h-40 w-40 border-4 border-background shadow-lg transition-transform group-hover:scale-105">
                                 <AvatarImage src={stylist.avatarUrl} alt={stylist.name} data-ai-hint="woman portrait" />
@@ -159,8 +159,8 @@ function HomePageContent() {
               </p>
             </div>
             <div className="mx-auto grid max-w-5xl grid-cols-2 gap-4 sm:grid-cols-3">
-                {isLoading || !galleryImages ? Array.from({length: 6}).map((_, i) => <Skeleton key={i} className="aspect-video w-full" />) : galleryImages.map(img => (
-                    <div key={img.id} className="group relative rounded-lg overflow-hidden group-hover:z-10">
+                {isLoading ? Array.from({length: 6}).map((_, i) => <Skeleton key={i} className="aspect-video w-full" />) : (galleryImages || []).map(img => (
+                    <div key={img.id} className="group relative rounded-lg group-hover:z-10">
                       <Image 
                           src={img.src} 
                           alt={img.alt} 
@@ -177,7 +177,7 @@ function HomePageContent() {
 
         <section id="agendar" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
             <div className="container px-4 md:px-6">
-                {isLoading || !isClient ? <Skeleton className="h-96 w-full max-w-4xl mx-auto" /> : <PublicBookingForm services={services || []} stylists={stylists || []} />}
+                {isClient ? <PublicBookingForm services={services || []} stylists={stylists || []} /> : <Skeleton className="h-96 w-full max-w-4xl mx-auto" />}
             </div>
         </section>
 
