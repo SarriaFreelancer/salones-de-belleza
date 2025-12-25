@@ -62,7 +62,7 @@ function HomePageContent() {
             Contacto
           </Link>
         </nav>
-        {isClient ? <UserAuth services={services || []} stylists={stylists || []} /> : <Skeleton className="h-10 w-28" />}
+        {isClient ? <UserAuth /> : <Skeleton className="h-10 w-28" />}
       </header>
       <main>
         <section id="hero" className="relative h-[60vh] w-full">
@@ -233,11 +233,11 @@ function HomePageContent() {
         </section>
       </main>
       <footer className="w-full shrink-0 border-t py-6 px-4 md:px-6">
-        <div className="container flex flex-col items-center justify-center gap-2 sm:flex-row sm:justify-between">
-          <p className="flex-1 text-center text-xs text-muted-foreground sm:text-left">
+        <div className="container mx-auto flex flex-col items-center justify-center gap-2 px-4 sm:flex-row">
+          <p className="flex-1 text-center text-xs text-muted-foreground">
             &copy; 2025 SarriaTech Solutions S.A.S. Todos los derechos reservados.
           </p>
-          <nav className="flex gap-4 sm:gap-6">
+          <nav>
             <Button variant="outline" size="sm" asChild>
               <Link href="/login">Admin Login</Link>
             </Button>
@@ -248,14 +248,13 @@ function HomePageContent() {
   );
 }
 
+
 export default function HomePage() {
-    return (
-      <div className='bg-background font-sans'>
-        <StylistsProvider>
-            <ServicesProvider>
-                <HomePageContent />
-            </ServicesProvider>
-        </StylistsProvider>
-      </div>
-    )
+  return (
+    <StylistsProvider>
+      <ServicesProvider>
+        <HomePageContent />
+      </ServicesProvider>
+    </StylistsProvider>
+  );
 }
