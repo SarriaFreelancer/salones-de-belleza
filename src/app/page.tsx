@@ -137,9 +137,9 @@ export default function HomePage() {
                         Manos expertas dedicadas a realzar tu belleza.
                     </p>
                 </div>
-                <div className="mx-auto mt-12 grid grid-cols-2 gap-6 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4">
+                <div className="mx-auto mt-12 flex flex-wrap justify-center gap-8">
                     {isLoading || !stylists ? Array.from({length: 4}).map((_, i) => <div key={i} className="flex flex-col items-center gap-4"><Skeleton className="h-40 w-40 rounded-full" /><Skeleton className="h-6 w-24" /></div>) : stylists.map((stylist) => (
-                        <div key={stylist.id} className="group relative flex flex-col items-center text-center">
+                        <div key={stylist.id} className="group relative flex flex-col items-center text-center w-40">
                             <Avatar className="h-40 w-40 border-4 border-background shadow-lg transition-transform group-hover:scale-105">
                                 <AvatarImage src={stylist.avatarUrl} alt={stylist.name} data-ai-hint="woman portrait" />
                                 <AvatarFallback>{stylist.name.charAt(0)}</AvatarFallback>
