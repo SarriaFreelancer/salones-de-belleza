@@ -57,8 +57,7 @@ import {
   setDoc,
   writeBatch,
 } from 'firebase/firestore';
-import { useFirestore, useFirebaseAuth } from '@/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { useFirestore } from '@/firebase';
 
 const formSchema = z.object({
   serviceId: z.string().min(1, 'Debes seleccionar un servicio.'),
@@ -86,13 +85,11 @@ type FormValues = z.infer<typeof formSchema>;
 interface NewAppointmentDialogProps {
   children: React.ReactNode;
   onAppointmentCreated: (appointment: Appointment) => void;
-  appointments: Appointment[];
 }
 
 export default function NewAppointmentDialog({
   children,
   onAppointmentCreated,
-  appointments,
 }: NewAppointmentDialogProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
@@ -102,7 +99,9 @@ export default function NewAppointmentDialog({
   const { services } = useServices();
   const { stylists } = useStylists();
   const firestore = useFirestore();
-  const auth = useFirebaseAuth();
+  const { data: appointments } = useCollection(
+    firestore ? collection(firestore, 'admin_appointments') : null
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -174,7 +173,7 @@ export default function NewAppointmentDialog({
     const dayOfWeek = getDayOfWeek(preferredDate);
     const availabilityForDay = stylist.availability[dayOfWeek] || [];
 
-    const existingAppointments = appointments.filter((app) => {
+    const existingAppointments = (appointments || []).filter((app) => {
       const appDate = app.start instanceof Date ? app.start : app.start.toDate();
       return (
         app.stylistId === stylistId &&
@@ -236,7 +235,7 @@ export default function NewAppointmentDialog({
   };
   
  const getOrCreateCustomer = async (values: FormValues): Promise<string> => {
-    if (!firestore || !auth) throw new Error('Firestore o Auth no están disponibles');
+    if (!firestore) throw new Error('Firestore no está disponible');
     
     const customersRef = collection(firestore, 'customers');
     const q = query(customersRef, where('email', '==', values.customerEmail.trim().toLowerCase()));
@@ -244,40 +243,28 @@ export default function NewAppointmentDialog({
     const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
+      // Customer exists, return their ID
       return querySnapshot.docs[0].id;
     } else {
-      try {
-        const tempPassword = Math.random().toString(36).slice(-8);
-        const userCredential = await createUserWithEmailAndPassword(auth, values.customerEmail, tempPassword);
-        const newUser = userCredential.user;
-
-        const newCustomerData = {
+      // Customer doesn't exist, create a new one in Firestore (but NOT in Firebase Auth)
+      const newCustomerData = {
           firstName: values.customerFirstName,
           lastName: values.customerLastName,
           email: values.customerEmail.trim().toLowerCase(),
           phone: values.customerPhone,
-          id: newUser.uid,
-        };
-        
-        await setDoc(doc(customersRef, newUser.uid), newCustomerData);
+      };
+      
+      const newCustomerDocRef = await addDoc(customersRef, newCustomerData);
+      
+      // Manually set the ID field in the new document
+      await setDoc(newCustomerDocRef, { id: newCustomerDocRef.id }, { merge: true });
 
-        toast({
-            title: "Nuevo Cliente Creado",
-            description: `${values.customerFirstName} ha sido registrado. Deberá restablecer su contraseña al iniciar sesión.`,
-        });
-        
-        return newUser.uid;
-      } catch (error: any) {
-        console.error("Error creating new user in getOrCreateCustomer:", error);
-        if (error.code === 'auth/email-already-in-use') {
-            toast({
-                variant: 'destructive',
-                title: 'Error de Autenticación',
-                description: 'Este correo ya está registrado en Firebase Auth, pero no como cliente. Contacte al soporte.',
-            });
-        }
-        throw new Error('No se pudo crear el nuevo usuario en Firebase.');
-      }
+      toast({
+          title: "Nuevo Cliente Creado",
+          description: `${values.customerFirstName} ha sido registrado. Deberá crear una cuenta para iniciar sesión.`,
+      });
+      
+      return newCustomerDocRef.id;
     }
   };
 
@@ -307,15 +294,15 @@ export default function NewAppointmentDialog({
       
       const batch = writeBatch(firestore);
 
-      // 1. Create the main appointment document
       const mainAppointmentRef = doc(collection(firestore, 'admin_appointments'));
       batch.set(mainAppointmentRef, newAppointmentData);
       
-      // 2. Create the mirrored appointment in the stylist's subcollection
       const stylistAppointmentRef = doc(firestore, 'stylists', values.stylistId, 'appointments', mainAppointmentRef.id);
       batch.set(stylistAppointmentRef, newAppointmentData);
+
+      const customerAppointmentRef = doc(firestore, 'customers', customerId, 'appointments', mainAppointmentRef.id);
+      batch.set(customerAppointmentRef, newAppointmentData);
       
-      // Commit the batch
       await batch.commit();
 
       toast({
