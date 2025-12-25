@@ -19,13 +19,16 @@ service cloud.firestore {
     
     // --- Customer Data ---
     match /customers/{customerId} {
-      allow read: if isAdmin() || isOwner(customerId);
-      allow create, update: if isAdmin() || isOwner(customerId);
-      allow delete: if isAdmin();
+      allow read, update, delete: if isAdmin() || isOwner(customerId);
+      // Let any signed-in user create a customer profile for themselves
+      allow create: if isSignedIn();
     }
 
     match /customers/{customerId}/appointments/{appointmentId} {
-      allow read, write: if isAdmin() || isOwner(customerId);
+      // isOwner can do anything to their own appointments
+      allow read, write: if isOwner(customerId);
+      // Admin can only read customer appointments, not change them
+      allow get, list: if isAdmin();
     }
     
     // --- Publicly Readable / Admin-Managed Collections ---
@@ -49,17 +52,20 @@ service cloud.firestore {
     }
     
     // This subcollection is for appointment slots for a given stylist.
-    // Allow any signed-in user to read to check for availability.
     match /stylists/{stylistId}/appointments/{appointmentId} {
+        // Any signed in user can read to check for availability
         allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        // Any signed in user can create an appointment to block off time
+        allow create: if isSignedIn();
+        // Only an admin can modify or delete existing appointment slots
+        allow update, delete: if isAdmin();
     }
 
     // --- Centralized Admin Collections ---
     
     match /admin_appointments/{document=**} {
-        allow read: if isAdmin();
-        allow write: if isAdmin() || isSignedIn();
+        // Only admins can read or write to the master appointment list
+        allow read, write: if isAdmin();
     }
 
     match /roles_admin/{userId} {
