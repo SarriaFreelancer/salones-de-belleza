@@ -7,23 +7,19 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Form,
   FormControl,
@@ -37,65 +33,65 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogOut, ChevronDown, User as UserIcon } from 'lucide-react';
-import { type Service, type Stylist } from '@/lib/types';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Skeleton } from '../ui/skeleton';
+import { LogOut, User } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// --- Esquemas de Validación ---
 
 const loginSchema = z.object({
-  email: z
+  email: z.string().email('El correo electrónico no es válido.'),
+  password: z
     .string()
-    .email('El correo electrónico no es válido.')
-    .min(1, 'El correo electrónico es requerido.'),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres.'),
+    .min(6, 'La contraseña debe tener al menos 6 caracteres.'),
 });
 
 const signupSchema = z.object({
-  firstName: z.string().min(2, 'El nombre es requerido.'),
-  lastName: z.string().min(2, 'El apellido es requerido.'),
-  phone: z.string().min(7, 'El teléfono es requerido.'),
+  firstName: z
+    .string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres.'),
+  lastName: z.string().min(2, 'El apellido debe tener al menos 2 caracteres.'),
+  phone: z.string().min(7, 'El teléfono debe tener al menos 7 caracteres.'),
   email: z.string().email('El correo electrónico no es válido.'),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres.'),
+  password: z
+    .string()
+    .min(6, 'La contraseña debe tener al menos 6 caracteres.'),
 });
 
-interface UserAuthProps {
-    services: Service[];
-    stylists: Stylist[];
-}
+// --- Componente del Formulario de Inicio de Sesión ---
 
-function LoginForm() {
+function LoginForm({ onLoginSuccess }: { onLoginSuccess: () => void }) {
   const { clientLogin } = useAuth();
-  const { toast } = useToast();
   const [loading, setLoading] = React.useState(false);
-  const [open, setOpen] = React.useState(true);
-
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
 
-  const onSubmit = async (values: z.infer<typeof loginSchema>) => {
+  async function onSubmit(values: z.infer<typeof loginSchema>) {
     setLoading(true);
     try {
       await clientLogin(values.email, values.password);
-      setOpen(false); // Close dialog on success
+      onLoginSuccess();
     } catch (error: any) {
-      console.error('Login error', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error al iniciar sesión',
-        description:
-          'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.',
+      console.error(error);
+      form.setError('root', {
+        type: 'manual',
+        message: 'Credenciales incorrectas. Por favor, inténtalo de nuevo.',
       });
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {form.formState.errors.root && (
+          <p className="text-sm font-medium text-destructive">
+            {form.formState.errors.root.message}
+          </p>
+        )}
         <FormField
           control={form.control}
           name="email"
@@ -103,7 +99,12 @@ function LoginForm() {
             <FormItem>
               <FormLabel>Correo Electrónico</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="tu@correo.com" {...field} />
+                <Input
+                  type="email"
+                  placeholder="tu@correo.com"
+                  {...field}
+                  disabled={loading}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -116,28 +117,30 @@ function LoginForm() {
             <FormItem>
               <FormLabel>Contraseña</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="********" {...field} />
+                <Input
+                  type="password"
+                  placeholder="********"
+                  {...field}
+                  disabled={loading}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
         <Button type="submit" className="w-full mt-6" disabled={loading}>
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Iniciar Sesión
+          {loading ? 'Iniciando...' : 'Iniciar Sesión'}
         </Button>
       </form>
     </Form>
   );
 }
 
-function SignupForm() {
+// --- Componente del Formulario de Registro ---
+
+function SignupForm({ onSignupSuccess }: { onSignupSuccess: () => void }) {
   const { clientSignup } = useAuth();
-  const { toast } = useToast();
   const [loading, setLoading] = React.useState(false);
-  const [open, setOpen] = React.useState(true);
-
-
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -149,7 +152,7 @@ function SignupForm() {
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof signupSchema>) => {
+  async function onSubmit(values: z.infer<typeof signupSchema>) {
     setLoading(true);
     try {
       await clientSignup(
@@ -159,25 +162,27 @@ function SignupForm() {
         values.lastName,
         values.phone
       );
-      setOpen(false); // Close dialog on success
+      onSignupSuccess();
     } catch (error: any) {
-      console.error('Signup error', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error al registrarse',
-        description:
-          error.code === 'auth/email-already-in-use'
-            ? 'Este correo electrónico ya está en uso.'
-            : 'No se pudo crear la cuenta. Inténtalo de nuevo.',
-      });
+      console.error(error);
+      const message =
+        error.code === 'auth/email-already-in-use'
+          ? 'Este correo electrónico ya está registrado.'
+          : 'No se pudo crear la cuenta. Inténtalo de nuevo.';
+      form.setError('root', { type: 'manual', message });
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {form.formState.errors.root && (
+          <p className="text-sm font-medium text-destructive">
+            {form.formState.errors.root.message}
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -186,7 +191,7 @@ function SignupForm() {
               <FormItem>
                 <FormLabel>Nombre</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ana" {...field} />
+                  <Input placeholder="Ana" {...field} disabled={loading} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -199,7 +204,7 @@ function SignupForm() {
               <FormItem>
                 <FormLabel>Apellido</FormLabel>
                 <FormControl>
-                  <Input placeholder="García" {...field} />
+                  <Input placeholder="García" {...field} disabled={loading} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -213,7 +218,7 @@ function SignupForm() {
             <FormItem>
               <FormLabel>Teléfono</FormLabel>
               <FormControl>
-                <Input placeholder="3001234567" {...field} />
+                <Input placeholder="3001234567" {...field} disabled={loading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -226,7 +231,12 @@ function SignupForm() {
             <FormItem>
               <FormLabel>Correo Electrónico</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="tu@correo.com" {...field} />
+                <Input
+                  type="email"
+                  placeholder="tu@correo.com"
+                  {...field}
+                  disabled={loading}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -239,58 +249,66 @@ function SignupForm() {
             <FormItem>
               <FormLabel>Contraseña</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="Mínimo 6 caracteres" {...field} />
+                <Input
+                  type="password"
+                  placeholder="********"
+                  {...field}
+                  disabled={loading}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
         <Button type="submit" className="w-full mt-6" disabled={loading}>
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Crear Cuenta
+          {loading ? 'Creando cuenta...' : 'Registrarse'}
         </Button>
       </form>
     </Form>
   );
 }
 
+// --- Componente del Diálogo de Autenticación ---
 
 function AuthDialog({
   children,
 }: {
   children: React.ReactNode;
-  services: Service[];
-  stylists: Stylist[];
 }) {
   const [open, setOpen] = React.useState(false);
 
+  const handleSuccess = () => {
+    setOpen(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] border-2 shadow-lg rounded-xl">
+      <DialogTrigger asChild>
+        {children}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md p-8 shadow-xl border-border">
         <Tabs defaultValue="login" className="w-full">
-          <DialogHeader className="text-center pb-4">
-            <DialogTitle className="text-2xl font-headline text-center">
-              {/* This title will be replaced by the TabsList */}
-            </DialogTitle>
-            <DialogDescription className="text-center">
-                Gestiona tus citas de forma rápida y sencilla.
-            </DialogDescription>
-             <TabsList className="grid w-full grid-cols-2 mx-auto">
-                <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
-                <TabsTrigger value="register">Crear Cuenta</TabsTrigger>
-            </TabsList>
-          </DialogHeader>
-          
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
+            <TabsTrigger value="signup">Crear Cuenta</TabsTrigger>
+          </TabsList>
           <TabsContent value="login">
-            <div className="px-6 pb-6">
-                <LoginForm />
-            </div>
+            <DialogHeader className="text-center mb-6 mt-4">
+              <DialogTitle className="text-2xl font-headline">¡Bienvenida de vuelta!</DialogTitle>
+              <DialogDescription>
+                Accede para gestionar tus citas.
+              </DialogDescription>
+            </DialogHeader>
+            <LoginForm onLoginSuccess={handleSuccess} />
           </TabsContent>
-          <TabsContent value="register">
-            <div className="px-6 pb-6">
-                <SignupForm />
-            </div>
+          <TabsContent value="signup">
+            <DialogHeader className="text-center mb-6 mt-4">
+              <DialogTitle className="text-2xl font-headline">Crea tu Cuenta</DialogTitle>
+              <DialogDescription>
+                Regístrate para poder agendar citas fácilmente.
+              </DialogDescription>
+            </DialogHeader>
+            <SignupForm onSignupSuccess={handleSuccess} />
           </TabsContent>
         </Tabs>
       </DialogContent>
@@ -299,51 +317,52 @@ function AuthDialog({
 }
 
 
+// --- Componente Principal ---
 
-export default function UserAuth({ services, stylists }: UserAuthProps) {
+export default function UserAuth() {
   const { user, isUserLoading, logout } = useAuth();
-
+  
   if (isUserLoading) {
     return <Skeleton className="h-10 w-28" />;
   }
 
   if (user) {
-    const userInitial = user.displayName
-      ? user.displayName.charAt(0)
-      : user.email?.charAt(0) || '?';
-
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                    <Avatar className="h-6 w-6 mr-2">
-                        <AvatarImage src={user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`} data-ai-hint="person face" />
-                        <AvatarFallback>{userInitial.toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    {user.displayName || user.email}
-                    <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem disabled>Ver mis citas</DropdownMenuItem>
-                <DropdownMenuItem disabled>Editar perfil</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Cerrar Sesión
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="flex items-center gap-2">
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={user.photoURL ?? `https://picsum.photos/seed/${user.uid}/100/100`} data-ai-hint="person face" />
+              <AvatarFallback>
+                {user.email?.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span>Mi Cuenta</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => (window.location.href = '#agendar')}>
+            Agendar Cita
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled>Mis Citas</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={logout} className="text-destructive">
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Cerrar Sesión</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
 
   return (
-    <AuthDialog services={services} stylists={stylists}>
-      <Button variant="outline">
-        Iniciar sesión
-      </Button>
+    <AuthDialog>
+       <Button variant="outline">
+          <User className="mr-2 h-4 w-4" />
+          Iniciar Sesión
+        </Button>
     </AuthDialog>
   );
 }
