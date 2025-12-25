@@ -28,20 +28,21 @@ service cloud.firestore {
       allow read, write: if isAdmin() || isOwner(customerId);
     }
     
-    // --- Admin-Managed Collections ---
+    // --- Publicly Readable / Admin-Managed Collections ---
     
-    // Admins have full control over stylists.
+    // Stylists are public, but only managed by admins.
     match /stylists/{document=**} {
-      allow read, write: if isAdmin();
+      allow read: if true;
+      allow write: if isAdmin();
     }
     
-    // Admins have full control over services. Public can read.
+    // Services are public, but only managed by admins.
     match /services/{document=**} {
         allow read: if true;
         allow write: if isAdmin();
     }
     
-    // Admins have full control over gallery. Public can read.
+    // Gallery is public, but only managed by admins.
     match /gallery/{document=**} {
         allow read: if true;
         allow write: if isAdmin();
