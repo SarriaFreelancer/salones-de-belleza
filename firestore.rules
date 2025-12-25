@@ -32,19 +32,21 @@ service cloud.firestore {
     }
     
     // --- Admin-Managed Collections ---
-    // Admins have full control over stylists, services, and the gallery.
     
+    // Admins have full control over stylists.
     match /stylists/{stylistId} {
       allow read, write: if isAdmin();
     }
     
+    // Public can read services, only admins can write.
     match /services/{serviceId} {
-        allow read: if true; // Public can read services
+        allow read: if true;
         allow write: if isAdmin();
     }
     
+    // Public can read gallery, only admins can write.
     match /gallery/{galleryId} {
-        allow read: if true; // Public can read gallery
+        allow read: if true;
         allow write: if isAdmin();
     }
     
