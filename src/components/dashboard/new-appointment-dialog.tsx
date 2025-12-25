@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -30,7 +29,6 @@ import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { suggestAppointment } from '@/ai/flows/appointment-suggestions';
 import {
   Loader2,
   Sparkles,
@@ -45,10 +43,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { format } from 'date-fns';
+import { add, format, parse, set } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import type { Appointment, DayOfWeek } from '@/lib/types';
+import type { Appointment, DayOfWeek, Stylist, AvailabilitySlot } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
@@ -60,20 +58,14 @@ import { useFirestore } from '@/firebase';
 
 const formSchema = z.object({
   serviceId: z.string().min(1, 'Debes seleccionar un servicio.'),
+  stylistId: z.string().min(1, 'Debes seleccionar un estilista.'),
   preferredDate: z.date({
     required_error: 'Debes seleccionar una fecha.',
   }),
   customerName: z.string().min(2, 'El nombre del cliente es requerido.'),
-  customerEmail: z.string().email('El correo electrónico no es válido.').optional().or(z.literal('')),
 });
 
 type FormValues = z.infer<typeof formSchema>;
-
-type Suggestion = {
-  stylistId: string;
-  startTime: string;
-  endTime: string;
-};
 
 interface NewAppointmentDialogProps {
   children: React.ReactNode;
@@ -88,8 +80,8 @@ export default function NewAppointmentDialog({
 }: NewAppointmentDialogProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<Date[]>([]);
   const { toast } = useToast();
   const { services } = useServices();
   const { stylists } = useStylists();
@@ -99,27 +91,22 @@ export default function NewAppointmentDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       serviceId: '',
+      stylistId: '',
       customerName: '',
-      customerEmail: '',
+      preferredDate: new Date(),
     },
   });
 
-  useEffect(() => {
-    if (open && form.getValues('preferredDate') === undefined) {
-      form.setValue('preferredDate', new Date());
-    }
-  }, [open, form]);
-
   const resetDialog = () => {
     form.reset({
-        serviceId: '',
-        customerName: '',
-        customerEmail: '',
-        preferredDate: new Date(),
+      serviceId: '',
+      stylistId: '',
+      customerName: '',
+      preferredDate: new Date(),
     });
     setStep(1);
-    setIsLoading(false);
-    setSuggestions([]);
+    setIsCalculating(false);
+    setAvailableSlots([]);
   };
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -128,87 +115,87 @@ export default function NewAppointmentDialog({
       resetDialog();
     }
   };
+  
+  const getDayOfWeek = (date: Date): DayOfWeek => {
+    const dayIndex = date.getDay();
+    const days: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[dayIndex];
+  };
 
-  const findSuggestions = async (values: FormValues) => {
-    setIsLoading(true);
-    setSuggestions([]);
-    
-    const selectedService = services.find((s) => values.serviceId === s.id);
-    if (!selectedService) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Servicio no encontrado.',
-      });
-      setIsLoading(false);
+  const calculateAvailableSlots = (values: FormValues) => {
+    setIsCalculating(true);
+    const { preferredDate, stylistId, serviceId } = values;
+
+    const stylist = stylists.find(s => s.id === stylistId);
+    const service = services.find(s => s.id === serviceId);
+
+    if (!stylist || !service) {
+      toast({ title: "Error", description: "Estilista o servicio no válido.", variant: "destructive" });
+      setIsCalculating(false);
       return;
     }
 
-    const formattedDate = format(values.preferredDate, 'yyyy-MM-dd');
-    const existingAppointmentsForDate = appointments
-      .filter(a => format(a.start instanceof Date ? a.start : a.start.toDate(), 'yyyy-MM-dd') === formattedDate)
-      .map((a) => ({
-        stylistId: a.stylistId,
-        start: format(a.start instanceof Date ? a.start : a.start.toDate(), 'HH:mm'),
-        end: format(a.end instanceof Date ? a.end : a.end.toDate(), 'HH:mm'),
-      }));
-      
-    const dayIndex = values.preferredDate.getDay();
-    const days: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const dayOfWeek = days[dayIndex];
+    const dayOfWeek = getDayOfWeek(preferredDate);
+    const availabilityForDay = stylist.availability[dayOfWeek] || [];
 
-    try {
-      const result = await suggestAppointment({
-        service: selectedService.name,
-        duration: selectedService.duration,
-        preferredDate: formattedDate,
-        stylistAvailability: stylists.map((s) => ({
-          stylistId: s.id,
-          availableTimes: s.availability[dayOfWeek] || [],
-        })),
-        existingAppointments: existingAppointmentsForDate,
-      });
+    const existingAppointments = appointments.filter(app => {
+        const appDate = app.start instanceof Date ? app.start : app.start.toDate();
+        return app.stylistId === stylistId && format(appDate, 'yyyy-MM-dd') === format(preferredDate, 'yyyy-MM-dd');
+    });
 
-      if (result && result.suggestions && result.suggestions.length > 0) {
-        setSuggestions(result.suggestions);
-        setStep(2);
-      } else {
-        toast({
+    const slots: Date[] = [];
+    const serviceDuration = service.duration;
+
+    availabilityForDay.forEach(availSlot => {
+      let currentTime = parse(availSlot.start, 'HH:mm', preferredDate);
+      const endTime = parse(availSlot.end, 'HH:mm', preferredDate);
+
+      while (add(currentTime, { minutes: serviceDuration }) <= endTime) {
+        const proposedEndTime = add(currentTime, { minutes: serviceDuration });
+        
+        const isOverlapping = existingAppointments.some(existingApp => {
+          const existingStart = existingApp.start instanceof Date ? existingApp.start : existingApp.start.toDate();
+          const existingEnd = existingApp.end instanceof Date ? existingApp.end : existingApp.end.toDate();
+          // Check for overlap: (StartA < EndB) and (EndA > StartB)
+          return (currentTime < existingEnd) && (proposedEndTime > existingStart);
+        });
+
+        if (!isOverlapping) {
+          slots.push(currentTime);
+        }
+
+        currentTime = add(currentTime, { minutes: 15 }); // Check every 15 minutes
+      }
+    });
+
+    setAvailableSlots(slots);
+    
+    if (slots.length === 0) {
+         toast({
           title: 'No hay disponibilidad',
           description:
-            'No se encontraron horarios disponibles con los criterios seleccionados. Por favor, intenta con otra fecha o servicio.',
+            'No se encontraron horarios disponibles para este estilista en la fecha seleccionada.',
         });
-      }
-    } catch (error) {
-      console.error('Error getting suggestions:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error del Asistente IA',
-        description:
-          'No se pudieron obtener las sugerencias. Inténtalo de nuevo.',
-      });
-    } finally {
-      setIsLoading(false);
     }
-  };
 
-  const selectSuggestion = (suggestion: Suggestion) => {
+    setIsCalculating(false);
+    setStep(2);
+  };
+  
+  const selectSlot = (slot: Date) => {
     if (!firestore) return;
     const values = form.getValues();
+    const service = services.find(s => s.id === values.serviceId);
+    if (!service) return;
 
-    const [startHours, startMinutes] = suggestion.startTime.split(':').map(Number);
-    const startDate = new Date(values.preferredDate);
-    startDate.setHours(startHours, startMinutes, 0, 0);
-
-    const [endHours, endMinutes] = suggestion.endTime.split(':').map(Number);
-    const endDate = new Date(values.preferredDate);
-    endDate.setHours(endHours, endMinutes, 0, 0);
-
+    const startDate = slot;
+    const endDate = add(startDate, { minutes: service.duration });
+    
     const newAppointment: Omit<Appointment, 'id'> = {
       customerName: values.customerName.trim(),
-      customerId: 'mock_customer_id', // Placeholder
+      customerId: 'mock_customer_id', 
       serviceId: values.serviceId,
-      stylistId: suggestion.stylistId,
+      stylistId: values.stylistId,
       start: Timestamp.fromDate(startDate),
       end: Timestamp.fromDate(endDate),
       status: 'scheduled',
@@ -217,28 +204,22 @@ export default function NewAppointmentDialog({
     const appointmentsCollection = collection(firestore, 'admin_appointments');
     addDocumentNonBlocking(appointmentsCollection, newAppointment);
     
-    // This is a mock customer id, in a real app you would get this from the logged in user
     const customerAppointmentsCollection = collection(firestore, 'customers', newAppointment.customerId, 'appointments');
     addDocumentNonBlocking(customerAppointmentsCollection, newAppointment);
 
-    const stylistAppointmentsCollection = collection(firestore, 'stylists', suggestion.stylistId, 'appointments');
+    const stylistAppointmentsCollection = collection(firestore, 'stylists', values.stylistId, 'appointments');
     addDocumentNonBlocking(stylistAppointmentsCollection, newAppointment);
 
     toast({
       title: '¡Cita Agendada!',
-      description: `Se ha agendado a ${
-        newAppointment.customerName
-      } el ${format(
-        startDate,
-        "eeee, d 'de' MMMM 'a las' HH:mm",
-        { locale: es }
-      )}.`,
+      description: `Se ha agendado a ${newAppointment.customerName} el ${format(startDate, "eeee, d 'de' MMMM 'a las' HH:mm", { locale: es })}.`
     });
 
     handleOpenChange(false);
-  };
-  
+  }
+
   const selectedService = services.find((s) => form.watch('serviceId') === s.id);
+  const selectedStylist = stylists.find((s) => form.watch('stylistId') === s.id);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -246,47 +227,29 @@ export default function NewAppointmentDialog({
       <DialogContent className="sm:max-w-md md:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="font-headline text-2xl flex items-center gap-2">
-            <Sparkles className="text-primary" /> Asistente de Citas IA
+            Agendar Nueva Cita
           </DialogTitle>
           <DialogDescription>
-            Encuentra el momento perfecto para la próxima cita del cliente.
+             {step === 1 ? 'Completa los detalles para encontrar un horario.' : 'Elige un horario disponible para confirmar.'}
           </DialogDescription>
         </DialogHeader>
 
         {step === 1 && (
           <Form {...form}>
-            <form className="space-y-4" onSubmit={form.handleSubmit(findSuggestions)}>
-              <p className="text-sm font-medium">
-                Paso 1: Ingresa los detalles del cliente, servicio y fecha
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                  control={form.control}
-                  name="customerName"
-                  render={({ field }) => (
-                      <FormItem>
-                      <FormLabel>Nombre del Cliente</FormLabel>
-                      <FormControl>
-                          <Input placeholder="Ej: Ana García" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                      </FormItem>
-                  )}
-                  />
-                  <FormField
-                  control={form.control}
-                  name="customerEmail"
-                  render={({ field }) => (
-                      <FormItem>
-                      <FormLabel>Correo Electrónico (Opcional)</FormLabel>
-                      <FormControl>
-                          <Input placeholder="cliente@correo.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                      </FormItem>
-                  )}
-                  />
-              </div>
+            <form className="space-y-4" onSubmit={form.handleSubmit(calculateAvailableSlots)}>
+              <FormField
+                control={form.control}
+                name="customerName"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Nombre del Cliente</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Ej: Ana García" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -312,12 +275,37 @@ export default function NewAppointmentDialog({
                     </FormItem>
                   )}
                 />
+                 <FormField
+                  control={form.control}
+                  name="stylistId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estilista</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona un estilista" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {stylists.map((stylist) => (
+                            <SelectItem key={stylist.id} value={stylist.id}>
+                              {stylist.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
                 <FormField
                   control={form.control}
                   name="preferredDate"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Fecha Preferida</FormLabel>
+                      <FormLabel>Fecha</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -357,19 +345,18 @@ export default function NewAppointmentDialog({
                     </FormItem>
                   )}
                 />
-              </div>
               <DialogFooter>
                 <Button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isCalculating}
                 >
-                  {isLoading ? (
+                  {isCalculating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Buscando...
+                      Calculando...
                     </>
                   ) : (
-                    'Buscar Horarios Disponibles'
+                    'Ver Horarios Disponibles'
                   )}
                 </Button>
               </DialogFooter>
@@ -379,58 +366,41 @@ export default function NewAppointmentDialog({
 
         {step === 2 && (
           <div className="space-y-4">
-            <p className="text-sm font-medium">
-              Paso 2: Revisa los detalles y elige un horario
-            </p>
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-2">
                 <h4 className="font-semibold">Resumen de la Cita</h4>
-                <div className='text-sm'>
-                <p><strong>Cliente:</strong> {form.getValues('customerName')}</p>
-                <p><strong>Fecha:</strong> {form.getValues('preferredDate') ? format(form.getValues('preferredDate'), 'PPP', { locale: es }) : ''}</p>
-                <div><strong>Servicio:</strong> <Badge variant="secondary">{selectedService?.name}</Badge>
-                </div>
+                <div className='text-sm grid grid-cols-2 gap-x-4 gap-y-1'>
+                    <p><strong>Cliente:</strong> {form.getValues('customerName')}</p>
+                    <p><strong>Fecha:</strong> {form.getValues('preferredDate') ? format(form.getValues('preferredDate'), 'PPP', { locale: es }) : ''}</p>
+                    <div><strong>Servicio:</strong> <Badge variant="secondary">{selectedService?.name}</Badge></div>
+                    <div><strong>Estilista:</strong> <Badge variant="secondary">{selectedStylist?.name}</Badge></div>
                 </div>
             </div>
 
             <h3 className="text-md font-medium pt-4">
-              Horarios Sugeridos por la IA
+              Horarios Disponibles
             </h3>
-            <ScrollArea className="h-64 pr-4">
-              <div className="space-y-3">
-                {suggestions.map((suggestion, index) => {
-                  const stylist = stylists.find(
-                    (s) => s.id === suggestion.stylistId
-                  );
-                  return (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-accent/50"
+            {availableSlots.length > 0 ? (
+                <ScrollArea className="h-64 pr-4">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {availableSlots.map((slot, index) => (
+                    <Button
+                        key={index}
+                        variant="outline"
+                        onClick={() => selectSlot(slot)}
                     >
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 font-semibold">
-                          <Clock className="h-4 w-4" />
-                          <span>
-                            {suggestion.startTime} - {suggestion.endTime}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <User className="h-4 w-4" />
-                          <span>
-                            con {stylist?.name || 'Estilista desconocido'}
-                          </span>
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => selectSuggestion(suggestion)}
-                      >
-                        Agendar
-                      </Button>
-                    </div>
-                  );
-                })}
+                        {format(slot, 'HH:mm')}
+                    </Button>
+                    ))}
+                </div>
+                </ScrollArea>
+            ) : (
+                <div className="flex h-32 items-center justify-center rounded-lg border-2 border-dashed border-border text-center">
+                    <p className="text-muted-foreground">
+                        No hay horarios disponibles con los criterios seleccionados.
+                    </p>
               </div>
-            </ScrollArea>
+            )}
+            
             <DialogFooter>
               <Button
                 type="button"
@@ -446,3 +416,5 @@ export default function NewAppointmentDialog({
     </Dialog>
   );
 }
+
+    
