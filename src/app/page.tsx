@@ -89,8 +89,8 @@ function HomePageContent() {
             </div>
         </section>
 
-        <section id="servicios" className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container px-4 md:px-6">
+        <section id="servicios" className="w-full">
+          <div className="container px-4 md:px-6 py-12 md:py-24 lg:py-32">
             <div className="mx-auto flex max-w-5xl flex-col items-center justify-center space-y-4 text-center">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Nuestros Servicios
@@ -123,8 +123,8 @@ function HomePageContent() {
           </div>
         </section>
 
-        <section id="equipo" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
-            <div className="container px-4 md:px-6">
+        <section id="equipo" className="w-full bg-muted/40">
+            <div className="container px-4 md:px-6 py-12 md:py-24 lg:py-32">
                 <div className="mx-auto flex max-w-5xl flex-col items-center justify-center space-y-4 text-center">
                     <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                         Conoce a Nuestro Equipo
@@ -148,8 +148,8 @@ function HomePageContent() {
             </div>
         </section>
 
-        <section id="galeria" className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container px-4 md:px-6">
+        <section id="galeria" className="w-full">
+          <div className="container px-4 md:px-6 py-12 md:py-24 lg:py-32">
             <div className="mx-auto flex max-w-5xl flex-col items-center justify-center space-y-4 text-center">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Galería de Estilos
@@ -174,14 +174,14 @@ function HomePageContent() {
           </div>
         </section>
 
-        <section id="agendar" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
-            <div className="container px-4 md:px-6">
+        <section id="agendar" className="w-full bg-muted/40">
+            <div className="container px-4 md:px-6 py-12 md:py-24 lg:py-32">
                 {isLoading || !isClient ? <Skeleton className="h-96 w-full max-w-4xl mx-auto" /> : <PublicBookingForm services={services || []} stylists={stylists || []} />}
             </div>
         </section>
 
-        <section id="contacto" className="w-full border-t bg-card py-12 md:py-24 lg:py-32">
-          <div className="container grid items-center justify-center gap-8 px-4 md:px-6 lg:grid-cols-2 lg:gap-16">
+        <section id="contacto" className="w-full border-t bg-card">
+          <div className="container grid items-center justify-center gap-8 px-4 md:px-6 py-12 md:py-24 lg:py-32 lg:grid-cols-2 lg:gap-16">
             <div className="space-y-4">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Ponte en Contacto
