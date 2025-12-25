@@ -31,7 +31,7 @@ service cloud.firestore {
     // --- Publicly Readable / Admin-Managed Collections ---
     
     // Stylists are public, but only managed by admins.
-    match /stylists/{document=**} {
+    match /stylists/{stylistId} {
       allow read: if true;
       allow write: if isAdmin();
     }
@@ -48,9 +48,11 @@ service cloud.firestore {
         allow write: if isAdmin();
     }
     
-    // This subcollection is for aggregated views, only for admins.
+    // This subcollection is for appointment slots for a given stylist.
+    // Allow any signed-in user to read to check for availability.
     match /stylists/{stylistId}/appointments/{appointmentId} {
-        allow read, write: if isAdmin();
+        allow read: if isSignedIn();
+        allow write: if isAdmin();
     }
 
     // --- Centralized Admin Collections ---

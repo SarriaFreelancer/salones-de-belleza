@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription,
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Calendar as CalendarIcon, ArrowLeft } from 'lucide-react';
+import { Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -47,10 +47,11 @@ import {
   Timestamp,
   writeBatch,
   doc,
+  query,
+  where,
+  getDocs,
 } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase } from '@/firebase';
-import { useAuth } from '@/hooks/use-auth';
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { useFirestore, useUser } from '@/firebase';
 
 const formSchema = z.object({
   serviceId: z.string().min(1, 'Debes seleccionar un servicio.'),
@@ -67,16 +68,17 @@ interface PublicBookingFormProps {
   stylists: Stylist[];
 }
 
-export default function PublicBookingForm({ services, stylists }: PublicBookingFormProps) {
+export default function PublicBookingForm({
+  services,
+  stylists,
+}: PublicBookingFormProps) {
+  const { user } = useUser();
+  const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [isCalculating, setIsCalculating] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<Date[]>([]);
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { user, isAuthLoading } = useAuth();
-
-  const appointmentsCollection = useMemoFirebase(() => (firestore ? collection(firestore, 'admin_appointments') : null), [firestore]);
-  const { data: allAppointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -87,61 +89,115 @@ export default function PublicBookingForm({ services, stylists }: PublicBookingF
     },
   });
 
+  useEffect(() => {
+    if (!user) {
+      setStep(1);
+      setAvailableSlots([]);
+    }
+  }, [user]);
+
   const getDayOfWeek = (date: Date): DayOfWeek => {
     const dayIndex = date.getDay();
-    const days: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const days: DayOfWeek[] = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+    ];
     return days[dayIndex];
   };
 
-  const findAvailableSlots = (values: FormValues) => {
+  const findAvailableSlots = async (values: FormValues) => {
+    if (!firestore || !user) {
+       toast({
+        variant: 'destructive',
+        title: 'Debes iniciar sesión',
+        description: 'Por favor, inicia sesión para poder buscar horarios y agendar una cita.',
+      });
+      return;
+    }
+    
     setIsCalculating(true);
     setAvailableSlots([]);
+    const { preferredDate, stylistId, serviceId } = values;
 
-    const stylist = stylists.find((s) => s.id === values.stylistId);
-    const service = services.find((s) => s.id === values.serviceId);
+    const stylist = stylists.find((s) => s.id === stylistId);
+    const service = services.find((s) => s.id === serviceId);
 
     if (!stylist || !service) {
-      toast({ title: 'Error', description: 'Estilista o servicio no válido.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Estilista o servicio no válido.',
+        variant: 'destructive',
+      });
       setIsCalculating(false);
       return;
     }
 
-    const dayOfWeek = getDayOfWeek(values.preferredDate);
+    const dayOfWeek = getDayOfWeek(preferredDate);
     const availabilityForDay = stylist.availability[dayOfWeek] || [];
-    const existingAppointments = (allAppointments || []).filter((app) => {
-        const appDate = app.start instanceof Date ? app.start : app.start.toDate();
-        return app.stylistId === stylist.id && format(appDate, 'yyyy-MM-dd') === format(values.preferredDate, 'yyyy-MM-dd') && app.status !== 'cancelled';
-    });
+
+    // Fetch existing appointments for the selected stylist and date
+    const stylistAppointmentsRef = collection(firestore, 'stylists', stylistId, 'appointments');
+    const startOfDay = new Date(preferredDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(preferredDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const q = query(
+      stylistAppointmentsRef,
+      where('start', '>=', Timestamp.fromDate(startOfDay)),
+      where('start', '<=', Timestamp.fromDate(endOfDay))
+    );
+
+    const querySnapshot = await getDocs(q);
+    const existingAppointments = querySnapshot.docs.map(doc => doc.data() as Appointment);
 
     const slots: Date[] = [];
     const serviceDuration = service.duration;
 
     availabilityForDay.forEach((availSlot) => {
-      let baseDate = new Date(values.preferredDate);
-      baseDate = set(baseDate, { hours: 0, minutes: 0, seconds: 0, milliseconds: 0 });
+      let baseDate = new Date(preferredDate);
+      baseDate = set(baseDate, {
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        milliseconds: 0,
+      });
+
       let currentTime = parse(availSlot.start, 'HH:mm', baseDate);
       const endTime = parse(availSlot.end, 'HH:mm', baseDate);
 
       while (add(currentTime, { minutes: serviceDuration }) <= endTime) {
         const proposedEndTime = add(currentTime, { minutes: serviceDuration });
+
         const isOverlapping = existingAppointments.some((existingApp) => {
-          const existingStart = existingApp.start instanceof Date ? existingApp.start : existingApp.start.toDate();
-          const existingEnd = existingApp.end instanceof Date ? existingApp.end : existingApp.end.toDate();
-          return currentTime < existingEnd && proposedEndTime > existingStart;
+          const existingStart = existingApp.start.toDate();
+          const existingEnd = existingApp.end.toDate();
+          return currentTime < existingEnd && proposedEndTime > existingStart && existingApp.status !== 'cancelled';
         });
 
         if (!isOverlapping) {
           slots.push(new Date(currentTime));
         }
+
         currentTime = add(currentTime, { minutes: 15 });
       }
     });
-    
+
     setAvailableSlots(slots);
+
     if (slots.length === 0) {
-      toast({ variant: 'destructive', title: 'No hay disponibilidad', description: 'No se encontraron horarios disponibles para este estilista en la fecha seleccionada.' });
+      toast({
+        variant: 'destructive',
+        title: 'No hay disponibilidad',
+        description: 'No se encontraron horarios disponibles para esta estilista en la fecha seleccionada. Por favor, intenta con otra fecha o estilista.',
+      });
     }
-    
+
     setIsCalculating(false);
     setStep(2);
   };
@@ -157,8 +213,13 @@ export default function PublicBookingForm({ services, stylists }: PublicBookingF
       const startDate = slot;
       const endDate = add(startDate, { minutes: service.duration });
       
+      const customerDoc = await getDocs(query(collection(firestore, 'customers'), where('id', '==', user.uid)));
+      const customerData = customerDoc.docs[0]?.data();
+      const customerName = customerData ? `${customerData.firstName} ${customerData.lastName}` : user.email || 'Cliente';
+
+
       const newAppointmentData: Omit<Appointment, 'id'> = {
-        customerName: user.displayName || user.email || 'Cliente',
+        customerName: customerName,
         customerId: user.uid,
         serviceId: values.serviceId,
         stylistId: values.stylistId,
@@ -168,6 +229,7 @@ export default function PublicBookingForm({ services, stylists }: PublicBookingF
       };
       
       const batch = writeBatch(firestore);
+
       const mainAppointmentRef = doc(collection(firestore, 'admin_appointments'));
       batch.set(mainAppointmentRef, { ...newAppointmentData, id: mainAppointmentRef.id });
       
@@ -181,59 +243,64 @@ export default function PublicBookingForm({ services, stylists }: PublicBookingF
 
       toast({
         title: '¡Cita Agendada!',
-        description: `Tu cita para ${service.name} ha sido agendada para el ${format(startDate, "eeee, d 'de' MMMM 'a las' HH:mm", { locale: es })}.`,
+        description: `Tu cita para ${service.name} ha sido confirmada para el ${format(
+          startDate,
+          "eeee, d 'de' MMMM 'a las' HH:mm",
+          { locale: es }
+        )}.`,
       });
 
       setStep(1);
-      form.reset();
+      form.reset({
+        ...values,
+      });
 
     } catch (error) {
       console.error('Error creating appointment: ', error);
-      toast({ title: 'Error al Agendar', description: 'No se pudo crear la cita. Revisa la consola para más detalles.', variant: 'destructive' });
+      toast({
+        title: 'Error al Agendar',
+        description: 'No se pudo crear la cita. Revisa la consola para más detalles.',
+        variant: 'destructive',
+      });
     } finally {
       setIsCalculating(false);
     }
   };
 
-  if (isAuthLoading) {
-    return <Card className="mx-auto max-w-4xl"><CardHeader><CardTitle>Cargando...</CardTitle></CardHeader><CardContent><p>Verificando tu sesión...</p></CardContent></Card>;
-  }
+  const selectedService = services.find((s) => form.watch('serviceId') === s.id);
+  const selectedStylist = stylists.find((s) => form.watch('stylistId') === s.id);
 
   if (!user) {
     return (
-      <Card className="mx-auto max-w-4xl text-center">
+      <Card className="w-full max-w-4xl mx-auto text-center">
         <CardHeader>
-          <CardTitle className="font-headline text-3xl">Agenda tu Cita</CardTitle>
-          <CardDescription>
-            Por favor, inicia sesión o regístrate para poder reservar una cita.
+          <CardTitle className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Reserva tu Cita</CardTitle>
+          <CardDescription className="text-foreground/80 md:text-xl/relaxed">
+            Inicia sesión o regístrate para agendar tu próxima visita a nuestro salón.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">El agendamiento en línea está disponible solo para clientes registrados.</p>
+           <p className="text-muted-foreground">El agendamiento en línea está disponible para nuestros clientes.</p>
         </CardContent>
       </Card>
     );
   }
 
-  const selectedService = services.find((s) => form.watch('serviceId') === s.id);
-  const selectedStylist = stylists.find((s) => form.watch('stylistId') === s.id);
-  const isLoading = isCalculating || isLoadingAppointments;
-
   return (
-    <Card className="mx-auto max-w-4xl">
-        <CardHeader>
-          <CardTitle className="font-headline text-3xl">Agenda tu Cita</CardTitle>
-          <CardDescription>
-            {step === 1 ? 'Elige el servicio, la estilista y la fecha para tu próxima cita.' : 'Selecciona uno de los horarios disponibles para confirmar.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-        {step === 1 && (
-            <Form {...form}>
-            <form
-                className="space-y-4"
-                onSubmit={form.handleSubmit(findAvailableSlots)}
-            >
+    <Card className="w-full max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+            {step === 1 ? 'Reserva tu Cita' : 'Elige un Horario'}
+        </CardTitle>
+        <CardDescription className="text-foreground/80 md:text-xl/relaxed">
+          {step === 1 ? 'Selecciona el servicio y la estilista para encontrar un horario disponible.' : 'Estos son los horarios disponibles. Elige el que prefieras.'}
+        </CardDescription>
+      </CardHeader>
+
+      {step === 1 && (
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(findAvailableSlots)}>
+            <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                     control={form.control}
@@ -241,7 +308,10 @@ export default function PublicBookingForm({ services, stylists }: PublicBookingF
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Servicio</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} >
+                        <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                        >
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecciona un servicio" />
@@ -265,7 +335,10 @@ export default function PublicBookingForm({ services, stylists }: PublicBookingF
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Estilista</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                        >
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecciona un estilista" />
@@ -326,74 +399,94 @@ export default function PublicBookingForm({ services, stylists }: PublicBookingF
                     </FormItem>
                     )}
                 />
-                 <CardFooter className="px-0 pt-6">
-                    <Button type="submit" disabled={isLoading} className="w-full">
-                    {isLoading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Buscando...</>) : ('Ver Horarios Disponibles')}
-                    </Button>
-                </CardFooter>
-            </form>
-            </Form>
-        )}
-        {step === 2 && (
-          <div className="space-y-4">
-             <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-2">
-              <h4 className="font-semibold">Resumen de tu Selección</h4>
-              <div className="text-sm grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
-                <p>
-                  <strong>Fecha:</strong>{' '}
-                  {form.getValues('preferredDate') ? format(form.getValues('preferredDate'), 'PPP', { locale: es }) : ''}
-                </p>
-                 <p>
-                  <strong>Cliente:</strong>{' '}
-                  {user.displayName || user.email}
-                </p>
-                <div>
-                  <strong>Servicio:</strong>{' '}
-                  <Badge variant="secondary">{selectedService?.name}</Badge>
-                </div>
-                <div>
-                  <strong>Estilista:</strong>{' '}
-                  <Badge variant="secondary">{selectedStylist?.name}</Badge>
-                </div>
-              </div>
-            </div>
-
-            <h3 className="text-md font-medium pt-4">Horarios Disponibles</h3>
-            {isLoading ? (
-              <div className="flex h-32 items-center justify-center">
-                 <Loader2 className="mr-2 h-8 w-8 animate-spin" />
-              </div>
-            ) : availableSlots.length > 0 ? (
-              <ScrollArea className="h-64 pr-4">
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {availableSlots.map((slot, index) => (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      onClick={() => selectSlot(slot)}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? ( <Loader2 className="h-4 w-4 animate-spin" /> ) : ( format(slot, 'HH:mm') )}
-                    </Button>
-                  ))}
-                </div>
-              </ScrollArea>
-            ) : (
-              <div className="flex h-32 items-center justify-center rounded-lg border-2 border-dashed border-border text-center">
-                <p className="text-muted-foreground">
-                  No hay horarios disponibles con los criterios seleccionados.
-                </p>
-              </div>
-            )}
-            <CardFooter className="px-0 pt-6">
-              <Button type="button" variant="outline" onClick={() => { setStep(1); setAvailableSlots([]); }} >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Cambiar Selección
-              </Button>
+            </CardContent>
+            <CardFooter>
+                <Button type="submit" disabled={isCalculating} className="w-full md:w-auto">
+                {isCalculating ? (
+                    <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Buscando...
+                    </>
+                ) : (
+                    'Ver Horarios Disponibles'
+                )}
+                </Button>
             </CardFooter>
-          </div>
-        )}
-      </CardContent>
+          </form>
+        </Form>
+      )}
+
+      {step === 2 && (
+        <>
+            <CardContent className="space-y-4">
+                <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-2">
+                <h4 className="font-semibold">Resumen de la Cita</h4>
+                <div className="text-sm grid grid-cols-2 gap-x-4 gap-y-1">
+                    <p>
+                    <strong>Fecha:</strong>{' '}
+                    {form.getValues('preferredDate')
+                        ? format(form.getValues('preferredDate'), 'PPP', {
+                            locale: es,
+                        })
+                        : ''}
+                    </p>
+                    <div>
+                    <strong>Servicio:</strong>{' '}
+                    <Badge variant="secondary">{selectedService?.name}</Badge>
+                    </div>
+                    <div>
+                    <strong>Estilista:</strong>{' '}
+                    <Badge variant="secondary">{selectedStylist?.name}</Badge>
+                    </div>
+                </div>
+                </div>
+
+                <h3 className="text-md font-medium pt-4">Horarios Disponibles</h3>
+                {isCalculating ? (
+                <div className="flex h-32 items-center justify-center">
+                    <Loader2 className="mr-2 h-8 w-8 animate-spin" />
+                </div>
+                ) : availableSlots.length > 0 ? (
+                <ScrollArea className="h-64 pr-4">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {availableSlots.map((slot, index) => (
+                        <Button
+                        key={index}
+                        variant="outline"
+                        onClick={() => selectSlot(slot)}
+                        disabled={isCalculating}
+                        >
+                        {isCalculating ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            format(slot, 'HH:mm')
+                        )}
+                        </Button>
+                    ))}
+                    </div>
+                </ScrollArea>
+                ) : (
+                <div className="flex h-32 items-center justify-center rounded-lg border-2 border-dashed border-border text-center">
+                    <p className="text-muted-foreground">
+                    No hay horarios disponibles con los criterios seleccionados.
+                    </p>
+                </div>
+                )}
+            </CardContent>
+            <CardFooter>
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                        setStep(1);
+                        setAvailableSlots([]);
+                    }}
+                >
+                    Volver
+                </Button>
+            </CardFooter>
+        </>
+      )}
     </Card>
   );
 }
