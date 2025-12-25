@@ -1,7 +1,25 @@
-
 'use client';
 
-import * as React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,26 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -38,18 +37,22 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
-import { LogOut, User, Loader2, Calendar, UserCog, XCircle } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore, useMemoFirebase } from '@/firebase';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { User, LogOut, Loader2, Calendar, UserCog, MoreHorizontal, XCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '../ui/skeleton';
+import {
+  useFirestore,
+  useDoc,
+  useCollection,
+  useMemoFirebase,
+} from '@/firebase';
 import {
   collection,
   doc,
@@ -63,412 +66,562 @@ import { Badge } from '../ui/badge';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
 
+// ***** Sub-components for Dialogs *****
+
 const loginSchema = z.object({
-  email: z.string().email('Por favor, introduce un correo válido.'),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres.'),
+  email: z.string().email('El correo no es válido.'),
+  password: z.string().min(1, 'La contraseña es requerida.'),
 });
-type LoginValues = z.infer<typeof loginSchema>;
 
 const signupSchema = z.object({
-  firstName: z.string().min(2, 'El nombre es demasiado corto.'),
-  lastName: z.string().min(2, 'El apellido es demasiado corto.'),
-  phone: z.string().min(7, 'El número de teléfono no es válido.'),
-  email: z.string().email('Por favor, introduce un correo válido.'),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres.'),
+  firstName: z.string().min(2, 'El nombre es requerido.'),
+  lastName: z.string().min(2, 'El apellido es requerido.'),
+  phone: z.string().min(7, 'El teléfono es requerido.'),
+  email: z.string().email('El correo no es válido.'),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.'),
 });
-type SignupValues = z.infer<typeof signupSchema>;
 
 const profileSchema = z.object({
-  firstName: z.string().min(2, 'El nombre es demasiado corto.'),
-  lastName: z.string().min(2, 'El apellido es demasiado corto.'),
-  phone: z.string().min(7, 'El número de teléfono no es válido.'),
+    firstName: z.string().min(2, 'El nombre es requerido.'),
+    lastName: z.string().min(2, 'El apellido es requerido.'),
+    phone: z.string().min(7, 'El teléfono es requerido.'),
 });
-type ProfileValues = z.infer<typeof profileSchema>;
 
-type DialogState = 'login' | 'signup' | 'my-appointments' | 'edit-profile' | null;
-type CancelDialogState = { appointment: Appointment } | null;
 
-function AuthDialog({ children }: { children: React.ReactNode }) {
-  const [tab, setTab] = React.useState<'login' | 'signup'>('login');
-  const [open, setOpen] = React.useState(false);
-  const [loading, setLoading] = React.useState(false);
-  const { clientLogin, clientSignup } = useAuth();
+function LoginForm({ onLoginSuccess }: { onLoginSuccess: () => void }) {
+  const { clientLogin } = useAuth();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const loginForm = useForm<LoginValues>({ resolver: zodResolver(loginSchema) });
-  const signupForm = useForm<SignupValues>({ resolver: zodResolver(signupSchema) });
+  const form = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
 
-  const handleLogin = async (values: LoginValues) => {
-    setLoading(true);
+  const onSubmit = async (values: z.infer<typeof loginSchema>) => {
+    setIsLoading(true);
     try {
       await clientLogin(values.email, values.password);
-      setOpen(false);
+      onLoginSuccess();
     } catch (error: any) {
-      console.error(error);
       toast({
         variant: 'destructive',
-        title: 'Error al iniciar sesión',
-        description: 'Credenciales incorrectas. Por favor, inténtalo de nuevo.',
+        title: 'Error de Inicio de Sesión',
+        description: 'Las credenciales son incorrectas. Inténtalo de nuevo.',
       });
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignup = async (values: SignupValues) => {
-    setLoading(true);
-    try {
-      await clientSignup(values.email, values.password, values.firstName, values.lastName, values.phone);
-      setOpen(false);
-    } catch (error: any) {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Error en el registro',
-        description: error.code === 'auth/email-already-in-use'
-          ? 'Este correo electrónico ya está en uso.'
-          : 'No se pudo crear la cuenta. Inténtalo de nuevo.',
-      });
-    } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-md p-0">
-        <div className="p-8">
-            <DialogHeader className="text-center mb-6">
-                <DialogTitle className="text-2xl font-headline">
-                    {tab === 'login' ? '¡Bienvenida de vuelta!' : 'Crea tu Cuenta'}
-                </DialogTitle>
-                <DialogDescription>
-                    {tab === 'login' ? 'Inicia sesión para gestionar tus citas.' : 'Regístrate para agendar fácilmente.'}
-                </DialogDescription>
-            </DialogHeader>
-
-            {tab === 'login' ? (
-            <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
-                <FormField control={loginForm.control} name="email" render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Correo Electrónico</FormLabel>
-                    <FormControl><Input placeholder="tu@correo.com" {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )} />
-                <FormField control={loginForm.control} name="password" render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Contraseña</FormLabel>
-                    <FormControl><Input type="password" {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )} />
-                <Button type="submit" className="w-full mt-6" disabled={loading}>
-                    {loading && <Loader2 className="mr-2 animate-spin" />}
-                    Iniciar Sesión
-                </Button>
-                </form>
-            </Form>
-            ) : (
-            <Form {...signupForm}>
-                <form onSubmit={signupForm.handleSubmit(handleSignup)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <FormField control={signupForm.control} name="firstName" render={({ field }) => (<FormItem><FormLabel>Nombre</FormLabel><FormControl><Input placeholder="Ana" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={signupForm.control} name="lastName" render={({ field }) => (<FormItem><FormLabel>Apellido</FormLabel><FormControl><Input placeholder="García" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                </div>
-                <FormField control={signupForm.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input placeholder="3001234567" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={signupForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Correo</FormLabel><FormControl><Input placeholder="tu@correo.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={signupForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>Contraseña</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <Button type="submit" className="w-full mt-6" disabled={loading}>
-                    {loading && <Loader2 className="mr-2 animate-spin" />}
-                    Registrarse
-                </Button>
-                </form>
-            </Form>
-            )}
-        </div>
-
-        <DialogFooter className="flex-row items-center justify-center p-4 border-t bg-muted/50">
-            <p className="text-sm text-muted-foreground">
-            {tab === 'login' ? '¿No tienes una cuenta?' : '¿Ya tienes una cuenta?'}
-            </p>
-            <Button variant="link" onClick={() => setTab(tab === 'login' ? 'signup' : 'login')} className="p-1">
-            {tab === 'login' ? 'Regístrate aquí' : 'Inicia sesión'}
-            </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function AppointmentsDialog({ open, onOpenChange, user }: { open: boolean, onOpenChange: (open: boolean) => void, user: React.ComponentProps<typeof useAuth>['user'] }) {
-  const firestore = useFirestore();
-  const { services } = useServices();
-  const { stylists } = useStylists();
-  const { toast } = useToast();
-  const [cancelState, setCancelState] = React.useState<CancelDialogState>(null);
-  const [isCancelling, setIsCancelling] = React.useState(false);
-
-  const appointmentsCollection = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, 'customers', user.uid, 'appointments');
-  }, [firestore, user]);
-
-  const { data: appointments, isLoading } = useCollection<Appointment>(appointmentsCollection, !!user);
-  
-  const handleCancelAppointment = async () => {
-    if (!firestore || !cancelState || !user) return;
-    setIsCancelling(true);
-    const { appointment } = cancelState;
-
-    try {
-        const batch = writeBatch(firestore);
-
-        const adminAppointmentRef = doc(firestore, 'admin_appointments', appointment.id);
-        batch.update(adminAppointmentRef, { status: 'cancelled' });
-
-        const stylistAppointmentRef = doc(firestore, 'stylists', appointment.stylistId, 'appointments', appointment.id);
-        batch.update(stylistAppointmentRef, { status: 'cancelled' });
-
-        const customerAppointmentRef = doc(firestore, 'customers', user.uid, 'appointments', appointment.id);
-        batch.update(customerAppointmentRef, { status: 'cancelled' });
-        
-        await batch.commit();
-
-        toast({
-            title: 'Cita Cancelada',
-            description: 'Tu cita ha sido cancelada exitosamente.',
-        });
-    } catch (error) {
-        console.error("Error cancelling appointment: ", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "No se pudo cancelar la cita. Por favor, intenta de nuevo.",
-        });
-    } finally {
-        setIsCancelling(false);
-        setCancelState(null);
-    }
-  };
-
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Mis Citas</DialogTitle>
-          <DialogDescription>Aquí puedes ver el historial de tus citas.</DialogDescription>
-        </DialogHeader>
-        <div className="max-h-[60vh] overflow-y-auto p-1 pr-4">
-          {isLoading ? (
-             <div className="space-y-4">
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-             </div>
-          ) : appointments && appointments.length > 0 ? (
-            <ul className="space-y-4">
-              {appointments
-                .sort((a,b) => (b.start as any).toMillis() - (a.start as any).toMillis())
-                .map((appointment) => {
-                const service = services.find(s => s.id === appointment.serviceId);
-                const stylist = stylists.find(s => s.id === appointment.stylistId);
-                const appointmentDate = (appointment.start as any).toDate();
-                const canCancel = appointment.status === 'scheduled' || appointment.status === 'confirmed';
-
-                return (
-                  <li key={appointment.id} className="rounded-lg border p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="font-semibold">{service?.name || 'Servicio Desconocido'}</p>
-                            <p className="text-sm text-muted-foreground">con {stylist?.name || 'Estilista Desconocido'}</p>
-                            <p className="text-sm text-muted-foreground">{format(appointmentDate, "PPP 'a las' p", { locale: es })}</p>
-                        </div>
-                        <Badge variant={appointment.status === 'cancelled' ? 'destructive' : appointment.status === 'confirmed' ? 'default' : 'secondary'} className="capitalize">
-                            {appointment.status === 'scheduled' ? 'Agendada' : appointment.status === 'confirmed' ? 'Confirmada' : 'Cancelada'}
-                        </Badge>
-                    </div>
-                     {canCancel && (
-                        <div className="flex justify-end pt-2 border-t">
-                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setCancelState({ appointment })}>
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Cancelar Cita
-                            </Button>
-                        </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <Calendar className="mx-auto h-12 w-12" />
-              <p className="mt-4">Aún no tienes citas agendadas.</p>
-            </div>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Correo Electrónico</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="tu@correo.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           )}
-        </div>
-      </DialogContent>
-       <AlertDialog open={!!cancelState} onOpenChange={(isOpen) => !isOpen && setCancelState(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Confirmar cancelación?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Tu espacio será liberado.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cerrar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCancelAppointment} disabled={isCancelling} className={buttonVariants({ variant: "destructive" })}>
-              {isCancelling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Confirmar Cancelación
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Dialog>
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Contraseña</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="********" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" className="w-full mt-6" disabled={isLoading}>
+          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Iniciar Sesión
+        </Button>
+      </form>
+    </Form>
   );
 }
 
-function ProfileDialog({ open, onOpenChange, user, customer }: { open: boolean, onOpenChange: (open: boolean) => void, user: React.ComponentProps<typeof useAuth>['user'], customer: Customer | null }) {
-  const firestore = useFirestore();
+function SignupForm({ onSignupSuccess }: { onSignupSuccess: () => void }) {
+  const { clientSignup } = useAuth();
   const { toast } = useToast();
-  const [loading, setLoading] = React.useState(false);
-  
-  const profileForm = useForm<ProfileValues>({
-    resolver: zodResolver(profileSchema),
+  const [isLoading, setIsLoading] = useState(false);
+
+  const form = useForm<z.infer<typeof signupSchema>>({
+    resolver: zodResolver(signupSchema),
     defaultValues: {
       firstName: '',
       lastName: '',
       phone: '',
-    }
+      email: '',
+      password: '',
+    },
   });
 
-  React.useEffect(() => {
-    if (customer) {
-      profileForm.reset({
-        firstName: customer.firstName,
-        lastName: customer.lastName,
-        phone: customer.phone,
-      });
-    }
-  }, [customer, profileForm]);
-
-  const handleProfileUpdate = async (values: ProfileValues) => {
-    if (!firestore || !user) return;
-    setLoading(true);
+  const onSubmit = async (values: z.infer<typeof signupSchema>) => {
+    setIsLoading(true);
     try {
-        const customerDocRef = doc(firestore, 'customers', user.uid);
-        await updateDoc(customerDocRef, values);
-        toast({
-            title: '¡Perfil Actualizado!',
-            description: 'Tu información ha sido guardada correctamente.',
-        });
-        onOpenChange(false);
-    } catch (error) {
-         console.error('Error updating profile: ', error);
-         toast({
-            variant: 'destructive',
-            title: 'Error al actualizar',
-            description: 'No se pudo guardar tu información. Inténtalo de nuevo.',
-         });
+      await clientSignup(
+        values.email,
+        values.password,
+        values.firstName,
+        values.lastName,
+        values.phone
+      );
+      onSignupSuccess();
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error de Registro',
+        description:
+          error.code === 'auth/email-already-in-use'
+            ? 'Este correo ya está registrado. Intenta iniciar sesión.'
+            : 'No se pudo crear la cuenta. Inténtalo de nuevo.',
+      });
     } finally {
-        setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="firstName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nombre</FormLabel>
+                <FormControl>
+                  <Input placeholder="Ana" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="lastName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Apellido</FormLabel>
+                <FormControl>
+                  <Input placeholder="García" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Teléfono</FormLabel>
+              <FormControl>
+                <Input placeholder="3001234567" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Correo Electrónico</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="tu@correo.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Contraseña</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="Mínimo 8 caracteres" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" className="w-full mt-6" disabled={isLoading}>
+          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Registrarse
+        </Button>
+      </form>
+    </Form>
+  );
+}
+
+function AuthDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const handleSuccess = () => {
+    onOpenChange(false);
+  };
+
+  return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Mi Perfil</DialogTitle>
-          <DialogDescription>Actualiza tu información personal.</DialogDescription>
-        </DialogHeader>
-        <Form {...profileForm}>
-          <form onSubmit={profileForm.handleSubmit(handleProfileUpdate)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField control={profileForm.control} name="firstName" render={({ field }) => (<FormItem><FormLabel>Nombre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={profileForm.control} name="lastName" render={({ field }) => (<FormItem><FormLabel>Apellido</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-            </div>
-            <FormField control={profileForm.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <DialogFooter className="pt-4">
-              <DialogClose asChild>
-                <Button type="button" variant="ghost">Cancelar</Button>
-              </DialogClose>
-              <Button type="submit" disabled={loading}>
-                {loading && <Loader2 className="mr-2 animate-spin" />}
-                Guardar Cambios
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
+        <DialogContent className="sm:max-w-md p-8 shadow-xl border">
+        <Tabs defaultValue="login" className="w-full">
+            <DialogHeader className="text-center mb-4">
+            <DialogTitle className="text-2xl font-headline">
+                <span className="block data-[state=active]:hidden">Bienvenida de Vuelta</span>
+                <span className="hidden data-[state=active]:block">Crea tu Cuenta</span>
+            </DialogTitle>
+            <DialogDescription>
+                Accede a tu cuenta para agendar y gestionar tus citas.
+            </DialogDescription>
+            </DialogHeader>
+            <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
+            <TabsTrigger value="register">Registrarse</TabsTrigger>
+            </TabsList>
+            <TabsContent value="login" className="pt-4">
+            <LoginForm onLoginSuccess={handleSuccess} />
+            </TabsContent>
+            <TabsContent value="register" className="pt-4">
+            <SignupForm onSignupSuccess={handleSuccess} />
+            </TabsContent>
+        </Tabs>
+        </DialogContent>
     </Dialog>
   );
 }
 
+function ProfileDialog({ open, onOpenChange, customer }: { open: boolean, onOpenChange: (open: boolean) => void, customer: Customer }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSaving, setIsSaving] = useState(false);
+
+    const form = useForm<z.infer<typeof profileSchema>>({
+        resolver: zodResolver(profileSchema),
+        defaultValues: {
+            firstName: customer.firstName || '',
+            lastName: customer.lastName || '',
+            phone: customer.phone || '',
+        },
+    });
+
+    useEffect(() => {
+        form.reset({
+            firstName: customer.firstName || '',
+            lastName: customer.lastName || '',
+            phone: customer.phone || '',
+        });
+    }, [customer, form]);
+
+    const onSubmit = async (values: z.infer<typeof profileSchema>) => {
+        if (!firestore) return;
+        setIsSaving(true);
+        try {
+            const customerRef = doc(firestore, 'customers', customer.id);
+            await updateDoc(customerRef, values);
+            toast({
+                title: 'Perfil Actualizado',
+                description: 'Tus datos se han guardado correctamente.',
+            });
+            onOpenChange(false);
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'No se pudo actualizar tu perfil.',
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Mi Perfil</DialogTitle>
+                    <DialogDescription>Actualiza tus datos personales.</DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                         <FormField
+                            control={form.control}
+                            name="firstName"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Nombre</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="lastName"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Apellido</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="phone"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Teléfono</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={isSaving}>
+                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Guardar Cambios
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function AppointmentsDialog({ open, onOpenChange, userId }: { open: boolean, onOpenChange: (open: boolean) => void, userId: string }) {
+    const firestore = useFirestore();
+    const { services } = useServices();
+    const { stylists } = useStylists();
+    const { toast } = useToast();
+    const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
+
+    const appointmentsCollection = useMemoFirebase(() => 
+        firestore ? collection(firestore, 'customers', userId, 'appointments') : null, 
+    [firestore, userId]);
+    
+    const { data: appointments, isLoading } = useCollection<Appointment>(appointmentsCollection, true);
+
+    const handleCancelAppointment = async () => {
+        if (!appointmentToCancel || !firestore) return;
+
+        const batch = writeBatch(firestore);
+        try {
+            const { id, customerId, stylistId } = appointmentToCancel;
+            
+            const adminAppointmentRef = doc(firestore, 'admin_appointments', id);
+            batch.update(adminAppointmentRef, { status: 'cancelled' });
+            
+            const stylistAppointmentRef = doc(firestore, 'stylists', stylistId, 'appointments', id);
+            batch.update(stylistAppointmentRef, { status: 'cancelled' });
+
+            const customerAppointmentRef = doc(firestore, 'customers', customerId, 'appointments', id);
+            batch.update(customerAppointmentRef, { status: 'cancelled' });
+
+            await batch.commit();
+
+            toast({
+                title: 'Cita Cancelada',
+                description: 'Tu cita ha sido cancelada con éxito.',
+            });
+        } catch (error) {
+            console.error("Error cancelling appointment:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'No se pudo cancelar la cita. Inténtalo de nuevo.',
+            });
+        } finally {
+            setAppointmentToCancel(null);
+        }
+    };
+
+
+    return (
+        <>
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Mis Citas</DialogTitle>
+                        <DialogDescription>Aquí puedes ver el historial de tus citas.</DialogDescription>
+                    </DialogHeader>
+                    {isLoading ? (
+                        <div className="space-y-4 py-4">
+                            <Skeleton className="h-20 w-full" />
+                            <Skeleton className="h-20 w-full" />
+                            <Skeleton className="h-20 w-full" />
+                        </div>
+                    ) : appointments && appointments.length > 0 ? (
+                        <ul className="space-y-3 max-h-[60vh] overflow-y-auto mt-4 pr-3">
+                            {appointments.sort((a, b) => (b.start as any).seconds - (a.start as any).seconds).map(appointment => {
+                                const service = services.find(s => s.id === appointment.serviceId);
+                                const stylist = stylists.find(s => s.id === appointment.stylistId);
+                                const appointmentDate = (appointment.start as any).toDate();
+                                const canBeCancelled = ['scheduled', 'confirmed'].includes(appointment.status);
+                                
+                                return (
+                                    <li key={appointment.id} className="flex items-center justify-between rounded-md border bg-background p-3 gap-2">
+                                        <div className="flex-1 space-y-1 text-sm">
+                                            <div className="flex justify-between items-start">
+                                                <span className="font-bold">{service?.name || 'Servicio no encontrado'}</span>
+                                                 <Badge variant={appointment.status === 'confirmed' ? 'default' : appointment.status === 'cancelled' ? 'destructive' : 'secondary'} className="capitalize">
+                                                    {appointment.status === 'scheduled' ? 'Agendada' : appointment.status === 'confirmed' ? 'Confirmada' : 'Cancelada'}
+                                                </Badge>
+                                            </div>
+                                            <p className="text-muted-foreground">Con: {stylist?.name || 'Estilista no disponible'}</p>
+                                            <p className="text-muted-foreground">{format(appointmentDate, "PPP 'a las' p", { locale: es })}</p>
+                                        </div>
+                                        {canBeCancelled && (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem
+                                                        onSelect={() => setAppointmentToCancel(appointment)}
+                                                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                                    >
+                                                        <XCircle className="mr-2 h-4 w-4" />
+                                                        Cancelar Cita
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
+                            <Calendar className="h-12 w-12" />
+                            <p className="mt-4">No tienes ninguna cita registrada.</p>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+            <AlertDialog open={!!appointmentToCancel} onOpenChange={(isOpen) => !isOpen && setAppointmentToCancel(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta acción cancelará tu cita. Si necesitas reagendar, por favor, ponte en contacto con nosotros.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cerrar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleCancelAppointment} className={buttonVariants({variant: "destructive"})}>
+                            Confirmar Cancelación
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
+    );
+}
+
+
+function MyAccountDialogs({ customer, userId }: { customer: Customer, userId: string }) {
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isAppointmentsOpen, setIsAppointmentsOpen] = useState(false);
+
+    return (
+        <>
+            <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{customer.firstName} {customer.lastName}</p>
+                        <p className="text-xs leading-none text-muted-foreground">{customer.email}</p>
+                    </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setIsAppointmentsOpen(true)}>
+                    <Calendar className="mr-2 h-4 w-4" />
+                    <span>Mis Citas</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setIsProfileOpen(true)}>
+                    <UserCog className="mr-2 h-4 w-4" />
+                    <span>Mi Perfil</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => useAuth().logout()}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Cerrar Sesión</span>
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+            
+            <ProfileDialog open={isProfileOpen} onOpenChange={setIsProfileOpen} customer={customer} />
+            <AppointmentsDialog open={isAppointmentsOpen} onOpenChange={setIsAppointmentsOpen} userId={userId} />
+        </>
+    );
+}
+
+// ***** Main Component *****
 
 export default function UserAuth() {
-  const { user, isUserLoading, logout } = useAuth();
+  const { user, isUserLoading } = useAuth();
   const firestore = useFirestore();
-  const [dialog, setDialog] = React.useState<DialogState>(null);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
 
-  const customerDoc = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    return doc(firestore, 'customers', user.uid);
-  }, [firestore, user?.uid]);
+  const customerDocRef = useMemoFirebase(
+    () => (firestore && user ? doc(firestore, 'customers', user.uid) : null),
+    [firestore, user]
+  );
+  
+  const { data: customer, isLoading: isCustomerLoading } = useDoc<Customer>(customerDocRef, !!user);
 
-  const { data: customer, isLoading: isCustomerLoading } = useDoc<Customer>(customerDoc, !!user);
-
-  const isLoading = isUserLoading || (user && isCustomerLoading);
-
-  if (isLoading) {
+  if (isUserLoading || (user && isCustomerLoading)) {
     return <Skeleton className="h-10 w-28" />;
   }
 
   if (user && customer) {
     return (
-      <>
-        <AppointmentsDialog open={dialog === 'my-appointments'} onOpenChange={() => setDialog(null)} user={user} />
-        <ProfileDialog open={dialog === 'edit-profile'} onOpenChange={() => setDialog(null)} user={user} customer={customer}/>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              <User className="mr-2" />
-              {customer.firstName}
+            <DropdownMenuTrigger asChild>
+            <Button variant="secondary" className="rounded-full">
+                <Avatar className="h-8 w-8 mr-2">
+                    <AvatarImage src={`https://picsum.photos/seed/${user.uid}/100/100`} alt={customer.firstName} data-ai-hint="person face"/>
+                    <AvatarFallback>{customer.firstName?.charAt(0)}{customer.lastName?.charAt(0)}</AvatarFallback>
+                </Avatar>
+                Mi Cuenta
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => setDialog('my-appointments')}>
-              <Calendar className="mr-2" />
-              Mis Citas
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setDialog('edit-profile')}>
-              <UserCog className="mr-2" />
-              Mi Perfil
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>
-              <LogOut className="mr-2" />
-              Cerrar Sesión
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </>
+            </DropdownMenuTrigger>
+            <MyAccountDialogs customer={customer} userId={user.uid} />
+      </DropdownMenu>
     );
   }
 
   return (
-    <AuthDialog>
-      <Button variant="outline">
-         <User className="mr-2" />
-         Iniciar Sesión
+    <>
+      <Button onClick={() => setIsAuthDialogOpen(true)}>
+        <User className="mr-2 h-4 w-4" />
+        Iniciar Sesión
       </Button>
-    </AuthDialog>
+      <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
+    </>
   );
 }
-
-    
