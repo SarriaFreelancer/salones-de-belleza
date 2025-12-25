@@ -21,22 +21,16 @@ import { StylistsProvider, useStylists } from '@/hooks/use-stylists';
 
 function HomePageContent() {
     const firestore = useFirestore();
-    const [isClient, setIsClient] = React.useState(false);
-
-    React.useEffect(() => {
-        setIsClient(true);
-    }, []);
-
     const { services, isLoading: isLoadingServices } = useServices();
     const { stylists, isLoading: isLoadingStylists } = useStylists();
     
     const galleryCollection = useMemoFirebase(() => firestore ? collection(firestore, 'gallery') : null, [firestore]);
     const { data: galleryImages, isLoading: isLoadingGallery } = useCollection<GalleryImage>(galleryCollection);
-    
+
     const isLoading = isLoadingServices || isLoadingStylists || isLoadingGallery;
 
   return (
-    <>
+    <div className="flex min-h-dvh w-full flex-col">
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
         <Link href="#" className="flex items-center gap-2 font-semibold">
           <Logo />
@@ -61,7 +55,7 @@ function HomePageContent() {
             Contacto
           </Link>
         </nav>
-        {isClient ? <UserAuth services={services || []} stylists={stylists || []} /> : <Skeleton className="h-10 w-24" />}
+        <UserAuth services={services || []} stylists={stylists || []} />
       </header>
       <main className="flex-1">
         <section id="hero" className="relative h-[60vh] w-full">
@@ -160,7 +154,7 @@ function HomePageContent() {
             </div>
             <div className="mx-auto mt-12 grid max-w-5xl grid-cols-2 gap-4 sm:grid-cols-3">
                 {isLoading ? Array.from({length: 6}).map((_, i) => <Skeleton key={i} className="aspect-video w-full rounded-lg" />) : (galleryImages || []).map(img => (
-                    <div key={img.id} className="group relative rounded-lg group-hover:z-10">
+                    <div key={img.id} className="group relative rounded-lg overflow-hidden group-hover:z-10">
                       <Image 
                           src={img.src} 
                           alt={img.alt} 
@@ -177,7 +171,7 @@ function HomePageContent() {
 
         <section id="agendar" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
             <div className="container px-4 md:px-6">
-                {isClient ? <PublicBookingForm services={services || []} stylists={stylists || []} /> : <Skeleton className="h-96 w-full max-w-4xl mx-auto" />}
+                <PublicBookingForm services={services || []} stylists={stylists || []} />
             </div>
         </section>
 
@@ -243,7 +237,7 @@ function HomePageContent() {
           </nav>
         </div>
       </footer>
-    </>
+    </div>
   );
 }
 
