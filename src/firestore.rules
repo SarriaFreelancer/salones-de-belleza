@@ -52,8 +52,7 @@ service cloud.firestore {
     // Allow any signed-in user to read to check for availability.
     match /stylists/{stylistId}/appointments/{appointmentId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn();
-        allow update, delete: if isAdmin();
+        allow write: if isSignedIn();
     }
 
     // --- Centralized Admin Collections ---
