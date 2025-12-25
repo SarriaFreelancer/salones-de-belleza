@@ -40,7 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { add, format, parse } from 'date-fns';
+import { add, format, parse, set } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import type { Appointment, DayOfWeek, Stylist, Customer } from '@/lib/types';
@@ -50,7 +50,7 @@ import { Badge } from '../ui/badge';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, Timestamp, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { collection, Timestamp, query, where, getDocs, addDoc, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 const formSchema = z.object({
@@ -153,8 +153,11 @@ export default function NewAppointmentDialog({
     const serviceDuration = service.duration;
 
     availabilityForDay.forEach(availSlot => {
-      let currentTime = parse(availSlot.start, 'HH:mm', new Date(preferredDate));
-      const endTime = parse(availSlot.end, 'HH:mm', new Date(preferredDate));
+      let baseDate = new Date(preferredDate);
+      baseDate = set(baseDate, { hours: 0, minutes: 0, seconds: 0, milliseconds: 0 });
+      
+      let currentTime = parse(availSlot.start, 'HH:mm', baseDate);
+      const endTime = parse(availSlot.end, 'HH:mm', baseDate);
 
       while (add(currentTime, { minutes: serviceDuration }) <= endTime) {
         const proposedEndTime = add(currentTime, { minutes: serviceDuration });
@@ -166,7 +169,7 @@ export default function NewAppointmentDialog({
         });
 
         if (!isOverlapping) {
-          slots.push(currentTime);
+          slots.push(new Date(currentTime));
         }
 
         currentTime = add(currentTime, { minutes: 15 }); 
@@ -197,8 +200,10 @@ export default function NewAppointmentDialog({
     const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
+      // Customer exists, return their ID
       return querySnapshot.docs[0].id;
     } else {
+      // Customer does not exist, create them
       const newCustomerData = {
         firstName: values.customerFirstName,
         lastName: values.customerLastName,
@@ -207,6 +212,9 @@ export default function NewAppointmentDialog({
       };
       // Use await here to ensure customer is created before appointment
       const newDocRef = await addDoc(customersRef, newCustomerData);
+      // The new customer document will have an auto-generated ID.
+      // We also set the `id` field inside the document.
+      await addDocumentNonBlocking(doc(customersRef, newDocRef.id), { id: newDocRef.id }, { merge: true });
       return newDocRef.id;
     }
   };
