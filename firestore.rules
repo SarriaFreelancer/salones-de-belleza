@@ -28,7 +28,7 @@ service cloud.firestore {
     // A customer can create their own profile, and get or update their own profile.
     match /customers/{customerId} {
       allow list, get: if isAdmin();
-      allow get, create, update: if isOwner(customerId);
+      allow create, update: if isOwner(customerId);
       allow delete: if false; // Users cannot delete their profiles
     }
 
@@ -42,10 +42,10 @@ service cloud.firestore {
     }
     
     // STYLISTS
-    // Publicly readable, but only admins can write.
+    // Publicly readable for individual documents (`get`), but only admins can list or write.
     match /stylists/{stylistId} {
-      allow get, list: if true;
-      allow write: if isAdmin();
+      allow get: if true;
+      allow list, write: if isAdmin();
     }
     
     // STYLIST APPOINTMENTS (This is a subcollection for aggregated views, not primary storage)
