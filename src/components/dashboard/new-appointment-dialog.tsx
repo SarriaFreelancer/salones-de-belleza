@@ -49,8 +49,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, Timestamp, query, where, getDocs, addDoc, doc } from 'firebase/firestore';
+import { collection, Timestamp, query, where, getDocs, addDoc, doc, setDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 const formSchema = z.object({
@@ -210,11 +209,13 @@ export default function NewAppointmentDialog({
         email: values.customerEmail.trim().toLowerCase(),
         phone: values.customerPhone,
       };
+      
       // Use await here to ensure customer is created before appointment
       const newDocRef = await addDoc(customersRef, newCustomerData);
+      
       // The new customer document will have an auto-generated ID.
-      // We also set the `id` field inside the document.
-      await addDocumentNonBlocking(doc(customersRef, newDocRef.id), { id: newDocRef.id }, { merge: true });
+      // We also set the `id` field inside the document for consistency.
+      await setDoc(doc(customersRef, newDocRef.id), { id: newDocRef.id }, { merge: true });
       return newDocRef.id;
     }
   };
@@ -246,7 +247,8 @@ export default function NewAppointmentDialog({
         const newAppDocRef = await addDoc(appointmentsCollection, newAppointment);
         
         const stylistAppointmentsCollection = collection(firestore, 'stylists', values.stylistId, 'appointments');
-        await addDocumentNonBlocking(doc(stylistAppointmentsCollection, newAppDocRef.id), newAppointment);
+        // This can be non-blocking as it's for a secondary view
+        await setDoc(doc(stylistAppointmentsCollection, newAppDocRef.id), newAppointment);
 
         toast({
           title: '¡Cita Agendada!',
@@ -260,7 +262,7 @@ export default function NewAppointmentDialog({
         console.error("Error creating appointment or customer: ", error);
         toast({
             title: "Error al Agendar",
-            description: "No se pudo crear la cita o el cliente. Inténtalo de nuevo.",
+            description: "No se pudo crear la cita o el cliente. Revisa la consola para más detalles.",
             variant: "destructive"
         });
     } finally {
