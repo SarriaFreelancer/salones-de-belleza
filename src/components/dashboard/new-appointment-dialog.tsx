@@ -56,8 +56,11 @@ import {
   doc,
   setDoc,
   writeBatch,
+  getDoc,
+  updateDoc,
 } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { useCollection } from '@/firebase/firestore/use-collection';
 
 const formSchema = z.object({
   serviceId: z.string().min(1, 'Debes seleccionar un servicio.'),
@@ -85,11 +88,13 @@ type FormValues = z.infer<typeof formSchema>;
 interface NewAppointmentDialogProps {
   children: React.ReactNode;
   onAppointmentCreated: (appointment: Appointment) => void;
+  appointments: Appointment[]; // Receive appointments as a prop
 }
 
 export default function NewAppointmentDialog({
   children,
   onAppointmentCreated,
+  appointments,
 }: NewAppointmentDialogProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
@@ -99,9 +104,6 @@ export default function NewAppointmentDialog({
   const { services } = useServices();
   const { stylists } = useStylists();
   const firestore = useFirestore();
-  const { data: appointments } = useCollection(
-    firestore ? collection(firestore, 'admin_appointments') : null
-  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -234,34 +236,35 @@ export default function NewAppointmentDialog({
     setStep(2);
   };
   
- const getOrCreateCustomer = async (values: FormValues): Promise<string> => {
+  const getOrCreateCustomer = async (values: FormValues): Promise<string> => {
     if (!firestore) throw new Error('Firestore no está disponible');
-    
+  
     const customersRef = collection(firestore, 'customers');
     const q = query(customersRef, where('email', '==', values.customerEmail.trim().toLowerCase()));
     
     const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
-      // Customer exists, return their ID
-      return querySnapshot.docs[0].id;
+      const customerDoc = querySnapshot.docs[0];
+      // Ensure the 'id' field exists in the document
+      if (!customerDoc.data().id) {
+        await updateDoc(customerDoc.ref, { id: customerDoc.id });
+      }
+      return customerDoc.id;
     } else {
-      // Customer doesn't exist, create a new one in Firestore (but NOT in Firebase Auth)
       const newCustomerData = {
-          firstName: values.customerFirstName,
-          lastName: values.customerLastName,
-          email: values.customerEmail.trim().toLowerCase(),
-          phone: values.customerPhone,
+        firstName: values.customerFirstName,
+        lastName: values.customerLastName,
+        email: values.customerEmail.trim().toLowerCase(),
+        phone: values.customerPhone,
       };
       
-      const newCustomerDocRef = await addDoc(customersRef, newCustomerData);
-      
-      // Manually set the ID field in the new document
-      await setDoc(newCustomerDocRef, { id: newCustomerDocRef.id }, { merge: true });
-
+      const newCustomerDocRef = doc(collection(firestore, 'customers'));
+      await setDoc(newCustomerDocRef, { ...newCustomerData, id: newCustomerDocRef.id });
+  
       toast({
-          title: "Nuevo Cliente Creado",
-          description: `${values.customerFirstName} ha sido registrado. Deberá crear una cuenta para iniciar sesión.`,
+        title: "Nuevo Cliente Creado",
+        description: `${values.customerFirstName} ha sido registrado en la base de datos.`,
       });
       
       return newCustomerDocRef.id;
@@ -295,13 +298,16 @@ export default function NewAppointmentDialog({
       const batch = writeBatch(firestore);
 
       const mainAppointmentRef = doc(collection(firestore, 'admin_appointments'));
-      batch.set(mainAppointmentRef, newAppointmentData);
+      batch.set(mainAppointmentRef, { ...newAppointmentData, id: mainAppointmentRef.id });
       
       const stylistAppointmentRef = doc(firestore, 'stylists', values.stylistId, 'appointments', mainAppointmentRef.id);
-      batch.set(stylistAppointmentRef, newAppointmentData);
+      batch.set(stylistAppointmentRef, { ...newAppointmentData, id: mainAppointmentRef.id });
 
-      const customerAppointmentRef = doc(firestore, 'customers', customerId, 'appointments', mainAppointmentRef.id);
-      batch.set(customerAppointmentRef, newAppointmentData);
+      // Check if customer exists before writing to their subcollection
+      if (customerId) {
+        const customerAppointmentRef = doc(firestore, 'customers', customerId, 'appointments', mainAppointmentRef.id);
+        batch.set(customerAppointmentRef, { ...newAppointmentData, id: mainAppointmentRef.id });
+      }
       
       await batch.commit();
 
