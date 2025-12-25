@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -40,7 +40,7 @@ import {
 import { add, format, parse, set } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import type { Appointment, DayOfWeek, Stylist } from '@/lib/types';
+import type { Appointment, DayOfWeek } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
@@ -57,7 +57,8 @@ import {
   setDoc,
   writeBatch,
 } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useFirebaseAuth } from '@/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 const formSchema = z.object({
   serviceId: z.string().min(1, 'Debes seleccionar un servicio.'),
@@ -77,7 +78,7 @@ const formSchema = z.object({
     .min(5, 'El correo es requerido.'),
   customerPhone: z
     .string()
-    .min(5, 'El teléfono debe tener al menos 5 caracteres.'),
+    .min(7, 'El teléfono debe tener al menos 7 caracteres.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -101,6 +102,7 @@ export default function NewAppointmentDialog({
   const { services } = useServices();
   const { stylists } = useStylists();
   const firestore = useFirestore();
+  const auth = useFirebaseAuth();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -153,7 +155,7 @@ export default function NewAppointmentDialog({
 
   const findAvailableSlots = (values: FormValues) => {
     setIsCalculating(true);
-    setStep(2);
+    setAvailableSlots([]);
     const { preferredDate, stylistId, serviceId } = values;
 
     const stylist = stylists.find((s) => s.id === stylistId);
@@ -230,40 +232,55 @@ export default function NewAppointmentDialog({
     }
 
     setIsCalculating(false);
+    setStep(2);
   };
-
-  const getOrCreateCustomer = async (values: FormValues): Promise<string> => {
-    if (!firestore) throw new Error('Firestore not available');
-
+  
+ const getOrCreateCustomer = async (values: FormValues): Promise<string> => {
+    if (!firestore || !auth) throw new Error('Firestore o Auth no están disponibles');
+    
     const customersRef = collection(firestore, 'customers');
-    const q = query(
-      customersRef,
-      where('email', '==', values.customerEmail.trim().toLowerCase())
-    );
-
+    const q = query(customersRef, where('email', '==', values.customerEmail.trim().toLowerCase()));
+    
     const querySnapshot = await getDocs(q);
-
+    
     if (!querySnapshot.empty) {
-      // Customer exists, return their ID
       return querySnapshot.docs[0].id;
     } else {
-      // Customer does not exist, create them
-      const newCustomerData = {
-        firstName: values.customerFirstName,
-        lastName: values.customerLastName,
-        email: values.customerEmail.trim().toLowerCase(),
-        phone: values.customerPhone,
-      };
+      try {
+        const tempPassword = Math.random().toString(36).slice(-8);
+        const userCredential = await createUserWithEmailAndPassword(auth, values.customerEmail, tempPassword);
+        const newUser = userCredential.user;
 
-      // Create the new document with an auto-generated ID
-      const newDocRef = await addDoc(customersRef, newCustomerData);
-      
-      // Now, update the document to include its own ID.
-      await setDoc(doc(customersRef, newDocRef.id), { id: newDocRef.id }, { merge: true });
-      
-      return newDocRef.id;
+        const newCustomerData = {
+          firstName: values.customerFirstName,
+          lastName: values.customerLastName,
+          email: values.customerEmail.trim().toLowerCase(),
+          phone: values.customerPhone,
+          id: newUser.uid,
+        };
+        
+        await setDoc(doc(customersRef, newUser.uid), newCustomerData);
+
+        toast({
+            title: "Nuevo Cliente Creado",
+            description: `${values.customerFirstName} ha sido registrado. Deberá restablecer su contraseña al iniciar sesión.`,
+        });
+        
+        return newUser.uid;
+      } catch (error: any) {
+        console.error("Error creating new user in getOrCreateCustomer:", error);
+        if (error.code === 'auth/email-already-in-use') {
+            toast({
+                variant: 'destructive',
+                title: 'Error de Autenticación',
+                description: 'Este correo ya está registrado en Firebase Auth, pero no como cliente. Contacte al soporte.',
+            });
+        }
+        throw new Error('No se pudo crear el nuevo usuario en Firebase.');
+      }
     }
   };
+
 
   const selectSlot = async (slot: Date) => {
     if (!firestore) return;
@@ -343,188 +360,186 @@ export default function NewAppointmentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form
-            className="space-y-4"
-            onSubmit={form.handleSubmit(findAvailableSlots)}
-          >
-            {step === 1 && (
-              <>
+        {step === 1 && (
+            <Form {...form}>
+            <form
+                className="space-y-4"
+                onSubmit={form.handleSubmit(findAvailableSlots)}
+            >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
+                    <FormField
                     control={form.control}
                     name="customerFirstName"
                     render={({ field }) => (
-                      <FormItem>
+                        <FormItem>
                         <FormLabel>Nombre del Cliente</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ej: Ana" {...field} />
+                            <Input placeholder="Ej: Ana" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
+                        </FormItem>
                     )}
-                  />
-                  <FormField
+                    />
+                    <FormField
                     control={form.control}
                     name="customerLastName"
                     render={({ field }) => (
-                      <FormItem>
+                        <FormItem>
                         <FormLabel>Apellido del Cliente</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ej: García" {...field} />
+                            <Input placeholder="Ej: García" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
+                        </FormItem>
                     )}
-                  />
+                    />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
+                    <FormField
                     control={form.control}
                     name="customerEmail"
                     render={({ field }) => (
-                      <FormItem>
+                        <FormItem>
                         <FormLabel>Correo Electrónico</FormLabel>
                         <FormControl>
-                          <Input
+                            <Input
                             type="email"
                             placeholder="ana@ejemplo.com"
                             {...field}
-                          />
+                            />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
+                        </FormItem>
                     )}
-                  />
-                  <FormField
+                    />
+                    <FormField
                     control={form.control}
                     name="customerPhone"
                     render={({ field }) => (
-                      <FormItem>
+                        <FormItem>
                         <FormLabel>Teléfono</FormLabel>
                         <FormControl>
-                          <Input placeholder="3001234567" {...field} />
+                            <Input placeholder="3001234567" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
+                        </FormItem>
                     )}
-                  />
+                    />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
+                    <FormField
                     control={form.control}
                     name="serviceId"
                     render={({ field }) => (
-                      <FormItem>
+                        <FormItem>
                         <FormLabel>Servicio</FormLabel>
                         <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
                         >
-                          <FormControl>
+                            <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecciona un servicio" />
+                                <SelectValue placeholder="Selecciona un servicio" />
                             </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
+                            </FormControl>
+                            <SelectContent>
                             {services.map((service) => (
-                              <SelectItem key={service.id} value={service.id}>
+                                <SelectItem key={service.id} value={service.id}>
                                 {service.name}
-                              </SelectItem>
+                                </SelectItem>
                             ))}
-                          </SelectContent>
+                            </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
+                        </FormItem>
                     )}
-                  />
-                  <FormField
+                    />
+                    <FormField
                     control={form.control}
                     name="stylistId"
                     render={({ field }) => (
-                      <FormItem>
+                        <FormItem>
                         <FormLabel>Estilista</FormLabel>
                         <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
                         >
-                          <FormControl>
+                            <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecciona un estilista" />
+                                <SelectValue placeholder="Selecciona un estilista" />
                             </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
+                            </FormControl>
+                            <SelectContent>
                             {stylists.map((stylist) => (
-                              <SelectItem key={stylist.id} value={stylist.id}>
+                                <SelectItem key={stylist.id} value={stylist.id}>
                                 {stylist.name}
-                              </SelectItem>
+                                </SelectItem>
                             ))}
-                          </SelectContent>
+                            </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
+                        </FormItem>
                     )}
-                  />
+                    />
                 </div>
                 <FormField
-                  control={form.control}
-                  name="preferredDate"
-                  render={({ field }) => (
+                    control={form.control}
+                    name="preferredDate"
+                    render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Fecha</FormLabel>
-                      <Popover>
+                        <FormLabel>Fecha</FormLabel>
+                        <Popover>
                         <PopoverTrigger asChild>
-                          <FormControl>
+                            <FormControl>
                             <Button
-                              variant={'outline'}
-                              className={cn(
+                                variant={'outline'}
+                                className={cn(
                                 'w-full pl-3 text-left font-normal',
                                 !field.value && 'text-muted-foreground'
-                              )}
+                                )}
                             >
-                              {field.value ? (
+                                {field.value ? (
                                 format(field.value, 'PPP', { locale: es })
-                              ) : (
+                                ) : (
                                 <span>Elige una fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
-                          </FormControl>
+                            </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
+                            <Calendar
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
                             disabled={(date) =>
-                              date < new Date(new Date().setHours(0, 0, 0, 0))
+                                date < new Date(new Date().setHours(0, 0, 0, 0))
                             }
                             initialFocus
                             locale={es}
-                          />
+                            />
                         </PopoverContent>
-                      </Popover>
-                      <FormMessage />
+                        </Popover>
+                        <FormMessage />
                     </FormItem>
-                  )}
+                    )}
                 />
                 <DialogFooter>
-                  <Button type="submit" disabled={isCalculating}>
+                    <Button type="submit" disabled={isCalculating}>
                     {isCalculating ? (
-                      <>
+                        <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Calculando...
-                      </>
+                        </>
                     ) : (
-                      'Ver Horarios Disponibles'
+                        'Ver Horarios Disponibles'
                     )}
-                  </Button>
+                    </Button>
                 </DialogFooter>
-              </>
-            )}
-          </form>
-        </Form>
+            </form>
+            </Form>
+        )}
 
         {step === 2 && (
           <div className="space-y-4">
@@ -590,7 +605,10 @@ export default function NewAppointmentDialog({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setStep(1)}
+                onClick={() => {
+                  setStep(1);
+                  setAvailableSlots([]);
+                }}
               >
                 Volver
               </Button>

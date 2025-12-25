@@ -51,7 +51,7 @@ export const useFirebase = (): FirebaseContextState => {
   return context;
 };
 
-export const useAuth = (): Auth => {
+export const useFirebaseAuth = (): Auth => {
   const { auth } = useFirebase();
   if (!auth) throw new Error("Auth service not available.");
   return auth;
@@ -90,7 +90,7 @@ export const useUser = (): UserHookResult => {
   const [user, setUser] = useState<User | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const [userError, setUserError] = useState<Error | null>(null);
-  const auth = useAuth();
+  const auth = useFirebaseAuth();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(
