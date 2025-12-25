@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc, writeBatch, collectionGroup, query, where } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import {
   Table,
@@ -36,8 +36,10 @@ import { CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
+import { User } from 'firebase/auth';
+import { useAuth } from '@/hooks/use-auth';
 
-function CustomerAppointments({ customerId }: { customerId: string }) {
+function CustomerAppointments({ customerId, adminUser }: { customerId: string, adminUser: User | null }) {
   const firestore = useFirestore();
   const { services } = useServices();
   const { stylists } = useStylists();
@@ -45,9 +47,10 @@ function CustomerAppointments({ customerId }: { customerId: string }) {
   const [isConfirming, setIsConfirming] = React.useState<string | null>(null);
 
   const appointmentsCollection = useMemoFirebase(() => {
-    if (!firestore) return null;
+    // Only proceed if we have both firestore and a valid admin user
+    if (!firestore || !adminUser) return null;
     return collection(firestore, 'customers', customerId, 'appointments');
-  }, [firestore, customerId]);
+  }, [firestore, customerId, adminUser]);
 
   const { data: appointments, isLoading } = useCollection<Appointment>(appointmentsCollection, true);
 
@@ -181,13 +184,14 @@ function CustomerAppointments({ customerId }: { customerId: string }) {
 
 export default function CustomersPage() {
   const firestore = useFirestore();
+  const { user } = useAuth(); // Get the authenticated admin user
 
   const customersCollection = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'customers');
   }, [firestore]);
   
-  const { data: customers, isLoading } = useCollection<Customer>(customersCollection);
+  const { data: customers, isLoading } = useCollection<Customer>(customersCollection, true);
 
   if (isLoading) {
     return (
@@ -238,7 +242,7 @@ export default function CustomersPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <CustomerAppointments customerId={customer.id} />
+                  <CustomerAppointments customerId={customer.id} adminUser={user} />
                 </AccordionContent>
               </AccordionItem>
             ))}
