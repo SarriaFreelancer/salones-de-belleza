@@ -13,9 +13,6 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    // A robust isAdmin function.
-    // A user is an admin if their email is the special first admin email,
-    // OR if their UID exists in the admin roles collection.
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.email == "admin@divas.com" ||
@@ -24,36 +21,30 @@ service cloud.firestore {
     }
     
     // CUSTOMERS
-    // An admin can list/get any customer.
-    // A customer can create their own profile, and get or update their own profile.
     match /customers/{customerId} {
-      allow list, get: if isAdmin();
+      allow read: if isAdmin() || isOwner(customerId);
       allow create, update: if isOwner(customerId);
       allow delete: if false; // Users cannot delete their profiles
     }
 
     // CUSTOMER APPOINTMENTS
-    // Customers can manage their own appointments.
-    // Admins have full access.
     match /customers/{customerId}/appointments/{appointmentId} {
-      allow read, list: if isOwner(customerId) || isAdmin();
+      allow read: if isOwner(customerId) || isAdmin();
       allow create, update: if isOwner(customerId);
       allow delete: if isOwner(customerId) || isAdmin();
     }
     
     // STYLISTS
-    // Publicly readable for individual documents (`get`), but only admins can list or write.
+    // Admins can do anything. Anyone can get a single stylist document.
     match /stylists/{stylistId} {
       allow get: if true;
       allow list, write: if isAdmin();
     }
     
-    // STYLIST APPOINTMENTS (This is a subcollection for aggregated views, not primary storage)
-    // Stylists can view appointments assigned to them.
-    // Admins have full access for management.
+    // STYLIST APPOINTMENTS (This is a subcollection for aggregated views)
     match /stylists/{stylistId}/appointments/{appointmentId} {
-        allow read, list: if isOwner(stylistId) || isAdmin();
-        allow create, update, delete: if isAdmin();
+        allow read: if isOwner(stylistId) || isAdmin();
+        allow write: if isAdmin();
     }
 
     // SERVICES
@@ -71,20 +62,14 @@ service cloud.firestore {
     }
 
     // ADMIN APPOINTMENTS
-    // Only admins can read, create, update, or delete from the central appointments collection.
     match /admin_appointments/{appointmentId} {
-        allow read, list, create, update, delete: if isAdmin();
+        allow read, write: if isAdmin();
     }
 
     // ADMIN ROLES
-    // This collection is highly restricted.
-    // Crucially, any authenticated user can create THEIR OWN admin role document.
-    // This, combined with the isAdmin() function checking the email, solves the 
-    // chicken-and-egg problem for the first admin securely.
-    // Only existing admins can read the list or delete roles.
     match /roles_admin/{userId} {
-      allow read, list, delete: if isAdmin();
-      allow create: if request.auth.uid == userId;
+      allow read, delete: if isAdmin();
+      allow create: if isOwner(userId);
     }
   }
 }
