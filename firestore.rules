@@ -44,8 +44,8 @@ service cloud.firestore {
     // STYLISTS
     // Publicly readable for individual documents (`get`), but only admins can list or write.
     match /stylists/{stylistId} {
-      allow read: if true;
-      allow write, list: if isAdmin();
+      allow get: if true;
+      allow list, write: if isAdmin();
     }
     
     // STYLIST APPOINTMENTS (This is a subcollection for aggregated views, not primary storage)
