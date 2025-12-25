@@ -20,8 +20,8 @@ service cloud.firestore {
     // --- Customer Data ---
     match /customers/{customerId} {
       allow read: if isAdmin() || isOwner(customerId);
-      allow create, update: if isOwner(customerId);
-      allow delete: if false; 
+      allow create, update: if isAdmin() || isOwner(customerId);
+      allow delete: if isAdmin();
     }
 
     match /customers/{customerId}/appointments/{appointmentId} {
