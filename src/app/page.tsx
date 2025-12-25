@@ -74,7 +74,7 @@ function HomePageContent() {
                 data-ai-hint="beauty salon interior"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-            <div className="relative z-10 flex h-full flex-col items-center justify-center text-center">
+            <div className="relative container mx-auto z-10 flex h-full flex-col items-center justify-center text-center">
                 <h2 className="font-headline text-5xl font-bold tracking-tighter sm:text-6xl md:text-7xl">
                 Realza tu Belleza Natural
                 </h2>
@@ -90,7 +90,7 @@ function HomePageContent() {
         </section>
 
         <section id="servicios" className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container px-4 md:px-6">
+          <div className="container mx-auto px-4 md:px-6">
             <div className="mb-12 text-center">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Nuestros Servicios
@@ -101,7 +101,7 @@ function HomePageContent() {
             </div>
             <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {isLoading || !services ? Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-60 w-full" />) : services.map((service) => (
-                <Card key={service.id} className="flex flex-col transition-transform hover:scale-105 hover:shadow-lg">
+                <Card key={service.id} className="flex flex-col text-left transition-transform hover:scale-105 hover:shadow-lg">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <CardTitle className="font-headline text-xl">{service.name}</CardTitle>
@@ -124,7 +124,7 @@ function HomePageContent() {
         </section>
 
         <section id="equipo" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
-            <div className="container px-4 md:px-6">
+            <div className="container mx-auto px-4 md:px-6">
                 <div className="mb-12 text-center">
                     <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                         Conoce a Nuestro Equipo
@@ -149,7 +149,7 @@ function HomePageContent() {
         </section>
 
         <section id="galeria" className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container px-4 md:px-6">
+          <div className="container mx-auto px-4 md:px-6">
             <div className="mb-12 text-center">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Galería de Estilos
@@ -159,29 +159,30 @@ function HomePageContent() {
               </p>
             </div>
             <div className="mx-auto max-w-5xl grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {isLoading || !galleryImages ? Array.from({length: 6}).map((_, i) => <Skeleton key={i} className="h-48 w-full" />) : galleryImages.map(img => (
-                    <Image 
-                        key={img.id}
-                        src={img.src} 
-                        alt={img.alt} 
-                        width={600} 
-                        height={400} 
-                        className="overflow-hidden rounded-lg h-full w-full object-cover transition-transform hover:scale-110"
-                        data-ai-hint={img.hint}
-                    />
+                {isLoading || !galleryImages ? Array.from({length: 6}).map((_, i) => <Skeleton key={i} className="aspect-square w-full" />) : galleryImages.map(img => (
+                    <div key={img.id} className="overflow-hidden rounded-lg">
+                      <Image 
+                          src={img.src} 
+                          alt={img.alt} 
+                          width={600} 
+                          height={600} 
+                          className="h-full w-full object-cover aspect-square transition-transform hover:scale-110"
+                          data-ai-hint={img.hint}
+                      />
+                    </div>
                 ))}
             </div>
           </div>
         </section>
 
         <section id="agendar" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
-            <div className="container px-4 md:px-6">
+            <div className="container mx-auto px-4 md:px-6">
                 {isLoading || !isClient ? <Skeleton className="h-96 w-full max-w-4xl mx-auto" /> : <PublicBookingForm services={services || []} stylists={stylists || []} />}
             </div>
         </section>
 
         <section id="contacto" className="w-full border-t bg-card py-12 md:py-24 lg:py-32">
-          <div className="container grid items-center justify-center gap-8 px-4 md:px-6 lg:grid-cols-2 lg:gap-16">
+          <div className="container mx-auto grid items-center justify-center gap-8 px-4 md:px-6 lg:grid-cols-2 lg:gap-16">
             <div className="space-y-4">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Ponte en Contacto
@@ -231,8 +232,8 @@ function HomePageContent() {
         </section>
       </main>
       <footer className="w-full shrink-0 border-t py-6 px-4 md:px-6">
-        <div className="flex flex-col items-center justify-center gap-2 sm:flex-row sm:justify-between">
-          <p className="flex-1 text-center text-xs text-muted-foreground">
+        <div className="container mx-auto flex flex-col items-center justify-center gap-2 sm:flex-row sm:justify-between">
+          <p className="flex-1 text-center text-xs text-muted-foreground sm:text-left">
             &copy; 2025 SarriaTech Solutions S.A.S. Todos los derechos reservados.
           </p>
           <nav className="flex gap-4 sm:gap-6">
