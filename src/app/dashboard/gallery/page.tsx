@@ -86,7 +86,7 @@ export default function GalleryPage() {
         </div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-48 w-full" />
+              <Skeleton key={i} className="aspect-video w-full" />
             ))}
         </div>
       </div>
@@ -106,13 +106,13 @@ export default function GalleryPage() {
         
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {galleryImages.map((image) => (
-              <Card key={image.id} className="group relative">
+              <Card key={image.id} className="group relative group-hover:z-10 rounded-lg">
                   <Image
                       src={image.src}
                       alt={image.alt}
                       width={400}
                       height={400}
-                      className="h-full w-full object-cover transition-transform group-hover:scale-110 rounded-lg"
+                      className="h-full w-full object-cover transition-transform group-hover:scale-110 rounded-lg aspect-video"
                       data-ai-hint={image.hint}
                   />
                 <div className="absolute top-2 right-2">
@@ -170,5 +170,3 @@ export default function GalleryPage() {
     </>
   );
 }
-
-    
