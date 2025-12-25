@@ -238,7 +238,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           </SidebarFooter>
         </Sidebar>
         <SidebarInset>
-            <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
+          <div className="flex flex-col h-svh">
+            <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6 shrink-0">
               <SidebarTrigger className="md:hidden"/>
               <div className="w-full flex-1">
                 <h1 className="font-headline text-lg font-semibold md:text-2xl">
@@ -252,7 +253,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                 </Link>
               </Button>
             </header>
-            <main className="flex-1 p-4 lg:p-6">{children}</main>
+            <main className="flex-1 overflow-auto p-4 lg:p-6">{children}</main>
+          </div>
         </SidebarInset>
       </SidebarProvider>
     </div>
