@@ -23,7 +23,7 @@ import {
   MoreHorizontal,
   PlusCircle,
   Edit,
-  XCircle,
+  Trash2,
   AlertTriangle,
 } from 'lucide-react';
 import type { Appointment } from '@/lib/types';
@@ -43,7 +43,7 @@ import NewAppointmentDialog from '@/components/dashboard/new-appointment-dialog'
 import { useStylists } from '@/hooks/use-stylists';
 import { useServices } from '@/hooks/use-services';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc, updateDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -62,7 +62,7 @@ function AppointmentsPage() {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [stylistFilter, setStylistFilter] = React.useState<string>('all');
   const [serviceFilter, setServiceFilter] = React.useState<string>('all');
-  const [dialogState, setDialogState] = React.useState<{type: 'cancel', appointment: Appointment} | null>(null);
+  const [dialogState, setDialogState] = React.useState<{type: 'delete', appointment: Appointment} | null>(null);
   
   const { stylists, isLoading: isLoadingStylists } = useStylists();
   const { services, isLoading: isLoadingServices } = useServices();
@@ -80,27 +80,28 @@ function AppointmentsPage() {
     // No need to manually update state, useCollection handles it
   };
   
-  const handleCancelAppointment = async () => {
-    if (dialogState?.type === 'cancel' && firestore) {
+  const handleDeleteAppointment = async () => {
+    if (dialogState?.type === 'delete' && firestore) {
       const { appointment } = dialogState;
-      const appointmentRef = doc(firestore, 'admin_appointments', appointment.id);
       try {
-        await updateDoc(appointmentRef, { status: 'cancelled' });
+        // Reference to the main appointment document
+        const appointmentRef = doc(firestore, 'admin_appointments', appointment.id);
+        await deleteDoc(appointmentRef);
         
-        // Also update the mirrored appointment for the stylist
+        // Reference to the mirrored appointment for the stylist
         const stylistAppointmentRef = doc(firestore, 'stylists', appointment.stylistId, 'appointments', appointment.id);
-        await updateDoc(stylistAppointmentRef, { status: 'cancelled' });
+        await deleteDoc(stylistAppointmentRef);
         
         toast({
-          title: 'Cita Cancelada',
-          description: `La cita de ${appointment.customerName} ha sido cancelada.`,
+          title: 'Cita Eliminada',
+          description: `La cita de ${appointment.customerName} ha sido eliminada permanentemente.`,
         });
       } catch (error) {
-        console.error("Error cancelling appointment: ", error);
+        console.error("Error deleting appointment: ", error);
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: 'No se pudo cancelar la cita. Inténtalo de nuevo.',
+          description: 'No se pudo eliminar la cita. Inténtalo de nuevo.',
         });
       } finally {
         setDialogState(null);
@@ -271,9 +272,9 @@ function AppointmentsPage() {
                                 <Edit className="mr-2 h-4 w-4" />
                                 Editar
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setDialogState({ type: 'cancel', appointment })} className="text-destructive">
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Cancelar Cita
+                            <DropdownMenuItem onClick={() => setDialogState({ type: 'delete', appointment })} className="text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Eliminar Cita
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -292,17 +293,17 @@ function AppointmentsPage() {
           </Table>
         </div>
       </div>
-      <AlertDialog open={dialogState?.type === 'cancel'} onOpenChange={(isOpen) => !isOpen && setDialogState(null)}>
+      <AlertDialog open={dialogState?.type === 'delete'} onOpenChange={(isOpen) => !isOpen && setDialogState(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogTitle>¿Estás realmente seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción cambiará el estado de la cita a "Cancelada". Esta acción no se puede deshacer.
+              Esta acción no se puede deshacer. La cita será eliminada permanentemente de la base de datos.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cerrar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCancelAppointment} className="bg-destructive hover:bg-destructive/90">Confirmar Cancelación</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteAppointment} className="bg-destructive hover:bg-destructive/90">Confirmar Eliminación</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
