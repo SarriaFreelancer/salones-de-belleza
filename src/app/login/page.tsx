@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
   const [email, setEmail] = React.useState('admin@divas.com');
@@ -27,11 +27,21 @@ export default function LoginPage() {
   const { user, isAuthLoading, isAdmin, logout, login, signupAndAssignAdminRole } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const [isClient, setIsClient] = React.useState(false);
   React.useEffect(() => {
     setIsClient(true);
-  }, []);
+    const authError = searchParams.get('error');
+    if (authError === 'access-denied') {
+        setError('No tienes permisos de administrador.');
+        toast({
+            variant: 'destructive',
+            title: 'Acceso Denegado',
+            description: 'No tienes los permisos necesarios para acceder a esta página.'
+        });
+    }
+  }, [searchParams, toast]);
   
   // This effect handles redirection AFTER authentication state is fully resolved.
   React.useEffect(() => {
@@ -46,11 +56,11 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // First, try to log in
       await login(email, password);
-      // After a successful login, the useEffect above will handle the redirect.
-      // We don't need to manually redirect here anymore.
+      // On success, the useEffect above will handle the redirect.
     } catch (err: any) {
-      // If user doesn't exist, create them and assign the admin role.
+      // If the user doesn't exist, try to sign them up as the first admin
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         try {
           await signupAndAssignAdminRole(email, password);
@@ -58,15 +68,15 @@ export default function LoginPage() {
             title: '¡Cuenta de Admin Creada!',
             description: 'Bienvenida. Te hemos registrado como el primer administrador.',
           });
-          // The useEffect will handle redirect after the new user state is processed.
+          // After signup, the useEffect will also handle the redirect once the user state updates.
         } catch (creationError: any) {
           console.error("Admin creation error:", creationError);
-          const errorMessage = 'Error al crear la cuenta. ¿Contraseña incorrecta o el usuario ya existe con otras credenciales?';
+          const errorMessage = 'Error al crear la cuenta de administrador. ¿Contraseña incorrecta o el usuario ya existe con otras credenciales?';
           setError(errorMessage);
           toast({ variant: 'destructive', title: 'Error de Registro', description: errorMessage });
         }
       } else {
-        // Handle other login errors
+        // Handle other general login errors
         console.error("Login page error:", err.code, err.message);
         let errorMessage = 'Ha ocurrido un error inesperado.';
         switch (err.code) {

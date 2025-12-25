@@ -39,23 +39,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       // If we have a user and firestore, now we can check.
-      // This also implicitly handles the special case for "admin@divas.com" via security rules access.
-      if (user && firestore) {
+      // A user is an admin if they are the special first admin OR their role doc exists.
+      if (user.email === 'admin@divas.com') {
+        setIsAdmin(true);
+        setIsCheckingAdmin(false);
+        return;
+      }
+      
+      if (firestore) {
         setIsCheckingAdmin(true);
         try {
           const adminRoleDocRef = doc(firestore, 'roles_admin', user.uid);
           const docSnap = await getDoc(adminRoleDocRef);
-          
-          // A user is an admin if they are the special first admin OR their role doc exists.
-          if (user.email === 'admin@divas.com' || docSnap.exists()) {
-             setIsAdmin(true);
-          } else {
-             setIsAdmin(false);
-          }
-
+          setIsAdmin(docSnap.exists());
         } catch (error) {
-          // This will catch permissions errors if the rules are not set up correctly.
-          // In that case, we assume they are not an admin.
           console.error("Error checking admin status:", error);
           setIsAdmin(false);
         } finally {
@@ -79,6 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     const newUser = userCredential.user;
     if (newUser && firestore) {
+      // Create the admin role document
       const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
       await setDoc(adminRoleDoc, {});
       
