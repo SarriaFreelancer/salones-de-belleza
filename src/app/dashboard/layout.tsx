@@ -35,6 +35,7 @@ import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { StylistsProvider } from '@/hooks/use-stylists';
 import { ServicesProvider } from '@/hooks/use-services';
 import { GalleryProvider } from '@/hooks/use-gallery';
+import { cn } from '@/lib/utils';
 
 function getPageTitle(pathname: string): string {
   if (pathname.includes('/appointments')) return 'Gestión de Citas';
@@ -91,7 +92,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, isUserLoading, logout } = useAuth();
   
-  // Admin check is now internal to this layout
   const isAdmin = user?.email === 'admin@divas.com';
 
   React.useEffect(() => {
@@ -241,23 +241,23 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                     </div>
                 </SidebarFooter>
               </Sidebar>
-              <SidebarInset>
-                <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
-                  <SidebarTrigger className="md:hidden"/>
-                  <div className="w-full flex-1">
-                    <h1 className="font-headline text-lg font-semibold md:text-2xl">
-                      {getPageTitle(pathname)}
-                    </h1>
-                  </div>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/">
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Ver Sitio Público
-                    </Link>
-                  </Button>
-                </header>
-                <main className="flex-1 p-4 lg:p-6">{children}</main>
-              </SidebarInset>
+              <div className="flex flex-col w-full">
+                  <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
+                    <SidebarTrigger className="md:hidden"/>
+                    <div className="w-full flex-1">
+                      <h1 className="font-headline text-lg font-semibold md:text-2xl">
+                        {getPageTitle(pathname)}
+                      </h1>
+                    </div>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Ver Sitio Público
+                      </Link>
+                    </Button>
+                  </header>
+                  <main className="flex-1 p-4 lg:p-6">{children}</main>
+              </div>
             </div>
           </SidebarProvider>
         </GalleryProvider>
