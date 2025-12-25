@@ -29,9 +29,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const [isClient, setIsClient] = React.useState(false);
   React.useEffect(() => {
-    setIsClient(true);
     const authError = searchParams.get('error');
     if (authError === 'access-denied') {
         setError('No tienes permisos de administrador.');
@@ -123,7 +121,7 @@ export default function LoginPage() {
       </div>
   );
 
-  if (!isClient || isAuthLoading) {
+  if (isAuthLoading) {
     return <LoginSkeleton />;
   }
   
