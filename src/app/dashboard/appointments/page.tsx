@@ -45,7 +45,7 @@ import NewAppointmentDialog from '@/components/dashboard/new-appointment-dialog'
 import { useStylists } from '@/hooks/use-stylists';
 import { useServices } from '@/hooks/use-services';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -91,12 +91,15 @@ function AppointmentsPage() {
   const handleCancelAppointment = async () => {
     if (dialogState?.type === 'cancel' && firestore) {
       const { appointment } = dialogState;
+      const batch = writeBatch(firestore);
       try {
         const appointmentRef = doc(firestore, 'admin_appointments', appointment.id);
-        await updateDoc(appointmentRef, { status: 'cancelled' });
+        batch.update(appointmentRef, { status: 'cancelled' });
 
         const stylistAppointmentRef = doc(firestore, 'stylists', appointment.stylistId, 'appointments', appointment.id);
-        await updateDoc(stylistAppointmentRef, { status: 'cancelled' });
+        batch.update(stylistAppointmentRef, { status: 'cancelled' });
+
+        await batch.commit();
         
         toast({
           title: 'Cita Cancelada',
@@ -118,12 +121,15 @@ function AppointmentsPage() {
   const handleDeleteAppointment = async () => {
     if (dialogState?.type === 'delete' && firestore) {
       const { appointment } = dialogState;
+      const batch = writeBatch(firestore);
       try {
         const appointmentRef = doc(firestore, 'admin_appointments', appointment.id);
-        await deleteDoc(appointmentRef);
+        batch.delete(appointmentRef);
         
         const stylistAppointmentRef = doc(firestore, 'stylists', appointment.stylistId, 'appointments', appointment.id);
-        await deleteDoc(stylistAppointmentRef);
+        batch.delete(stylistAppointmentRef);
+
+        await batch.commit();
         
         toast({
           title: 'Cita Eliminada',
@@ -311,7 +317,7 @@ function AppointmentsPage() {
                                 Cancelar Cita
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setDialogState({ type: 'delete', appointment })} className="text-destructive">
+                            <DropdownMenuItem onClick={() => setDialogState({ type: 'delete', appointment })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Eliminar Cita
                             </DropdownMenuItem>
@@ -348,7 +354,7 @@ function AppointmentsPage() {
             <AlertDialogCancel>Cerrar</AlertDialogCancel>
             <AlertDialogAction 
               onClick={dialogState?.type === 'delete' ? handleDeleteAppointment : handleCancelAppointment} 
-              className={dialogState?.type === 'delete' ? 'bg-destructive hover:bg-destructive/90' : ''}
+              className={dialogState?.type === 'delete' ? buttonVariants({variant: 'destructive'}) : ''}
             >
               {dialogState?.type === 'delete' ? 'Confirmar Eliminación' : 'Confirmar Cancelación'}
             </AlertDialogAction>
