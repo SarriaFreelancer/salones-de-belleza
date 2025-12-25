@@ -31,7 +31,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const checkAdminStatus = async () => {
-      if (!isFirebaseUserLoading && user && firestore) {
+      // If firebase auth is still loading, we are definitely not ready to check admin status.
+      if (isFirebaseUserLoading) {
+        setIsCheckingAdmin(true);
+        return;
+      }
+      
+      // If loading is done, but we have no user, they are not an admin.
+      if (!user) {
+        setIsAdmin(false);
+        setIsCheckingAdmin(false);
+        return;
+      }
+
+      // If we have a user and firestore, now we can check.
+      if (user && firestore) {
         setIsCheckingAdmin(true);
         try {
           const adminRoleDocRef = doc(firestore, 'roles_admin', user.uid);
@@ -43,9 +57,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } finally {
           setIsCheckingAdmin(false);
         }
-      } else if (!isFirebaseUserLoading) {
-        setIsAdmin(false);
-        setIsCheckingAdmin(false);
       }
     };
     
@@ -63,6 +74,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
       await setDoc(adminRoleDoc, {});
       
+      // Also create a customer profile for the admin user
       const customerProfileDoc = doc(firestore, 'customers', newUser.uid);
       await setDoc(customerProfileDoc, {
         id: newUser.uid,
@@ -124,6 +136,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [auth, toast]);
   
+  // The overall auth process is loading if either the user is loading OR we are checking the admin status.
   const isAuthLoading = isFirebaseUserLoading || isCheckingAdmin;
 
   return (
