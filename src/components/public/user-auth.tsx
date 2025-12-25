@@ -4,9 +4,9 @@ import * as React from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
@@ -17,282 +17,282 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-  CardContent,
-} from '@/components/ui/card';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, User as UserIcon, Calendar, Loader2 } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
-import { Skeleton } from '../ui/skeleton';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { LogOut, Calendar, User } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 import type { Service, Stylist } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 import MyAppointments from './my-appointments';
 
+const signupSchema = z.object({
+  firstName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres.'),
+  lastName: z.string().min(2, 'El apellido debe tener al menos 2 caracteres.'),
+  phone: z.string().min(7, 'El teléfono debe tener al menos 7 caracteres.'),
+  email: z.string().email('El correo electrónico no es válido.'),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.'),
+});
+
 const loginSchema = z.object({
-  email: z.string().email('Correo inválido.'),
+  email: z.string().email('El correo electrónico no es válido.'),
   password: z.string().min(1, 'La contraseña es requerida.'),
 });
-type LoginValues = z.infer<typeof loginSchema>;
 
-const signupSchema = z
-  .object({
-    firstName: z.string().min(2, 'El nombre es muy corto.'),
-    lastName: z.string().min(2, 'El apellido es muy corto.'),
-    phone: z.string().min(7, 'El teléfono no es válido.'),
-    email: z.string().email('Correo inválido.'),
-    password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.'),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Las contraseñas no coinciden.',
-    path: ['confirmPassword'],
-  });
-type SignupValues = z.infer<typeof signupSchema>;
+type SignupFormValues = z.infer<typeof signupSchema>;
+type LoginFormValues = z.infer<typeof loginSchema>;
 
+// =============================================
+// UserMenu Component
+// =============================================
+function UserMenu({
+  services,
+  stylists,
+}: {
+  services: Service[];
+  stylists: Stylist[];
+}) {
+  const { user, logout } = useAuth();
 
-interface UserAuthProps {
-    services: Service[];
-    stylists: Stylist[];
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={`https://picsum.photos/seed/${user?.uid}/100/100`} data-ai-hint="person face" />
+            <AvatarFallback>
+              {user?.email?.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">
+              {user?.displayName || 'Cliente'}
+            </p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user?.email}
+            </p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <Sheet>
+          <SheetTrigger asChild>
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+              <Calendar className="mr-2 h-4 w-4" />
+              <span>Mis Citas</span>
+            </DropdownMenuItem>
+          </SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Mis Citas</SheetTitle>
+            </SheetHeader>
+            <MyAppointments userId={user!.id} services={services} stylists={stylists} />
+          </SheetContent>
+        </Sheet>
+        <DropdownMenuItem>
+          <User className="mr-2 h-4 w-4" />
+          <span>Mi Perfil</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={logout}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Cerrar Sesión</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
-// --- Sub-components to keep UserAuth clean ---
-
-const AuthDialog = ({ onOpenChange, open }: { open: boolean, onOpenChange: (open: boolean) => void }) => {
-  const { clientLogin, clientSignup } = useAuth();
+// =============================================
+// AuthDialog Component
+// =============================================
+function AuthDialog({
+  open,
+  onOpenChange,
+  services,
+  stylists,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  services: Service[];
+  stylists: Stylist[];
+}) {
+  const { clientSignup, clientLogin } = useAuth();
+  const [mode, setMode] = React.useState<'login' | 'signup'>('login');
   const { toast } = useToast();
-  const [loading, setLoading] = React.useState<'login' | 'signup' | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
 
-  const loginForm = useForm<LoginValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
-  });
+  const {
+    register: registerSignup,
+    handleSubmit: handleSubmitSignup,
+    formState: { errors: errorsSignup },
+  } = useForm<SignupFormValues>({ resolver: zodResolver(signupSchema) });
 
-  const signupForm = useForm<SignupValues>({
-    resolver: zodResolver(signupSchema),
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      phone: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-    },
-  });
+  const {
+    register: registerLogin,
+    handleSubmit: handleSubmitLogin,
+    formState: { errors: errorsLogin },
+  } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
 
-  const handleLogin = async (values: LoginValues) => {
-    setLoading('login');
+  const handleSignup: SubmitHandler<SignupFormValues> = async (data) => {
+    setIsLoading(true);
     try {
-      await clientLogin(values.email, values.password);
-      onOpenChange(false); // Close dialog on success
+      await clientSignup(data.email, data.password, data.firstName, data.lastName, data.phone);
+      onOpenChange(false);
     } catch (error: any) {
+      console.error('Signup error:', error);
+      if (error.code === 'auth/email-already-in-use') {
+        toast({
+          variant: 'destructive',
+          title: 'Error de Registro',
+          description: 'Este correo electrónico ya está registrado. Por favor, inicia sesión.',
+        });
+        setMode('login');
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Error de Registro',
+          description: error.message || 'No se pudo crear la cuenta.',
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogin: SubmitHandler<LoginFormValues> = async (data) => {
+    setIsLoading(true);
+    try {
+      await clientLogin(data.email, data.password);
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Login error:', error);
       toast({
         variant: 'destructive',
-        title: 'Error al Iniciar Sesión',
-        description:
-          error.code === 'auth/invalid-credential'
-            ? 'Las credenciales son incorrectas.'
-            : 'Ocurrió un error. Inténtalo de nuevo.',
+        title: 'Error de Inicio de Sesión',
+        description: 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.',
       });
     } finally {
-      setLoading(null);
+      setIsLoading(false);
     }
   };
 
-  const handleSignup = async (values: SignupValues) => {
-    setLoading('signup');
-    try {
-      await clientSignup(values.email, values.password, values.firstName, values.lastName, values.phone);
-      onOpenChange(false); // Close dialog on success
-    } catch (error: any) {
-       toast({
-        variant: 'destructive',
-        title: 'Error en el Registro',
-        description:
-          error.code === 'auth/email-already-in-use'
-            ? 'Este correo ya está registrado. Por favor, inicia sesión.'
-            : 'Ocurrió un error. Inténtalo de nuevo.',
-      });
-    } finally {
-      setLoading(null);
-    }
-  };
-  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant="outline">Acceder</Button>
-      </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <Tabs defaultValue="login" className="w-full">
+        <DialogHeader>
+          <DialogTitle>Acceso de Clientes</DialogTitle>
+        </DialogHeader>
+        <Tabs value={mode} onValueChange={(value) => setMode(value as 'login' | 'signup')} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
-            <TabsTrigger value="signup">Registrarse</TabsTrigger>
+            <TabsTrigger value="signup">Crear Cuenta</TabsTrigger>
           </TabsList>
           
           <TabsContent value="login">
-            <form onSubmit={loginForm.handleSubmit(handleLogin)}>
-              <CardContent className="space-y-4 px-0 pt-4">
+            <form onSubmit={handleSubmitLogin(handleLogin)}>
+              <div className="space-y-4 px-0 pt-4">
                  <DialogDescription className="text-center">
                     Ingresa a tu cuenta para agendar y gestionar tus citas.
                 </DialogDescription>
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Correo</Label>
-                  <Input id="login-email" type="email" {...loginForm.register('email')} />
-                  {loginForm.formState.errors.email && <p className="text-xs text-destructive">{loginForm.formState.errors.email.message}</p>}
+                <div className="space-y-1">
+                  <Label htmlFor="login-email">Correo Electrónico</Label>
+                  <Input id="login-email" {...registerLogin('email')} />
+                  {errorsLogin.email && <p className="text-xs text-destructive">{errorsLogin.email.message}</p>}
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="login-password">Contraseña</Label>
-                  <Input id="login-password" type="password" {...loginForm.register('password')} />
-                  {loginForm.formState.errors.password && <p className="text-xs text-destructive">{loginForm.formState.errors.password.message}</p>}
+                  <Input id="login-password" type="password" {...registerLogin('password')} />
+                  {errorsLogin.password && <p className="text-xs text-destructive">{errorsLogin.password.message}</p>}
                 </div>
-              </CardContent>
-              <CardFooter className="px-0">
-                <Button className="w-full" type="submit" disabled={loading === 'login'}>
-                    {loading === 'login' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Acceder
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? 'Ingresando...' : 'Iniciar Sesión'}
                 </Button>
-              </CardFooter>
+              </div>
             </form>
           </TabsContent>
 
           <TabsContent value="signup">
-             <form onSubmit={signupForm.handleSubmit(handleSignup)}>
-              <CardContent className="space-y-4 px-0 pt-4">
-                 <DialogDescription className="text-center">
-                    Crea tu cuenta para una experiencia personalizada.
+            <form onSubmit={handleSubmitSignup(handleSignup)}>
+              <div className="space-y-4 px-0 pt-4">
+                <DialogDescription className="text-center">
+                    Crea una cuenta para agendar citas de forma rápida y sencilla.
                 </DialogDescription>
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="firstName">Nombre</Label>
-                        <Input id="firstName" {...signupForm.register('firstName')} />
-                         {signupForm.formState.errors.firstName && <p className="text-xs text-destructive">{signupForm.formState.errors.firstName.message}</p>}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="lastName">Apellido</Label>
-                        <Input id="lastName" {...signupForm.register('lastName')} />
-                         {signupForm.formState.errors.lastName && <p className="text-xs text-destructive">{signupForm.formState.errors.lastName.message}</p>}
-                    </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="signup-firstName">Nombre</Label>
+                    <Input id="signup-firstName" {...registerSignup('firstName')} />
+                    {errorsSignup.firstName && <p className="text-xs text-destructive">{errorsSignup.firstName.message}</p>}
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="signup-lastName">Apellido</Label>
+                    <Input id="signup-lastName" {...registerSignup('lastName')} />
+                    {errorsSignup.lastName && <p className="text-xs text-destructive">{errorsSignup.lastName.message}</p>}
+                  </div>
                 </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="phone">Teléfono</Label>
-                    <Input id="phone" {...signupForm.register('phone')} />
-                    {signupForm.formState.errors.phone && <p className="text-xs text-destructive">{signupForm.formState.errors.phone.message}</p>}
+                <div className="space-y-1">
+                  <Label htmlFor="signup-phone">Teléfono</Label>
+                  <Input id="signup-phone" {...registerSignup('phone')} />
+                  {errorsSignup.phone && <p className="text-xs text-destructive">{errorsSignup.phone.message}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Correo</Label>
-                  <Input id="signup-email" type="email" {...signupForm.register('email')} />
-                   {signupForm.formState.errors.email && <p className="text-xs text-destructive">{signupForm.formState.errors.email.message}</p>}
+                <div className="space-y-1">
+                  <Label htmlFor="signup-email">Correo Electrónico</Label>
+                  <Input id="signup-email" {...registerSignup('email')} />
+                  {errorsSignup.email && <p className="text-xs text-destructive">{errorsSignup.email.message}</p>}
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="signup-password">Contraseña</Label>
-                  <Input id="signup-password" type="password" {...signupForm.register('password')} />
-                  {signupForm.formState.errors.password && <p className="text-xs text-destructive">{signupForm.formState.errors.password.message}</p>}
+                  <Input id="signup-password" type="password" {...registerSignup('password')} />
+                  {errorsSignup.password && <p className="text-xs text-destructive">{errorsSignup.password.message}</p>}
                 </div>
-                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
-                  <Input id="confirmPassword" type="password" {...signupForm.register('confirmPassword')} />
-                  {signupForm.formState.errors.confirmPassword && <p className="text-xs text-destructive">{signupForm.formState.errors.confirmPassword.message}</p>}
-                </div>
-              </CardContent>
-              <CardFooter className="px-0">
-                <Button className="w-full" type="submit" disabled={loading === 'signup'}>
-                   {loading === 'signup' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Crear Cuenta
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}
                 </Button>
-              </CardFooter>
+              </div>
             </form>
           </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
   );
-};
+}
 
-
-const UserMenu = ({ services, stylists }: UserAuthProps) => {
-    const { user, logout } = useAuth();
-    const [showAppointments, setShowAppointments] = React.useState(false);
-
-    // Fallback if user data is somehow not present
-    if (!user) {
-        return null;
-    }
-    
-    // Get initials for Avatar
-    const initials = user.displayName?.split(' ').map(n => n[0]).join('') || user.email?.charAt(0).toUpperCase() || 'U';
-
-    return (
-        <>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                        <Avatar className="h-10 w-10">
-                            <AvatarImage src={user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`} alt={user.displayName || 'Usuario'} data-ai-hint="person face" />
-                            <AvatarFallback>{initials}</AvatarFallback>
-                        </Avatar>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DropdownMenuLabel className="font-normal">
-                        <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-medium leading-none">{user.displayName || 'Bienvenida'}</p>
-                            <p className="text-xs leading-none text-muted-foreground">
-                                {user.email}
-                            </p>
-                        </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                     <DropdownMenuItem onSelect={() => setShowAppointments(true)}>
-                        <Calendar className="mr-2 h-4 w-4" />
-                        <span>Mis Citas</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={logout}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Cerrar sesión</span>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-            {user && (
-                <MyAppointments 
-                    open={showAppointments}
-                    onOpenChange={setShowAppointments}
-                    userId={user.uid}
-                    services={services}
-                    stylists={stylists}
-                />
-            )}
-        </>
-    );
-};
-
-// --- Main Component ---
-
-export default function UserAuth({ services, stylists }: UserAuthProps) {
-  const { user, isAuthLoading, isAdmin } = useAuth();
+// =============================================
+// Main UserAuth Component
+// =============================================
+export default function UserAuth({
+  services,
+  stylists,
+}: {
+  services: Service[];
+  stylists: Stylist[];
+}) {
+  const { user, isAuthLoading } = useAuth();
   const [open, setOpen] = React.useState(false);
-  
+
   if (isAuthLoading) {
-    return <Skeleton className="h-10 w-24" />;
+    return <Button variant="outline" disabled>Cargando...</Button>;
   }
 
-  // Regular users see the menu, admins are redirected so they don't see this button
-  if (user && !isAdmin) {
+  if (user) {
     return <UserMenu services={services} stylists={stylists} />;
   }
 
-  // Unauthenticated users see the login button
-  return <AuthDialog open={open} onOpenChange={setOpen} />;
+  return (
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        Iniciar Sesión
+      </Button>
+      <AuthDialog open={open} onOpenChange={setOpen} services={services} stylists={stylists} />
+    </>
+  );
 }
