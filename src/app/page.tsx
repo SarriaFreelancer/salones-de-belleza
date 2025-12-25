@@ -158,15 +158,15 @@ function HomePageContent() {
                 Inspírate con algunos de nuestros trabajos.
               </p>
             </div>
-            <div className="mx-auto max-w-5xl grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {isLoading || !galleryImages ? Array.from({length: 6}).map((_, i) => <Skeleton key={i} className="aspect-square w-full" />) : galleryImages.map(img => (
-                    <div key={img.id} className="overflow-hidden rounded-lg">
+            <div className="mx-auto grid max-w-5xl grid-cols-2 gap-4 sm:grid-cols-3">
+                {isLoading || !galleryImages ? Array.from({length: 6}).map((_, i) => <Skeleton key={i} className="aspect-[4/3] w-full" />) : galleryImages.map(img => (
+                    <div key={img.id} className="group relative overflow-hidden rounded-lg">
                       <Image 
                           src={img.src} 
                           alt={img.alt} 
                           width={600} 
-                          height={600} 
-                          className="h-full w-full object-cover aspect-square transition-transform hover:scale-110"
+                          height={400} 
+                          className="h-full w-full object-cover transition-transform group-hover:scale-110"
                           data-ai-hint={img.hint}
                       />
                     </div>
@@ -256,3 +256,5 @@ export default function HomePage() {
         </StylistsProvider>
     )
 }
+
+    
