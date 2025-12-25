@@ -34,42 +34,34 @@ service cloud.firestore {
       allow delete: if isOwner(customerId) || isAdmin();
     }
     
-    // STYLISTS
-    // Admins can do anything. Anyone can get a single stylist document.
-    match /stylists/{stylistId} {
-      allow get: if true;
-      allow list, write: if isAdmin();
+    // STYLISTS, SERVICES, and GALLERY (Publicly Readable)
+    // Anyone can read the list of stylists, services, or gallery images,
+    // but only admins can create, update, or delete them.
+    match /{collection}/{docId} 
+    where collection in ['stylists', 'services', 'gallery'] {
+      allow read: if true;
+      allow write: if isAdmin();
     }
     
     // STYLIST APPOINTMENTS (This is a subcollection for aggregated views)
+    // This should only be accessible by the stylist themselves or an admin.
     match /stylists/{stylistId}/appointments/{appointmentId} {
         allow read: if isOwner(stylistId) || isAdmin();
-        allow write: if isAdmin();
-    }
-
-    // SERVICES
-    // Publicly readable, but only admins can write.
-    match /services/{serviceId} {
-      allow get, list: if true;
-      allow write: if isAdmin();
-    }
-    
-    // GALLERY
-    // Publicly readable, but only admins can write.
-    match /gallery/{galleryId} {
-      allow get, list: if true;
-      allow write: if isAdmin();
+        allow write: if isAdmin(); // Only admins can create/modify these aggregated views
     }
 
     // ADMIN APPOINTMENTS
+    // Only admins have any access to the centralized appointments collection.
     match /admin_appointments/{appointmentId} {
         allow read, write: if isAdmin();
     }
 
     // ADMIN ROLES
+    // A user can create their own admin role document (e.g., during initial signup),
+    // but only existing admins can read or delete roles.
     match /roles_admin/{userId} {
-      allow read, delete: if isAdmin();
       allow create: if isOwner(userId);
+      allow read, delete: if isAdmin();
     }
   }
 }
