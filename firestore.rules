@@ -18,14 +18,12 @@ service cloud.firestore {
     }
     
     // --- Customer Data ---
-    // A user can manage their own customer profile. Admins can read them.
     match /customers/{customerId} {
       allow read: if isAdmin() || isOwner(customerId);
       allow create, update: if isOwner(customerId);
       allow delete: if false; 
     }
 
-    // A user can manage their own appointments. Admins have full access.
     match /customers/{customerId}/appointments/{appointmentId} {
       allow read, write: if isAdmin() || isOwner(customerId);
     }
@@ -33,21 +31,20 @@ service cloud.firestore {
     // --- Admin-Managed Collections ---
     
     // Admins have full control over stylists.
-    // TEMPORARY RULE to unblock development.
-    match /stylists/{stylistId} {
-      allow read, write: if true;
+    match /stylists/{document=**} {
+      allow read, write: if isAdmin();
     }
     
-    // Public can read services, only admins can write.
-    // TEMPORARY RULE to unblock development.
-    match /services/{serviceId} {
-        allow read, write: if true;
+    // Admins have full control over services. Public can read.
+    match /services/{document=**} {
+        allow read: if true;
+        allow write: if isAdmin();
     }
     
-    // Public can read gallery, only admins can write.
-    // TEMPORARY RULE to unblock development.
-    match /gallery/{galleryId} {
-        allow read, write: if true;
+    // Admins have full control over gallery. Public can read.
+    match /gallery/{document=**} {
+        allow read: if true;
+        allow write: if isAdmin();
     }
     
     // This subcollection is for aggregated views, only for admins.
@@ -57,12 +54,10 @@ service cloud.firestore {
 
     // --- Centralized Admin Collections ---
     
-    // Only admins have any access to the centralized appointments collection.
-    match /admin_appointments/{appointmentId} {
+    match /admin_appointments/{document=**} {
         allow read, write: if isAdmin();
     }
 
-    // Admins can manage roles. A user can create their own doc on signup.
     match /roles_admin/{userId} {
       allow read, write: if isAdmin();
       allow create: if isOwner(userId);
