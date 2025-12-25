@@ -106,13 +106,13 @@ export default function GalleryPage() {
         
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {galleryImages.map((image) => (
-              <Card key={image.id} className="group relative overflow-hidden">
+              <Card key={image.id} className="group relative">
                   <Image
                       src={image.src}
                       alt={image.alt}
                       width={400}
                       height={400}
-                      className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                      className="h-full w-full object-cover transition-transform group-hover:scale-110 rounded-lg"
                       data-ai-hint={image.hint}
                   />
                 <div className="absolute top-2 right-2">
