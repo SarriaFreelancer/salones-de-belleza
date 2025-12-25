@@ -13,8 +13,9 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
+    // --- Admin Check ---
+    // An admin is defined as any authenticated user with the specific email 'admin@divas.com'.
     function isAdmin() {
-      // An admin is defined as any authenticated user with the specific email 'admin@divas.com'.
       return request.auth != null && request.auth.token.email == "admin@divas.com";
     }
     
@@ -35,7 +36,7 @@ service cloud.firestore {
     
     // Admins have full control over stylists.
     match /stylists/{stylistId} {
-      allow read, write: if isAdmin();
+      allow read, write: if request.auth != null && request.auth.token.email == "admin@divas.com";
     }
     
     // Public can read services, only admins can write.
