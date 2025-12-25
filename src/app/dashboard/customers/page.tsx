@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { type Customer, type Appointment, type Service, type Stylist } from '@/lib/types';
+import { type Customer, type Appointment } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -36,23 +36,15 @@ import { CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
-import { User } from 'firebase/auth';
-import { useAuth } from '@/hooks/use-auth';
 
-function CustomerAppointments({ customerId, adminUser }: { customerId: string, adminUser: User | null }) {
+function CustomerAppointments({ customerId, allAppointments, isLoadingAppointments }: { customerId: string, allAppointments: Appointment[], isLoadingAppointments: boolean }) {
   const firestore = useFirestore();
   const { services } = useServices();
   const { stylists } = useStylists();
   const { toast } = useToast();
   const [isConfirming, setIsConfirming] = React.useState<string | null>(null);
 
-  const appointmentsCollection = useMemoFirebase(() => {
-    // Only proceed if we have both firestore and a valid admin user
-    if (!firestore || !adminUser) return null;
-    return collection(firestore, 'customers', customerId, 'appointments');
-  }, [firestore, customerId, adminUser]);
-
-  const { data: appointments, isLoading } = useCollection<Appointment>(appointmentsCollection, true);
+  const customerAppointments = allAppointments.filter(a => a.customerId === customerId);
 
   const handleConfirmAppointment = async (pendingAppointment: Appointment) => {
     if (!firestore) return;
@@ -61,15 +53,12 @@ function CustomerAppointments({ customerId, adminUser }: { customerId: string, a
         const batch = writeBatch(firestore);
         const appointmentId = pendingAppointment.id;
 
-        // 1. Update the appointment in the admin collection to 'confirmed'
         const adminAppointmentRef = doc(firestore, 'admin_appointments', appointmentId);
         batch.update(adminAppointmentRef, { status: 'confirmed' });
 
-        // 2. Update the appointment in the stylist's subcollection to 'confirmed'
         const stylistAppointmentRef = doc(firestore, 'stylists', pendingAppointment.stylistId, 'appointments', appointmentId);
         batch.update(stylistAppointmentRef, { status: 'confirmed' });
         
-        // 3. Update the appointment in the customer's subcollection to 'confirmed'
         const customerAppointmentRef = doc(firestore, 'customers', customerId, 'appointments', appointmentId);
         batch.update(customerAppointmentRef, { status: 'confirmed' });
 
@@ -77,7 +66,7 @@ function CustomerAppointments({ customerId, adminUser }: { customerId: string, a
 
         toast({
             title: '¡Cita Confirmada!',
-            description: `La cita de ${pendingAppointment.customerName} ha sido confirmada y actualizada en el calendario.`,
+            description: `La cita de ${pendingAppointment.customerName} ha sido confirmada.`,
         });
 
     } catch (error) {
@@ -93,16 +82,16 @@ function CustomerAppointments({ customerId, adminUser }: { customerId: string, a
   };
 
 
-  if (isLoading) {
+  if (isLoadingAppointments) {
     return <div className="p-4 space-y-2"><Skeleton className="h-6 w-full" /><Skeleton className="h-6 w-full" /></div>;
   }
 
-  if (!appointments || appointments.length === 0) {
+  if (!customerAppointments || customerAppointments.length === 0) {
     return <p className="p-4 text-sm text-muted-foreground">Este cliente no tiene citas.</p>;
   }
   
-  const pendingAppointments = appointments.filter(a => a.status === 'scheduled');
-  const upcomingOrPastAppointments = appointments.filter(a => a.status !== 'scheduled');
+  const pendingAppointments = customerAppointments.filter(a => a.status === 'scheduled');
+  const upcomingOrPastAppointments = customerAppointments.filter(a => a.status !== 'scheduled');
 
   return (
     <div className="p-2 bg-muted/50">
@@ -171,14 +160,21 @@ function CustomerAppointments({ customerId, adminUser }: { customerId: string, a
 
 export default function CustomersPage() {
   const firestore = useFirestore();
-  const { user } = useAuth(); // Get the authenticated admin user
 
   const customersCollection = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'customers');
   }, [firestore]);
   
-  const { data: customers, isLoading } = useCollection<Customer>(customersCollection, true);
+  const adminAppointmentsCollection = useMemoFirebase(() => {
+      if(!firestore) return null;
+      return collection(firestore, 'admin_appointments');
+  }, [firestore]);
+
+  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollection, true);
+  const { data: allAppointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(adminAppointmentsCollection, true);
+
+  const isLoading = isLoadingCustomers || isLoadingAppointments;
 
   if (isLoading) {
     return (
@@ -229,7 +225,7 @@ export default function CustomersPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <CustomerAppointments customerId={customer.id} adminUser={user} />
+                  <CustomerAppointments customerId={customer.id} allAppointments={allAppointments || []} isLoadingAppointments={isLoadingAppointments} />
                 </AccordionContent>
               </AccordionItem>
             ))}
