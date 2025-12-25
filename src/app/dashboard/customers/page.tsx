@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, writeBatch, collectionGroup, query, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import {
   Table,
@@ -51,29 +51,43 @@ function CustomerAppointments({ customerId }: { customerId: string }) {
 
   const { data: appointments, isLoading } = useCollection<Appointment>(appointmentsCollection, true);
 
-  const handleConfirmAppointment = async (appointment: Appointment) => {
+  const handleConfirmAppointment = async (pendingAppointment: Appointment) => {
     if (!firestore) return;
-    setIsConfirming(appointment.id);
+    setIsConfirming(pendingAppointment.id);
     try {
       const batch = writeBatch(firestore);
 
-      // 1. Copy to admin_appointments
-      const adminAppointmentRef = doc(collection(firestore, 'admin_appointments'));
-      batch.set(adminAppointmentRef, { ...appointment, id: adminAppointmentRef.id, status: 'confirmed' });
+      // 1. Generate ONE new ID for the confirmed appointment.
+      const confirmedAppointmentRef = doc(collection(firestore, 'admin_appointments'));
+      const confirmedAppointmentId = confirmedAppointmentRef.id;
 
-      // 2. Copy to stylist's schedule
-      const stylistAppointmentRef = doc(firestore, 'stylists', appointment.stylistId, 'appointments', adminAppointmentRef.id);
-      batch.set(stylistAppointmentRef, { ...appointment, id: adminAppointmentRef.id, status: 'confirmed' });
+      // Create the new confirmed appointment data object
+      const confirmedAppointmentData: Appointment = {
+        ...pendingAppointment,
+        id: confirmedAppointmentId, // Use the new consistent ID
+        status: 'confirmed',
+      };
+
+      // 2. Set the appointment in the admin collection
+      batch.set(confirmedAppointmentRef, confirmedAppointmentData);
+
+      // 3. Set the appointment in the stylist's subcollection
+      const stylistAppointmentRef = doc(firestore, 'stylists', pendingAppointment.stylistId, 'appointments', confirmedAppointmentId);
+      batch.set(stylistAppointmentRef, confirmedAppointmentData);
       
-      // 3. Update customer's appointment status
-      const customerAppointmentRef = doc(firestore, 'customers', customerId, 'appointments', appointment.id);
-      batch.update(customerAppointmentRef, { status: 'confirmed' });
+      // 4. Set the new confirmed appointment in the customer's subcollection
+      const customerConfirmedAppointmentRef = doc(firestore, 'customers', customerId, 'appointments', confirmedAppointmentId);
+      batch.set(customerConfirmedAppointmentRef, confirmedAppointmentData);
+
+      // 5. Delete the original pending appointment from the customer's subcollection
+      const originalCustomerAppointmentRef = doc(firestore, 'customers', customerId, 'appointments', pendingAppointment.id);
+      batch.delete(originalCustomerAppointmentRef);
 
       await batch.commit();
 
       toast({
         title: '¡Cita Confirmada!',
-        description: `La cita de ${appointment.customerName} ha sido confirmada y añadida al calendario.`,
+        description: `La cita de ${pendingAppointment.customerName} ha sido confirmada y añadida al calendario.`,
       });
 
     } catch (error) {
@@ -98,6 +112,7 @@ function CustomerAppointments({ customerId }: { customerId: string }) {
   }
   
   const pendingAppointments = appointments.filter(a => a.status === 'scheduled');
+  const upcomingOrPastAppointments = appointments.filter(a => a.status !== 'scheduled');
 
   return (
     <div className="p-2 bg-muted/50">
@@ -133,6 +148,31 @@ function CustomerAppointments({ customerId }: { customerId: string }) {
              </ul>
         ) : (
              <p className="p-2 text-sm text-muted-foreground">No hay citas nuevas por confirmar para este cliente.</p>
+        )}
+        
+        {upcomingOrPastAppointments.length > 0 && (
+            <>
+                <h4 className="font-semibold p-2 mt-4">Historial de Citas</h4>
+                 <ul className="space-y-3">
+                {upcomingOrPastAppointments.map((appointment) => {
+                    const service = services.find(s => s.id === appointment.serviceId);
+                    const stylist = stylists.find(s => s.id === appointment.stylistId);
+                    const appointmentDate = appointment.start instanceof Date ? appointment.start : appointment.start.toDate();
+                    return (
+                        <li key={appointment.id} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-md border bg-background p-3 gap-2 opacity-70">
+                           <div className="flex-1 space-y-1">
+                                <p><strong>Servicio:</strong> {service?.name || 'N/A'}</p>
+                                <p><strong>Estilista:</strong> {stylist?.name || 'N/A'}</p>
+                                <p><strong>Fecha:</strong> {format(appointmentDate, "PPP 'a las' p", { locale: es })}</p>
+                           </div>
+                           <Badge variant={appointment.status === 'confirmed' ? 'default' : 'destructive'} className="capitalize">
+                                {appointment.status === 'confirmed' ? 'Confirmada' : 'Cancelada'}
+                           </Badge>
+                        </li>
+                    )
+                })}
+             </ul>
+            </>
         )}
     </div>
   );
