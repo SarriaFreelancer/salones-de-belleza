@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Calendar as CalendarIcon,
   MoreHorizontal,
@@ -153,7 +153,6 @@ function AppointmentsPage() {
         variant: "default",
         title: "Función en Desarrollo",
         description: "La edición de citas estará disponible próximamente.",
-        icon: <AlertTriangle className="h-5 w-5 text-yellow-500" />,
     });
   }
 
@@ -247,7 +246,7 @@ function AppointmentsPage() {
               </SelectContent>
             </Select>
           </div>
-          <NewAppointmentDialog onAppointmentCreated={handleAppointmentCreated} appointments={appointments || []}>
+          <NewAppointmentDialog onAppointmentCreated={handleAppointmentCreated}>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
               Agendar Cita
