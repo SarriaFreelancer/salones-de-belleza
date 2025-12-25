@@ -71,7 +71,13 @@ function AppointmentsPage() {
   const [stylistFilter, setStylistFilter] = React.useState<string>('all');
   const [serviceFilter, setServiceFilter] = React.useState<string>('all');
   const [dialogState, setDialogState] = React.useState<DialogState>(null);
-  
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    // Open dialog when dialogState is set, close when it's null
+    setIsDialogOpen(!!dialogState);
+  }, [dialogState]);
+
   const { stylists, isLoading: isLoadingStylists } = useStylists();
   const { services, isLoading: isLoadingServices } = useServices();
   const firestore = useFirestore();
@@ -98,6 +104,10 @@ function AppointmentsPage() {
 
         const stylistAppointmentRef = doc(firestore, 'stylists', appointment.stylistId, 'appointments', appointment.id);
         batch.update(stylistAppointmentRef, { status: 'cancelled' });
+        
+        const customerAppointmentRef = doc(firestore, 'customers', appointment.customerId, 'appointments', appointment.id);
+        batch.update(customerAppointmentRef, { status: 'cancelled' });
+
 
         await batch.commit();
         
@@ -128,6 +138,10 @@ function AppointmentsPage() {
         
         const stylistAppointmentRef = doc(firestore, 'stylists', appointment.stylistId, 'appointments', appointment.id);
         batch.delete(stylistAppointmentRef);
+        
+        const customerAppointmentRef = doc(firestore, 'customers', appointment.customerId, 'appointments', appointment.id);
+        batch.delete(customerAppointmentRef);
+
 
         await batch.commit();
         
@@ -307,16 +321,16 @@ function AppointmentsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={handleEditAppointment}>
+                            <DropdownMenuItem onSelect={handleEditAppointment}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Editar
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setDialogState({ type: 'cancel', appointment })}>
+                            <DropdownMenuItem onSelect={() => setDialogState({ type: 'cancel', appointment })}>
                                 <XCircle className="mr-2 h-4 w-4" />
                                 Cancelar Cita
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setDialogState({ type: 'delete', appointment })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                            <DropdownMenuItem onSelect={() => setDialogState({ type: 'delete', appointment })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Eliminar Cita
                             </DropdownMenuItem>
@@ -337,7 +351,7 @@ function AppointmentsPage() {
           </Table>
         </div>
       </div>
-      <AlertDialog open={!!dialogState} onOpenChange={(isOpen) => !isOpen && setDialogState(null)}>
+      <AlertDialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setDialogState(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
