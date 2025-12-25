@@ -31,10 +31,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
   Loader2,
-  Sparkles,
   Calendar as CalendarIcon,
-  Clock,
-  User,
 } from 'lucide-react';
 import {
   Select,
@@ -43,17 +40,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { add, format, parse, set } from 'date-fns';
+import { add, format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import type { Appointment, DayOfWeek, Stylist, AvailabilitySlot } from '@/lib/types';
+import type { Appointment, DayOfWeek, Stylist, Customer } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, Timestamp } from 'firebase/firestore';
+import { collection, Timestamp, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 const formSchema = z.object({
@@ -62,7 +59,10 @@ const formSchema = z.object({
   preferredDate: z.date({
     required_error: 'Debes seleccionar una fecha.',
   }),
-  customerName: z.string().min(2, 'El nombre del cliente es requerido.'),
+  customerFirstName: z.string().min(2, 'El nombre es requerido.'),
+  customerLastName: z.string().min(2, 'El apellido es requerido.'),
+  customerEmail: z.string().email('El correo electrónico no es válido.'),
+  customerPhone: z.string().min(5, 'El teléfono es requerido.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -92,7 +92,10 @@ export default function NewAppointmentDialog({
     defaultValues: {
       serviceId: '',
       stylistId: '',
-      customerName: '',
+      customerFirstName: '',
+      customerLastName: '',
+      customerEmail: '',
+      customerPhone: '',
       preferredDate: new Date(),
     },
   });
@@ -101,7 +104,10 @@ export default function NewAppointmentDialog({
     form.reset({
       serviceId: '',
       stylistId: '',
-      customerName: '',
+      customerFirstName: '',
+      customerLastName: '',
+      customerEmail: '',
+      customerPhone: '',
       preferredDate: new Date(),
     });
     setStep(1);
@@ -182,40 +188,77 @@ export default function NewAppointmentDialog({
     setStep(2);
   };
   
-  const selectSlot = (slot: Date) => {
+  const getOrCreateCustomer = async (values: FormValues): Promise<string> => {
+    if (!firestore) throw new Error("Firestore not available");
+    
+    const customersRef = collection(firestore, 'customers');
+    const q = query(customersRef, where("email", "==", values.customerEmail.trim().toLowerCase()));
+    
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      // Customer exists, return ID
+      return querySnapshot.docs[0].id;
+    } else {
+      // Customer doesn't exist, create them
+      const newCustomerData: Omit<Customer, 'id'> = {
+        firstName: values.customerFirstName,
+        lastName: values.customerLastName,
+        email: values.customerEmail.trim().toLowerCase(),
+        phone: values.customerPhone,
+      };
+      const newDocRef = await addDocumentNonBlocking(customersRef, newCustomerData);
+      return newDocRef.id;
+    }
+  };
+
+  const selectSlot = async (slot: Date) => {
     if (!firestore) return;
     const values = form.getValues();
     const service = services.find(s => s.id === values.serviceId);
     if (!service) return;
 
-    const startDate = slot;
-    const endDate = add(startDate, { minutes: service.duration });
-    
-    const newAppointment: Omit<Appointment, 'id'> = {
-      customerName: values.customerName.trim(),
-      customerId: 'mock_customer_id', 
-      serviceId: values.serviceId,
-      stylistId: values.stylistId,
-      start: Timestamp.fromDate(startDate),
-      end: Timestamp.fromDate(endDate),
-      status: 'scheduled',
-    };
-    
-    const appointmentsCollection = collection(firestore, 'admin_appointments');
-    addDocumentNonBlocking(appointmentsCollection, newAppointment);
-    
-    const customerAppointmentsCollection = collection(firestore, 'customers', newAppointment.customerId, 'appointments');
-    addDocumentNonBlocking(customerAppointmentsCollection, newAppointment);
+    try {
+        const customerId = await getOrCreateCustomer(values);
+        
+        const startDate = slot;
+        const endDate = add(startDate, { minutes: service.duration });
+        
+        const newAppointment: Omit<Appointment, 'id'> = {
+          customerName: `${values.customerFirstName.trim()} ${values.customerLastName.trim()}`,
+          customerId: customerId, 
+          serviceId: values.serviceId,
+          stylistId: values.stylistId,
+          start: Timestamp.fromDate(startDate),
+          end: Timestamp.fromDate(endDate),
+          status: 'scheduled',
+        };
+        
+        const appointmentsCollection = collection(firestore, 'admin_appointments');
+        addDocumentNonBlocking(appointmentsCollection, newAppointment);
+        
+        // This is optional if customers don't need to see their own appointments
+        // const customerAppointmentsCollection = collection(firestore, 'customers', newAppointment.customerId, 'appointments');
+        // addDocumentNonBlocking(customerAppointmentsCollection, newAppointment);
 
-    const stylistAppointmentsCollection = collection(firestore, 'stylists', values.stylistId, 'appointments');
-    addDocumentNonBlocking(stylistAppointmentsCollection, newAppointment);
+        const stylistAppointmentsCollection = collection(firestore, 'stylists', values.stylistId, 'appointments');
+        addDocumentNonBlocking(stylistAppointmentsCollection, newAppointment);
 
-    toast({
-      title: '¡Cita Agendada!',
-      description: `Se ha agendado a ${newAppointment.customerName} el ${format(startDate, "eeee, d 'de' MMMM 'a las' HH:mm", { locale: es })}.`
-    });
+        toast({
+          title: '¡Cita Agendada!',
+          description: `Se ha agendado a ${newAppointment.customerName} el ${format(startDate, "eeee, d 'de' MMMM 'a las' HH:mm", { locale: es })}.`
+        });
 
-    handleOpenChange(false);
+        handleOpenChange(false);
+
+    } catch(error) {
+        console.error("Error creating appointment or customer: ", error);
+        toast({
+            title: "Error al Agendar",
+            description: "No se pudo crear la cita o el cliente. Inténtalo de nuevo.",
+            variant: "destructive"
+        });
+    }
   }
 
   const selectedService = services.find((s) => form.watch('serviceId') === s.id);
@@ -237,19 +280,61 @@ export default function NewAppointmentDialog({
         {step === 1 && (
           <Form {...form}>
             <form className="space-y-4" onSubmit={form.handleSubmit(calculateAvailableSlots)}>
-              <FormField
-                control={form.control}
-                name="customerName"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Nombre del Cliente</FormLabel>
-                    <FormControl>
-                        <Input placeholder="Ej: Ana García" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="customerFirstName"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Nombre del Cliente</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Ej: Ana" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="customerLastName"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Apellido del Cliente</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Ej: García" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+              </div>
+                <FormField
+                    control={form.control}
+                    name="customerEmail"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Correo Electrónico</FormLabel>
+                        <FormControl>
+                            <Input type="email" placeholder="ana@ejemplo.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="customerPhone"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Teléfono</FormLabel>
+                        <FormControl>
+                            <Input placeholder="3001234567" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -369,7 +454,7 @@ export default function NewAppointmentDialog({
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-2">
                 <h4 className="font-semibold">Resumen de la Cita</h4>
                 <div className='text-sm grid grid-cols-2 gap-x-4 gap-y-1'>
-                    <p><strong>Cliente:</strong> {form.getValues('customerName')}</p>
+                    <p><strong>Cliente:</strong> {form.getValues('customerFirstName')} {form.getValues('customerLastName')}</p>
                     <p><strong>Fecha:</strong> {form.getValues('preferredDate') ? format(form.getValues('preferredDate'), 'PPP', { locale: es }) : ''}</p>
                     <div><strong>Servicio:</strong> <Badge variant="secondary">{selectedService?.name}</Badge></div>
                     <div><strong>Estilista:</strong> <Badge variant="secondary">{selectedStylist?.name}</Badge></div>
@@ -416,5 +501,3 @@ export default function NewAppointmentDialog({
     </Dialog>
   );
 }
-
-    
