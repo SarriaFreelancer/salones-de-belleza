@@ -11,6 +11,9 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
@@ -75,6 +78,10 @@ function StylistsPage() {
   const handleSaveAvailability = (updatedStylist: Stylist) => {
     updateStylist(updatedStylist);
     setDialogState(null);
+     toast({
+        title: "Horario Guardado",
+        description: `Se ha actualizado el horario de ${updatedStylist.name}.`
+    })
   };
 
   const handleAddOrUpdateStylist = (stylist: Stylist | Omit<Stylist, 'id' | 'availability'>) => {
@@ -229,10 +236,14 @@ function StylistsPage() {
 
       <Dialog open={dialogState?.type === 'availability'} onOpenChange={(open) => !open && setDialogState(null)}>
         {stylistForAvailability && (
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Editando Horario de {stylistForAvailability.name}</DialogTitle>
+                </DialogHeader>
                 <AvailabilityEditor 
                     stylist={stylistForAvailability} 
                     onSave={handleSaveAvailability} 
+                    onCancel={() => setDialogState(null)}
                 />
             </DialogContent>
         )}
@@ -265,5 +276,3 @@ function StylistsPage() {
 }
 
 export default StylistsPage;
-
-    
