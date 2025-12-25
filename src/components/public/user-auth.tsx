@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,28 +16,9 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogIn, LogOut, UserPlus } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,296 +27,202 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Service, Stylist } from '@/lib/types';
-import PublicBookingForm from './public-booking-form';
+import { LogOut, Loader2, User } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
+import type { Service, Stylist } from '@/lib/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
-const loginSchema = z.object({
-  email: z
-    .string()
-    .email('El correo electrónico no es válido.')
-    .min(1, 'El correo es requerido.'),
-  password: z
-    .string()
-    .min(8, 'La contraseña debe tener al menos 8 caracteres.'),
-});
+interface AuthDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onLoginSuccess: () => void;
+}
 
-const registerSchema = z.object({
-  firstName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres.'),
-  lastName: z.string().min(2, 'El apellido debe tener al menos 2 caracteres.'),
-  phone: z.string().min(7, 'El teléfono debe tener al menos 7 caracteres.'),
-  email: z
-    .string()
-    .email('El correo electrónico no es válido.')
-    .min(1, 'El correo es requerido.'),
-  password: z
-    .string()
-    .min(8, 'La contraseña debe tener al menos 8 caracteres.'),
-});
+function AuthDialog({ open, onOpenChange, onLoginSuccess }: AuthDialogProps) {
+  const [activeTab, setActiveTab] = React.useState('login');
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
 
-type LoginValues = z.infer<typeof loginSchema>;
-type RegisterValues = z.infer<typeof registerSchema>;
-
-function AuthDialog({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const { clientLogin, clientSignup, user, isUserLoading } = useAuth();
+  const { clientLogin, clientSignup } = useAuth();
   const { toast } = useToast();
-  const [isLoginLoading, setIsLoginLoading] = useState(false);
-  const [isRegisterLoading, setIsRegisterLoading] = useState(false);
 
-  useEffect(() => {
-    // If user logs in successfully while dialog is open, close it.
-    if (user && (isLoginLoading || isRegisterLoading)) {
-      setOpen(false);
-    }
-  }, [user, isLoginLoading, isRegisterLoading]);
+  const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setError('');
 
-  const loginForm = useForm<LoginValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
-  });
+    const formData = new FormData(event.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
 
-  const registerForm = useForm<RegisterValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      phone: '',
-      email: '',
-      password: '',
-    },
-  });
-
-  const onLoginSubmit = async (values: LoginValues) => {
-    setIsLoginLoading(true);
     try {
-      await clientLogin(values.email, values.password);
-      // Success toast is handled in useAuth hook
-    } catch (error: any) {
-      console.error('Client login error:', error);
+      await clientLogin(email, password);
+      onLoginSuccess();
+      onOpenChange(false);
+    } catch (err: any) {
+      let errorMessage = 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.';
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        errorMessage = 'El usuario no existe o la contraseña es incorrecta.';
+      } else if (err.code === 'auth/wrong-password') {
+        errorMessage = 'La contraseña es incorrecta.';
+      }
+      setError(errorMessage);
       toast({
         variant: 'destructive',
-        title: 'Error al iniciar sesión',
-        description:
-          'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.',
+        title: 'Error de inicio de sesión',
+        description: errorMessage,
       });
     } finally {
-      setIsLoginLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const onRegisterSubmit = async (values: RegisterValues) => {
-    setIsRegisterLoading(true);
+  const handleSignupSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    const formData = new FormData(event.currentTarget);
+    const firstName = formData.get('firstName') as string;
+    const lastName = formData.get('lastName') as string;
+    const phone = formData.get('phone') as string;
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    
+    if (password.length < 6) {
+        setError('La contraseña debe tener al menos 6 caracteres.');
+        setIsLoading(false);
+        return;
+    }
+
     try {
-      await clientSignup(
-        values.email,
-        values.password,
-        values.firstName,
-        values.lastName,
-        values.phone
-      );
-      // Success toast is handled in useAuth hook
-    } catch (error: any) {
-      console.error('Client signup error:', error);
-      let description = 'No se pudo crear tu cuenta. Inténtalo de nuevo.';
-      if (error.code === 'auth/email-already-in-use') {
-        description = 'Este correo electrónico ya está registrado. Por favor, inicia sesión.';
+      await clientSignup(email, password, firstName, lastName, phone);
+      onLoginSuccess();
+      onOpenChange(false);
+    } catch (err: any) {
+      let errorMessage = 'No se pudo crear la cuenta.';
+      if (err.code === 'auth/email-already-in-use') {
+        errorMessage = 'Este correo electrónico ya está registrado. Intenta iniciar sesión.';
       }
-      toast({
+      setError(errorMessage);
+       toast({
         variant: 'destructive',
-        title: 'Error de registro',
-        description,
+        title: 'Error de Registro',
+        description: errorMessage,
       });
     } finally {
-      setIsRegisterLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-md p-0 border-border shadow-lg">
-        <Tabs defaultValue="login" className="w-full">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md p-8 shadow-xl border rounded-xl">
+        <DialogHeader className="text-center">
+          <DialogTitle className="text-2xl font-bold font-headline">
+            {activeTab === 'login' ? '¡Bienvenida de Nuevo!' : 'Crea tu Cuenta'}
+          </DialogTitle>
+          <DialogDescription>
+            {activeTab === 'login'
+              ? 'Ingresa tus datos para acceder a tu perfil y citas.'
+              : 'Completa tus datos para agendar citas fácilmente.'}
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
             <TabsTrigger value="register">Registrarse</TabsTrigger>
           </TabsList>
-          
           <TabsContent value="login">
-            <Card className="border-0 shadow-none">
-              <CardHeader className="text-center">
-                <CardTitle className="font-headline text-2xl">
-                  Bienvenida de nuevo
-                </CardTitle>
-                <CardDescription>
-                  Ingresa tus datos para acceder a tu cuenta.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 px-6 pb-6">
-                <Form {...loginForm}>
-                  <form
-                    onSubmit={loginForm.handleSubmit(onLoginSubmit)}
-                    className="space-y-4"
-                  >
-                    <FormField
-                      control={loginForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Correo Electrónico</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="tu@correo.com"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={loginForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contraseña</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="password"
-                              placeholder="********"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={isLoginLoading || isUserLoading}
-                    >
-                      {isLoginLoading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <LogIn className="mr-2 h-4 w-4" />
-                      )}
-                      Iniciar Sesión
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
+            <form onSubmit={handleLoginSubmit} className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="login-email">Correo Electrónico</Label>
+                <Input
+                  id="login-email"
+                  name="email"
+                  type="email"
+                  placeholder="tu@correo.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="login-password">Contraseña</Label>
+                <Input
+                  id="login-password"
+                  name="password"
+                  type="password"
+                  required
+                />
+              </div>
+              {error && activeTab === 'login' && (
+                <p className="text-sm font-medium text-destructive">{error}</p>
+              )}
+              <Button type="submit" className="w-full mt-6" disabled={isLoading}>
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Iniciar Sesión
+              </Button>
+            </form>
           </TabsContent>
           <TabsContent value="register">
-            <Card className="border-0 shadow-none">
-              <CardHeader className="text-center">
-                <CardTitle className="font-headline text-2xl">
-                  Crea tu cuenta
-                </CardTitle>
-                <CardDescription>
-                  Regístrate para agendar y gestionar tus citas fácilmente.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 px-6 pb-6">
-                <Form {...registerForm}>
-                  <form
-                    onSubmit={registerForm.handleSubmit(onRegisterSubmit)}
-                    className="space-y-4"
-                  >
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={registerForm.control}
-                        name="firstName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nombre</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ana" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={registerForm.control}
-                        name="lastName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Apellido</FormLabel>
-                            <FormControl>
-                              <Input placeholder="García" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <FormField
-                      control={registerForm.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Teléfono</FormLabel>
-                          <FormControl>
-                            <Input placeholder="3001234567" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={registerForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Correo Electrónico</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="tu@correo.com"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={registerForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contraseña</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="password"
-                              placeholder="Mínimo 8 caracteres"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={isRegisterLoading || isUserLoading}
-                    >
-                      {isRegisterLoading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <UserPlus className="mr-2 h-4 w-4" />
-                      )}
-                      Crear Cuenta
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
+            <form onSubmit={handleSignupSubmit} className="space-y-4 pt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">Nombre</Label>
+                  <Input id="firstName" name="firstName" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Apellido</Label>
+                  <Input id="lastName" name="lastName" required />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Teléfono</Label>
+                <Input id="phone" name="phone" type="tel" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="register-email">Correo Electrónico</Label>
+                <Input
+                  id="register-email"
+                  name="email"
+                  type="email"
+                  placeholder="tu@correo.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="register-password">Contraseña</Label>
+                <Input
+                  id="register-password"
+                  name="password"
+                  type="password"
+                  required
+                  minLength={6}
+                />
+              </div>
+               {error && activeTab === 'register' && (
+                <p className="text-sm font-medium text-destructive">{error}</p>
+              )}
+              <Button type="submit" className="w-full mt-6" disabled={isLoading}>
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Registrarse
+              </Button>
+            </form>
           </TabsContent>
         </Tabs>
       </DialogContent>
@@ -343,53 +230,87 @@ function AuthDialog({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function UserAuth() {
-  const { user, isUserLoading, logout } = useAuth();
 
+interface UserAuthProps {
+  services: Service[];
+  stylists: Stylist[];
+}
+
+export default function UserAuth({ services, stylists }: UserAuthProps) {
+  const { user, isUserLoading, logout } = useAuth();
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isAlertOpen, setIsAlertOpen] = React.useState(false);
+  
+  const handleLogout = () => {
+    setIsAlertOpen(true);
+  };
+  
+  const confirmLogout = async () => {
+    await logout();
+    setIsAlertOpen(false);
+  };
+  
   if (isUserLoading) {
     return <Skeleton className="h-10 w-28" />;
   }
 
   if (user) {
     return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`} alt={user.displayName || user.email || ''} data-ai-hint="person face" />
-              <AvatarFallback>
-                {user.email?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">
-                {user.displayName || 'Cliente'}
-              </p>
-              <p className="text-xs leading-none text-muted-foreground">
-                {user.email}
-              </p>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={logout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Cerrar sesión</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="flex items-center gap-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`} data-ai-hint="person face" />
+                <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <span className="hidden sm:inline">{user.displayName || user.email}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled>Mis Citas</DropdownMenuItem>
+            <DropdownMenuItem disabled>Mi Perfil</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Cerrar Sesión</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>¿Confirmar cierre de sesión?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Serás redirigido a la página de inicio y tendrás que volver a iniciar sesión para agendar o ver tus citas.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmLogout}>Confirmar</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+      </>
     );
   }
 
   return (
-    <AuthDialog>
-      <Button variant="outline">
-        <LogIn className="mr-2 h-4 w-4" />
-        Acceder
-      </Button>
-    </AuthDialog>
+    <>
+      <DialogTrigger asChild>
+        <Button variant="outline" onClick={() => setIsDialogOpen(true)}>
+          <User className="mr-2 h-4 w-4" />
+          Agendar/Ingresar
+        </Button>
+      </DialogTrigger>
+      <AuthDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onLoginSuccess={() => { /* Could trigger a refetch or redirect here */ }}
+      />
+    </>
   );
 }
