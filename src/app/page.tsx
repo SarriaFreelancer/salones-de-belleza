@@ -30,14 +30,12 @@ export default function HomePage() {
     const servicesCollection = useMemoFirebase(() => firestore ? collection(firestore, 'services') : null, [firestore]);
     const stylistsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'stylists') : null, [firestore]);
     const galleryCollection = useMemoFirebase(() => firestore ? collection(firestore, 'gallery') : null, [firestore]);
-    const appointmentsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'admin_appointments') : null, [firestore]);
-
+    
     const { data: services, isLoading: isLoadingServices } = useCollection<Service>(servicesCollection);
     const { data: stylists, isLoading: isLoadingStylists } = useCollection<Stylist>(stylistsCollection);
     const { data: galleryImages, isLoading: isLoadingGallery } = useCollection<GalleryImage>(galleryCollection);
-    const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection);
     
-    const isLoading = !isClient || isLoadingServices || isLoadingStylists || isLoadingGallery || isLoadingAppointments;
+    const isLoading = !isClient || isLoadingServices || isLoadingStylists || isLoadingGallery;
 
   return (
     <div className="flex min-h-dvh w-full flex-col">
@@ -180,7 +178,7 @@ export default function HomePage() {
 
         <section id="agendar" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
             <div className="container px-4 md:px-6">
-                {isLoading || !isClient ? <Skeleton className="h-96 w-full max-w-4xl mx-auto" /> : <PublicBookingForm appointments={appointments || []} services={services || []} stylists={stylists || []} />}
+                {isLoading || !isClient ? <Skeleton className="h-96 w-full max-w-4xl mx-auto" /> : <PublicBookingForm services={services || []} stylists={stylists || []} />}
             </div>
         </section>
 
@@ -249,3 +247,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
