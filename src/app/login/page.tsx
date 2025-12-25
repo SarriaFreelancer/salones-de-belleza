@@ -24,11 +24,13 @@ export default function LoginPage() {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   
-  const { user, isAuthLoading, isAdmin, logout, login, signupAndAssignAdminRole } = useAuth();
+  const { user, isUserLoading, logout, login, signupAndAssignAdminRole } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   
+  const isAdmin = user?.email === 'admin@divas.com';
+
   React.useEffect(() => {
     const authError = searchParams.get('error');
     if (authError === 'access-denied') {
@@ -41,12 +43,11 @@ export default function LoginPage() {
     }
   }, [searchParams, toast]);
   
-  // This effect handles redirection AFTER authentication state is fully resolved.
   React.useEffect(() => {
-    if (!isAuthLoading && user && isAdmin) {
+    if (!isUserLoading && user && isAdmin) {
       router.replace('/dashboard');
     }
-  }, [isAuthLoading, user, isAdmin, router]);
+  }, [isUserLoading, user, isAdmin, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,11 +55,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // First, try to log in
       await login(email, password);
-      // On success, the useEffect above will handle the redirect.
     } catch (err: any) {
-      // If the user doesn't exist, try to sign them up as the first admin
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         try {
           await signupAndAssignAdminRole(email, password);
@@ -66,7 +64,6 @@ export default function LoginPage() {
             title: '¡Cuenta de Admin Creada!',
             description: 'Bienvenida. Te hemos registrado como el primer administrador.',
           });
-          // After signup, the useEffect will also handle the redirect once the user state updates.
         } catch (creationError: any) {
           console.error("Admin creation error:", creationError);
           const errorMessage = 'Error al crear la cuenta de administrador. ¿Contraseña incorrecta o el usuario ya existe con otras credenciales?';
@@ -74,7 +71,6 @@ export default function LoginPage() {
           toast({ variant: 'destructive', title: 'Error de Registro', description: errorMessage });
         }
       } else {
-        // Handle other general login errors
         console.error("Login page error:", err.code, err.message);
         let errorMessage = 'Ha ocurrido un error inesperado.';
         switch (err.code) {
@@ -121,11 +117,10 @@ export default function LoginPage() {
       </div>
   );
 
-  if (isAuthLoading) {
+  if (isUserLoading) {
     return <LoginSkeleton />;
   }
   
-  // This state is for regular users who are logged in but are not admins.
   if (user && !isAdmin) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40">
@@ -148,8 +143,6 @@ export default function LoginPage() {
     );
   }
 
-  // Render login form if no user, or if user is not admin yet and auth is resolving.
-  // The redirection logic in useEffect will handle moving an authenticated admin away from this page.
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">

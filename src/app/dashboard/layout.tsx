@@ -31,7 +31,7 @@ import {
 import { Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/hooks/use-auth';
+import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { StylistsProvider } from '@/hooks/use-stylists';
 import { ServicesProvider } from '@/hooks/use-services';
 import { GalleryProvider } from '@/hooks/use-gallery';
@@ -86,30 +86,25 @@ function LoadingScreen({ message }: { message: string }) {
     );
 }
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function DashboardContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isAdmin, isAuthLoading, logout } = useAuth();
+  const { user, isUserLoading, logout } = useAuth();
   
+  // Admin check is now internal to this layout
+  const isAdmin = user?.email === 'admin@divas.com';
+
   React.useEffect(() => {
-    if (isAuthLoading) {
+    if (isUserLoading) {
       return;
     }
     if (!user || !isAdmin) {
       router.replace('/login?error=access-denied');
     }
-  }, [user, isAdmin, isAuthLoading, router]);
+  }, [user, isAdmin, isUserLoading, router]);
 
-  if (isAuthLoading) {
+  if (isUserLoading || !user || !isAdmin) {
     return <LoadingScreen message="Verificando permisos..." />;
-  }
-  
-  if (!user || !isAdmin) {
-    return <LoadingScreen message="Redirigiendo..." />;
   }
 
   return (
@@ -268,5 +263,17 @@ export default function DashboardLayout({
         </GalleryProvider>
       </ServicesProvider>
     </StylistsProvider>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AuthProvider>
+      <DashboardContent>{children}</DashboardContent>
+    </AuthProvider>
   );
 }

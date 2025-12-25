@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode, useCallback, useState, useEffect } from 'react';
+import React, { createContext, useContext, ReactNode, useCallback } from 'react';
 import { Auth, User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useFirebaseAuth, useUser, useFirestore } from '@/firebase';
 import { useToast } from './use-toast';
@@ -8,12 +8,11 @@ import { doc, setDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
-  isAdmin: boolean;
-  isAuthLoading: boolean; // Combines user loading and admin checking
+  isUserLoading: boolean;
   login: (email: string, pass: string) => Promise<void>;
   signupAndAssignAdminRole: (email: string, pass: string) => Promise<void>;
   logout: () => void;
-  // Client-specific auth methods remain
+  // New methods for public clients
   clientSignup: (email: string, pass: string, firstName: string, lastName: string, phone: string) => Promise<void>;
   clientLogin: (email: string, pass: string) => Promise<void>;
 }
@@ -21,56 +20,28 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const { user, isUserLoading: isFirebaseUserLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const auth = useFirebaseAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
-  
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
-
-  useEffect(() => {
-    // Only determine admin status when Firebase user loading is complete.
-    if (!isFirebaseUserLoading) {
-      // If there's a user and their email is the admin email, they are an admin.
-      // This is the single source of truth, matching the firestore.rules.
-      if (user && user.email === 'admin@divas.com') {
-        setIsAdmin(true);
-      } else {
-        setIsAdmin(false);
-      }
-      // Finished checking.
-      setIsCheckingAdmin(false);
-    }
-  }, [user, isFirebaseUserLoading]);
 
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
+    // This is for the ADMIN login
     await signInWithEmailAndPassword(auth, email, pass);
   }, [auth]);
 
   const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<void> => {
+    // This function creates the user and assigns the admin role.
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     const newUser = userCredential.user;
     if (newUser && firestore) {
-      // Create the admin role document
       const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
       await setDoc(adminRoleDoc, {});
-      
-      // Also create a customer profile for the admin user
-      const customerProfileDoc = doc(firestore, 'customers', newUser.uid);
-      await setDoc(customerProfileDoc, {
-        id: newUser.uid,
-        firstName: 'Admin',
-        lastName: 'User',
-        email: newUser.email,
-        phone: 'N/A',
-      });
-
     } else {
       throw new Error('No se pudo crear el usuario o la instancia de Firestore no está disponible.');
     }
   }, [auth, firestore]);
-
+  
   const clientLogin = useCallback(async (email: string, pass: string): Promise<void> => {
     await signInWithEmailAndPassword(auth, email, pass);
     toast({
@@ -100,9 +71,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [auth, firestore, toast]);
 
+
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
+      // Determine where to redirect after logout
       if (window.location.pathname.startsWith('/dashboard')) {
         window.location.href = '/login';
       } else {
@@ -117,11 +90,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
     }
   }, [auth, toast]);
-  
-  const isAuthLoading = isFirebaseUserLoading || isCheckingAdmin;
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, isAuthLoading, login, signupAndAssignAdminRole, logout, clientSignup, clientLogin }}>
+    <AuthContext.Provider value={{ user, isUserLoading, login, signupAndAssignAdminRole, logout, clientSignup, clientLogin }}>
       {children}
     </AuthContext.Provider>
   );

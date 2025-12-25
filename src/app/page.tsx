@@ -74,7 +74,7 @@ function HomePageContent() {
                 data-ai-hint="beauty salon interior"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-            <div className="container relative z-10 flex h-full flex-col items-center justify-center text-center">
+            <div className="container relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
                 <h2 className="font-headline text-5xl font-bold tracking-tighter sm:text-6xl md:text-7xl">
                 Realza tu Belleza Natural
                 </h2>
