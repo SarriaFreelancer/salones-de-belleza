@@ -25,14 +25,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
@@ -45,7 +37,6 @@ import {
   Calendar as CalendarIcon,
   Clock,
   User,
-  Check,
   ChevronsUpDown,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -60,6 +51,7 @@ import { useStylists } from '@/hooks/use-stylists';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, Timestamp } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { Checkbox } from '../ui/checkbox';
 
 
 const formSchema = z.object({
@@ -326,35 +318,28 @@ export default function NewAppointmentDialog({
                           </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <Command>
-                              <CommandInput placeholder="Buscar servicio..." />
-                              <CommandEmpty>No se encontró el servicio.</CommandEmpty>
-                              <CommandGroup>
-                                  <CommandList>
-                                      {services.map((service) => (
-                                      <CommandItem
-                                          value={service.name}
-                                          key={service.id}
-                                          onSelect={() => {
-                                          const currentValues = form.getValues('serviceIds');
-                                          const newValues = currentValues.includes(service.id)
-                                              ? currentValues.filter((id) => id !== service.id)
-                                              : [...currentValues, service.id];
-                                          form.setValue('serviceIds', newValues, { shouldValidate: true });
-                                          }}
-                                      >
-                                          <Check
-                                          className={cn(
-                                              'mr-2 h-4 w-4',
-                                              field.value.includes(service.id) ? 'opacity-100' : 'opacity-0'
-                                          )}
-                                          />
-                                          {service.name}
-                                      </CommandItem>
-                                      ))}
-                                  </CommandList>
-                              </CommandGroup>
-                          </Command>
+                            <ScrollArea className="h-48">
+                                <div className="p-2 space-y-1">
+                                {services.map((service) => (
+                                    <div key={service.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-accent">
+                                        <Checkbox
+                                            id={`service-${service.id}`}
+                                            checked={field.value.includes(service.id)}
+                                            onCheckedChange={(checked) => {
+                                                const currentValues = form.getValues('serviceIds');
+                                                const newValues = checked
+                                                    ? [...currentValues, service.id]
+                                                    : currentValues.filter((id) => id !== service.id);
+                                                form.setValue('serviceIds', newValues, { shouldValidate: true });
+                                            }}
+                                        />
+                                        <label htmlFor={`service-${service.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 w-full">
+                                            {service.name}
+                                        </label>
+                                    </div>
+                                ))}
+                                </div>
+                            </ScrollArea>
                           </PopoverContent>
                       </Popover>
                         <FormDescription>
