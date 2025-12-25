@@ -4,7 +4,7 @@ import React, { createContext, useContext, ReactNode, useCallback, useState, use
 import { Auth, User, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth as useFirebaseAuth, useUser, useFirestore } from '@/firebase';
 import { useToast } from './use-toast';
-import { doc, setDoc, getDoc } from 'firebase/firestore'; 
+import { doc, setDoc } from 'firebase/firestore'; 
 
 interface AuthContextType {
   user: User | null;
@@ -30,43 +30,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
-      // If there is no user object, they are not an admin.
-      if (!user) {
-        setIsAdmin(false);
-        setIsCheckingAdmin(false);
-        return;
-      }
-      
-      // If we have a user and firestore, now we can check.
-      // A user is an admin if they are the special first admin OR their role doc exists.
-      if (user.email === 'admin@divas.com') {
-        setIsAdmin(true);
-        setIsCheckingAdmin(false);
-        return;
-      }
-      
-      if (firestore) {
-        setIsCheckingAdmin(true);
-        try {
-          const adminRoleDocRef = doc(firestore, 'roles_admin', user.uid);
-          const docSnap = await getDoc(adminRoleDocRef);
-          setIsAdmin(docSnap.exists());
-        } catch (error) {
-          console.error("Error checking admin status:", error);
-          setIsAdmin(false);
-        } finally {
-          setIsCheckingAdmin(false);
-        }
-      }
-    };
-    
-    // Only run the check when the initial user loading is complete.
+    // Only determine admin status when Firebase user loading is complete.
     if (!isFirebaseUserLoading) {
-        checkAdminStatus();
+      // If there's a user and their email is the admin email, they are an admin.
+      // This is the single source of truth, matching the firestore.rules.
+      if (user && user.email === 'admin@divas.com') {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+      // Finished checking.
+      setIsCheckingAdmin(false);
     }
-
-  }, [user, firestore, isFirebaseUserLoading]);
+  }, [user, isFirebaseUserLoading]);
 
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
     await signInWithEmailAndPassword(auth, email, pass);
