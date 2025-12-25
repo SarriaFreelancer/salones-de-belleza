@@ -4,7 +4,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper Functions
+    // --- Helper Functions ---
     function isSignedIn() {
       return request.auth != null;
     }
@@ -15,52 +15,56 @@ service cloud.firestore {
     
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.email == "admin@divas.com" ||
         exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))
       );
     }
     
-    // CUSTOMERS
+    // --- Customer Data ---
     match /customers/{customerId} {
       allow read: if isAdmin() || isOwner(customerId);
       allow create, update: if isOwner(customerId);
-      allow delete: if false; // Users cannot delete their profiles
+      allow delete: if false; 
     }
 
-    // CUSTOMER APPOINTMENTS
     match /customers/{customerId}/appointments/{appointmentId} {
       allow read: if isOwner(customerId) || isAdmin();
       allow create, update: if isOwner(customerId);
       allow delete: if isOwner(customerId) || isAdmin();
     }
     
-    // STYLISTS, SERVICES, and GALLERY (Publicly Readable)
-    // Anyone can read the list of stylists, services, or gallery images,
-    // but only admins can create, update, or delete them.
-    match /{collection}/{docId} 
-    where collection in ['stylists', 'services', 'gallery'] {
-      allow read: if true;
-      allow write: if isAdmin();
+    // --- Admin-Managed Collections ---
+    // Admins have full control. Public can only read services and gallery.
+    
+    match /stylists/{stylistId} {
+      allow read, write: if isAdmin();
     }
     
-    // STYLIST APPOINTMENTS (This is a subcollection for aggregated views)
-    // This should only be accessible by the stylist themselves or an admin.
+    match /services/{serviceId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+    
+    match /gallery/{galleryId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+    
+    // This subcollection is for aggregated views, only for admins or the stylist themselves
     match /stylists/{stylistId}/appointments/{appointmentId} {
         allow read: if isOwner(stylistId) || isAdmin();
-        allow write: if isAdmin(); // Only admins can create/modify these aggregated views
+        allow write: if isAdmin();
     }
 
-    // ADMIN APPOINTMENTS
+    // --- Centralized Admin Collections ---
+    
     // Only admins have any access to the centralized appointments collection.
     match /admin_appointments/{appointmentId} {
         allow read, write: if isAdmin();
     }
 
-    // ADMIN ROLES
-    // A user can create their own admin role document (e.g., during initial signup),
-    // but only existing admins can read or delete roles.
+    // Only admins can manage roles, but a user can create their own doc on signup.
     match /roles_admin/{userId} {
-      allow create: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
       allow read, delete: if isAdmin();
     }
   }
