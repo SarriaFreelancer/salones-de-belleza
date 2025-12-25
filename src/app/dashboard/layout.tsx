@@ -13,6 +13,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarTrigger,
+  SidebarInset, // Importar SidebarInset
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -236,7 +237,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
               </div>
           </SidebarFooter>
         </Sidebar>
-        <div className="flex flex-col w-full">
+        <SidebarInset>
             <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
               <SidebarTrigger className="md:hidden"/>
               <div className="w-full flex-1">
@@ -252,7 +253,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
               </Button>
             </header>
             <main className="flex-1 p-4 lg:p-6">{children}</main>
-        </div>
+        </SidebarInset>
       </SidebarProvider>
     </div>
   );
