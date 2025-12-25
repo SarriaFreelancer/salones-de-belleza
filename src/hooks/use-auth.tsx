@@ -31,27 +31,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const checkAdminStatus = async () => {
-      // If firebase auth is still loading, we are definitely not ready to check admin status.
-      if (isFirebaseUserLoading) {
-        setIsCheckingAdmin(true);
-        return;
-      }
-      
-      // If loading is done, but we have no user, they are not an admin.
+      // If there is no user object, they are not an admin.
       if (!user) {
         setIsAdmin(false);
         setIsCheckingAdmin(false);
         return;
       }
-
+      
       // If we have a user and firestore, now we can check.
+      // This also implicitly handles the special case for "admin@divas.com" via security rules access.
       if (user && firestore) {
         setIsCheckingAdmin(true);
         try {
           const adminRoleDocRef = doc(firestore, 'roles_admin', user.uid);
           const docSnap = await getDoc(adminRoleDocRef);
-          setIsAdmin(docSnap.exists());
+          
+          // A user is an admin if they are the special first admin OR their role doc exists.
+          if (user.email === 'admin@divas.com' || docSnap.exists()) {
+             setIsAdmin(true);
+          } else {
+             setIsAdmin(false);
+          }
+
         } catch (error) {
+          // This will catch permissions errors if the rules are not set up correctly.
+          // In that case, we assume they are not an admin.
           console.error("Error checking admin status:", error);
           setIsAdmin(false);
         } finally {
@@ -60,7 +64,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
     
-    checkAdminStatus();
+    // Only run the check when the initial user loading is complete.
+    if (!isFirebaseUserLoading) {
+        checkAdminStatus();
+    }
+
   }, [user, firestore, isFirebaseUserLoading]);
 
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
@@ -136,7 +144,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [auth, toast]);
   
-  // The overall auth process is loading if either the user is loading OR we are checking the admin status.
   const isAuthLoading = isFirebaseUserLoading || isCheckingAdmin;
 
   return (
