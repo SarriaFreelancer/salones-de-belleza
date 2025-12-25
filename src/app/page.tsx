@@ -89,17 +89,17 @@ function HomePageContent() {
             </div>
         </section>
 
-        <section id="servicios" className="w-full">
-          <div className="container px-4 md:px-6 py-12 md:py-24 lg:py-32">
-            <div className="mx-auto flex max-w-5xl flex-col items-center justify-center space-y-4 text-center">
+        <section id="servicios" className="w-full py-12 md:py-24 lg:py-32">
+          <div className="container px-4 md:px-6">
+            <div className="mb-12 text-center">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Nuestros Servicios
               </h2>
-              <p className="text-foreground/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+              <p className="mx-auto max-w-[700px] text-foreground/80 md:text-xl/relaxed">
                 Descubre la gama de tratamientos que hemos diseñado para ti.
               </p>
             </div>
-            <div className="mx-auto mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {isLoading || !services ? Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-60 w-full" />) : services.map((service) => (
                 <Card key={service.id} className="flex flex-col transition-transform hover:scale-105 hover:shadow-lg">
                   <CardHeader>
@@ -123,17 +123,17 @@ function HomePageContent() {
           </div>
         </section>
 
-        <section id="equipo" className="w-full bg-muted/40">
-            <div className="container px-4 md:px-6 py-12 md:py-24 lg:py-32">
-                <div className="mx-auto flex max-w-5xl flex-col items-center justify-center space-y-4 text-center">
+        <section id="equipo" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
+            <div className="container px-4 md:px-6">
+                <div className="mb-12 text-center">
                     <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                         Conoce a Nuestro Equipo
                     </h2>
-                    <p className="text-foreground/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                    <p className="mx-auto max-w-[700px] text-foreground/80 md:text-xl/relaxed">
                         Manos expertas dedicadas a realzar tu belleza.
                     </p>
                 </div>
-                <div className="mx-auto mt-12 flex flex-wrap justify-center gap-8">
+                <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-8">
                     {isLoading || !stylists ? Array.from({length: 4}).map((_, i) => <div key={i} className="flex flex-col items-center gap-4"><Skeleton className="h-40 w-40 rounded-full" /><Skeleton className="h-6 w-24" /></div>) : stylists.map((stylist) => (
                         <div key={stylist.id} className="group relative flex flex-col items-center text-center w-40">
                             <Avatar className="h-40 w-40 border-4 border-background shadow-lg transition-transform group-hover:scale-105">
@@ -148,17 +148,17 @@ function HomePageContent() {
             </div>
         </section>
 
-        <section id="galeria" className="w-full">
-          <div className="container px-4 md:px-6 py-12 md:py-24 lg:py-32">
-            <div className="mx-auto flex max-w-5xl flex-col items-center justify-center space-y-4 text-center">
+        <section id="galeria" className="w-full py-12 md:py-24 lg:py-32">
+          <div className="container px-4 md:px-6">
+            <div className="mb-12 text-center">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Galería de Estilos
               </h2>
-              <p className="text-foreground/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+              <p className="mx-auto max-w-[700px] text-foreground/80 md:text-xl/relaxed">
                 Inspírate con algunos de nuestros trabajos.
               </p>
             </div>
-            <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="mx-auto max-w-5xl grid grid-cols-2 gap-4 sm:grid-cols-3">
                 {isLoading || !galleryImages ? Array.from({length: 6}).map((_, i) => <Skeleton key={i} className="h-48 w-full" />) : galleryImages.map(img => (
                     <Image 
                         key={img.id}
@@ -174,14 +174,14 @@ function HomePageContent() {
           </div>
         </section>
 
-        <section id="agendar" className="w-full bg-muted/40">
-            <div className="container px-4 md:px-6 py-12 md:py-24 lg:py-32">
+        <section id="agendar" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
+            <div className="container px-4 md:px-6">
                 {isLoading || !isClient ? <Skeleton className="h-96 w-full max-w-4xl mx-auto" /> : <PublicBookingForm services={services || []} stylists={stylists || []} />}
             </div>
         </section>
 
-        <section id="contacto" className="w-full border-t bg-card">
-          <div className="container grid items-center justify-center gap-8 px-4 md:px-6 py-12 md:py-24 lg:py-32 lg:grid-cols-2 lg:gap-16">
+        <section id="contacto" className="w-full border-t bg-card py-12 md:py-24 lg:py-32">
+          <div className="container grid items-center justify-center gap-8 px-4 md:px-6 lg:grid-cols-2 lg:gap-16">
             <div className="space-y-4">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Ponte en Contacto
