@@ -12,7 +12,6 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
-  SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -35,7 +34,6 @@ import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { StylistsProvider } from '@/hooks/use-stylists';
 import { ServicesProvider } from '@/hooks/use-services';
 import { GalleryProvider } from '@/hooks/use-gallery';
-import { cn } from '@/lib/utils';
 
 function getPageTitle(pathname: string): string {
   if (pathname.includes('/appointments')) return 'Gestión de Citas';

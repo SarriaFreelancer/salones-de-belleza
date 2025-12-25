@@ -160,7 +160,7 @@ function HomePageContent() {
             </div>
             <div className="mx-auto grid max-w-5xl grid-cols-2 gap-4 sm:grid-cols-3">
                 {isLoading || !galleryImages ? Array.from({length: 6}).map((_, i) => <Skeleton key={i} className="aspect-video w-full" />) : galleryImages.map(img => (
-                    <div key={img.id} className="group relative rounded-lg group-hover:z-10">
+                    <div key={img.id} className="group relative rounded-lg overflow-hidden group-hover:z-10">
                       <Image 
                           src={img.src} 
                           alt={img.alt} 
@@ -249,10 +249,12 @@ function HomePageContent() {
 
 export default function HomePage() {
     return (
+      <div className='bg-background font-sans'>
         <StylistsProvider>
             <ServicesProvider>
                 <HomePageContent />
             </ServicesProvider>
         </StylistsProvider>
+      </div>
     )
 }
