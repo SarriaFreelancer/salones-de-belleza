@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const checkAdminStatus = async () => {
-      if (user && firestore) {
+      if (!isFirebaseUserLoading && user && firestore) {
         setIsCheckingAdmin(true);
         try {
           const adminRoleDocRef = doc(firestore, 'roles_admin', user.uid);
@@ -43,17 +43,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } finally {
           setIsCheckingAdmin(false);
         }
-      } else {
-        // No user, not an admin, and no need to check.
+      } else if (!isFirebaseUserLoading) {
         setIsAdmin(false);
         setIsCheckingAdmin(false);
       }
     };
     
-    // Only check admin status after the initial user loading is complete.
-    if (!isFirebaseUserLoading) {
-      checkAdminStatus();
-    }
+    checkAdminStatus();
   }, [user, firestore, isFirebaseUserLoading]);
 
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
@@ -66,6 +62,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (newUser && firestore) {
       const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
       await setDoc(adminRoleDoc, {});
+      
+      const customerProfileDoc = doc(firestore, 'customers', newUser.uid);
+      await setDoc(customerProfileDoc, {
+        id: newUser.uid,
+        firstName: 'Admin',
+        lastName: 'User',
+        email: newUser.email,
+        phone: 'N/A',
+      });
+
     } else {
       throw new Error('No se pudo crear el usuario o la instancia de Firestore no está disponible.');
     }
@@ -118,7 +124,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [auth, toast]);
   
-  // Overall auth is loading if Firebase is loading the user OR if we are still checking the admin role.
   const isAuthLoading = isFirebaseUserLoading || isCheckingAdmin;
 
   return (
