@@ -11,7 +11,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -33,7 +32,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Clock, CalendarCog, MoreVertical, Edit, Trash2, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -47,7 +46,7 @@ import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
-type DialogState = 
+type DialogState =
   | { type: 'new' }
   | { type: 'edit'; stylist: Stylist }
   | { type: 'delete'; stylist: Stylist }
@@ -100,7 +99,7 @@ function StylistsPage() {
     }
     setDialogState(null);
   };
-  
+
   const handleDeleteStylist = () => {
     if (dialogState?.type === 'delete') {
       deleteStylist(dialogState.stylist.id);
@@ -164,12 +163,12 @@ function StylistsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setDialogState({ type: 'edit', stylist })}>
+                      <DropdownMenuItem onSelect={() => setDialogState({ type: 'edit', stylist })}>
                         <Edit className="mr-2 h-4 w-4" />
                         <span>Editar</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => setDialogState({ type: 'delete', stylist })}
+                        onSelect={() => setDialogState({ type: 'delete', stylist })}
                         className="text-destructive"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -192,7 +191,7 @@ function StylistsPage() {
                       <CalendarCog className="mr-2 h-4 w-4" />
                       Gestionar Horario
                   </Button>
-                  
+
                   <h4 className="mb-2 font-semibold">Citas para Hoy</h4>
                   {todaysAppointments.length > 0 ? (
                     <div className="space-y-2">
@@ -240,9 +239,9 @@ function StylistsPage() {
                 <DialogHeader>
                     <DialogTitle>Editando Horario de {stylistForAvailability.name}</DialogTitle>
                 </DialogHeader>
-                <AvailabilityEditor 
-                    stylist={stylistForAvailability} 
-                    onSave={handleSaveAvailability} 
+                <AvailabilityEditor
+                    stylist={stylistForAvailability}
+                    onSave={handleSaveAvailability}
                     onCancel={() => setDialogState(null)}
                 />
             </DialogContent>
@@ -256,7 +255,7 @@ function StylistsPage() {
         onStylistSaved={handleAddOrUpdateStylist}
       />
 
-      <AlertDialog open={!!stylistToDelete} onOpenChange={(isOpen) => !isOpen && setDialogState(null)}>
+      <AlertDialog open={dialogState?.type === 'delete'} onOpenChange={(isOpen) => !isOpen && setDialogState(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
@@ -267,7 +266,7 @@ function StylistsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setDialogState(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteStylist} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteStylist} className={buttonVariants({ variant: 'destructive' })}>Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
