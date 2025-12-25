@@ -50,7 +50,7 @@ import { Badge } from '../ui/badge';
 import { useServices } from '@/hooks/use-services';
 import { useStylists } from '@/hooks/use-stylists';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, Timestamp, query, where, getDocs } from 'firebase/firestore';
+import { collection, Timestamp, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 const formSchema = z.object({
@@ -153,8 +153,8 @@ export default function NewAppointmentDialog({
     const serviceDuration = service.duration;
 
     availabilityForDay.forEach(availSlot => {
-      let currentTime = parse(availSlot.start, 'HH:mm', preferredDate);
-      const endTime = parse(availSlot.end, 'HH:mm', preferredDate);
+      let currentTime = parse(availSlot.start, 'HH:mm', new Date(preferredDate));
+      const endTime = parse(availSlot.end, 'HH:mm', new Date(preferredDate));
 
       while (add(currentTime, { minutes: serviceDuration }) <= endTime) {
         const proposedEndTime = add(currentTime, { minutes: serviceDuration });
@@ -162,7 +162,6 @@ export default function NewAppointmentDialog({
         const isOverlapping = existingAppointments.some(existingApp => {
           const existingStart = existingApp.start instanceof Date ? existingApp.start : existingApp.start.toDate();
           const existingEnd = existingApp.end instanceof Date ? existingApp.end : existingApp.end.toDate();
-          // Check for overlap: (StartA < EndB) and (EndA > StartB)
           return (currentTime < existingEnd) && (proposedEndTime > existingStart);
         });
 
@@ -170,7 +169,7 @@ export default function NewAppointmentDialog({
           slots.push(currentTime);
         }
 
-        currentTime = add(currentTime, { minutes: 15 }); // Check every 15 minutes
+        currentTime = add(currentTime, { minutes: 15 }); 
       }
     });
 
@@ -178,6 +177,7 @@ export default function NewAppointmentDialog({
     
     if (slots.length === 0) {
          toast({
+          variant: "destructive",
           title: 'No hay disponibilidad',
           description:
             'No se encontraron horarios disponibles para este estilista en la fecha seleccionada.',
@@ -197,17 +197,16 @@ export default function NewAppointmentDialog({
     const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
-      // Customer exists, return ID
       return querySnapshot.docs[0].id;
     } else {
-      // Customer doesn't exist, create them
-      const newCustomerData: Omit<Customer, 'id'> = {
+      const newCustomerData = {
         firstName: values.customerFirstName,
         lastName: values.customerLastName,
         email: values.customerEmail.trim().toLowerCase(),
         phone: values.customerPhone,
       };
-      const newDocRef = await addDocumentNonBlocking(customersRef, newCustomerData);
+      // Use await here to ensure customer is created before appointment
+      const newDocRef = await addDoc(customersRef, newCustomerData);
       return newDocRef.id;
     }
   };
@@ -218,6 +217,7 @@ export default function NewAppointmentDialog({
     const service = services.find(s => s.id === values.serviceId);
     if (!service) return;
 
+    setIsCalculating(true); // Reuse loading state for booking
     try {
         const customerId = await getOrCreateCustomer(values);
         
@@ -235,20 +235,17 @@ export default function NewAppointmentDialog({
         };
         
         const appointmentsCollection = collection(firestore, 'admin_appointments');
-        addDocumentNonBlocking(appointmentsCollection, newAppointment);
+        const newAppDocRef = await addDoc(appointmentsCollection, newAppointment);
         
-        // This is optional if customers don't need to see their own appointments
-        // const customerAppointmentsCollection = collection(firestore, 'customers', newAppointment.customerId, 'appointments');
-        // addDocumentNonBlocking(customerAppointmentsCollection, newAppointment);
-
         const stylistAppointmentsCollection = collection(firestore, 'stylists', values.stylistId, 'appointments');
-        addDocumentNonBlocking(stylistAppointmentsCollection, newAppointment);
+        await addDocumentNonBlocking(doc(stylistAppointmentsCollection, newAppDocRef.id), newAppointment);
 
         toast({
           title: '¡Cita Agendada!',
           description: `Se ha agendado a ${newAppointment.customerName} el ${format(startDate, "eeee, d 'de' MMMM 'a las' HH:mm", { locale: es })}.`
         });
 
+        onAppointmentCreated({ ...newAppointment, id: newAppDocRef.id });
         handleOpenChange(false);
 
     } catch(error) {
@@ -258,6 +255,8 @@ export default function NewAppointmentDialog({
             description: "No se pudo crear la cita o el cliente. Inténtalo de nuevo.",
             variant: "destructive"
         });
+    } finally {
+        setIsCalculating(false);
     }
   }
 
@@ -308,6 +307,7 @@ export default function NewAppointmentDialog({
                     )}
                 />
               </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                     control={form.control}
                     name="customerEmail"
@@ -334,6 +334,7 @@ export default function NewAppointmentDialog({
                         </FormItem>
                     )}
                 />
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
@@ -472,8 +473,9 @@ export default function NewAppointmentDialog({
                         key={index}
                         variant="outline"
                         onClick={() => selectSlot(slot)}
+                        disabled={isCalculating}
                     >
-                        {format(slot, 'HH:mm')}
+                        {isCalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : format(slot, 'HH:mm')}
                     </Button>
                     ))}
                 </div>
