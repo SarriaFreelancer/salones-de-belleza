@@ -91,15 +91,15 @@ function HomePageContent() {
 
         <section id="servicios" className="w-full py-12 md:py-24 lg:py-32">
           <div className="container px-4 md:px-6">
-            <div className="mb-12 text-center">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Nuestros Servicios
               </h2>
-              <p className="mx-auto max-w-[700px] text-foreground/80 md:text-xl/relaxed">
+              <p className="text-foreground/80 md:text-xl/relaxed">
                 Descubre la gama de tratamientos que hemos diseñado para ti.
               </p>
             </div>
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mx-auto mt-12 grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {isLoading ? Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-60 w-full" />) : (services || []).map((service) => (
                 <Card key={service.id} className="flex flex-col text-left transition-transform hover:scale-105 hover:shadow-lg">
                   <CardHeader>
@@ -125,15 +125,15 @@ function HomePageContent() {
 
         <section id="equipo" className="w-full bg-muted/40 py-12 md:py-24 lg:py-32">
             <div className="container px-4 md:px-6">
-                <div className="mb-12 text-center">
+                <div className="mx-auto max-w-3xl space-y-4 text-center">
                     <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                         Conoce a Nuestro Equipo
                     </h2>
-                    <p className="mx-auto max-w-[700px] text-foreground/80 md:text-xl/relaxed">
+                    <p className="text-foreground/80 md:text-xl/relaxed">
                         Manos expertas dedicadas a realzar tu belleza.
                     </p>
                 </div>
-                <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-8">
+                <div className="mx-auto mt-12 flex max-w-4xl flex-wrap justify-center gap-8">
                     {isLoading ? Array.from({length: 4}).map((_, i) => <div key={i} className="flex flex-col items-center gap-4"><Skeleton className="h-40 w-40 rounded-full" /><Skeleton className="h-6 w-24" /></div>) : (stylists || []).map((stylist) => (
                         <div key={stylist.id} className="group relative flex flex-col items-center text-center w-40">
                             <Avatar className="h-40 w-40 border-4 border-background shadow-lg transition-transform group-hover:scale-105">
@@ -150,16 +150,16 @@ function HomePageContent() {
 
         <section id="galeria" className="w-full py-12 md:py-24 lg:py-32">
           <div className="container px-4 md:px-6">
-            <div className="mb-12 text-center">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
               <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Galería de Estilos
               </h2>
-              <p className="mx-auto max-w-[700px] text-foreground/80 md:text-xl/relaxed">
+              <p className="text-foreground/80 md:text-xl/relaxed">
                 Inspírate con algunos de nuestros trabajos.
               </p>
             </div>
-            <div className="mx-auto grid max-w-5xl grid-cols-2 gap-4 sm:grid-cols-3">
-                {isLoading ? Array.from({length: 6}).map((_, i) => <Skeleton key={i} className="aspect-video w-full" />) : (galleryImages || []).map(img => (
+            <div className="mx-auto mt-12 grid max-w-5xl grid-cols-2 gap-4 sm:grid-cols-3">
+                {isLoading ? Array.from({length: 6}).map((_, i) => <Skeleton key={i} className="aspect-video w-full rounded-lg" />) : (galleryImages || []).map(img => (
                     <div key={img.id} className="group relative rounded-lg group-hover:z-10">
                       <Image 
                           src={img.src} 
