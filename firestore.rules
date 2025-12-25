@@ -61,7 +61,6 @@ service cloud.firestore {
 
     match /roles_admin/{userId} {
       allow read, write: if isAdmin();
-      allow create: if isOwner(userId);
     }
   }
 }
