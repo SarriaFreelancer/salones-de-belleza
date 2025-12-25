@@ -99,7 +99,7 @@ export default function MarketingPage() {
        toast({
         variant: 'destructive',
         title: 'Error al Copiar',
-        description: 'Tu navegador bloqueó la copia automática. Por favor, copia el texto manualmente.',
+        description: 'Tu navegador podría bloquear la copia automática. Por favor, copia el texto manualmente.',
       });
     }
   };
@@ -263,7 +263,6 @@ export default function MarketingPage() {
                   <Copy className="h-4 w-4" />
                 </Button>
                 <Textarea
-                  readOnly
                   value={generatedPost}
                   className="h-96 w-full text-base whitespace-pre-wrap bg-muted/50"
                 />
@@ -281,5 +280,3 @@ export default function MarketingPage() {
     </div>
   );
 }
-
-    
