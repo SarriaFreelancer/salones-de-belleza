@@ -58,50 +58,37 @@ function CustomerAppointments({ customerId, adminUser }: { customerId: string, a
     if (!firestore) return;
     setIsConfirming(pendingAppointment.id);
     try {
-      const batch = writeBatch(firestore);
+        const batch = writeBatch(firestore);
+        const appointmentId = pendingAppointment.id;
 
-      // 1. Generate ONE new ID for the confirmed appointment.
-      const confirmedAppointmentRef = doc(collection(firestore, 'admin_appointments'));
-      const confirmedAppointmentId = confirmedAppointmentRef.id;
+        // 1. Update the appointment in the admin collection to 'confirmed'
+        const adminAppointmentRef = doc(firestore, 'admin_appointments', appointmentId);
+        batch.update(adminAppointmentRef, { status: 'confirmed' });
 
-      // Create the new confirmed appointment data object
-      const confirmedAppointmentData: Appointment = {
-        ...pendingAppointment,
-        id: confirmedAppointmentId, // Use the new consistent ID
-        status: 'confirmed',
-      };
+        // 2. Update the appointment in the stylist's subcollection to 'confirmed'
+        const stylistAppointmentRef = doc(firestore, 'stylists', pendingAppointment.stylistId, 'appointments', appointmentId);
+        batch.update(stylistAppointmentRef, { status: 'confirmed' });
+        
+        // 3. Update the appointment in the customer's subcollection to 'confirmed'
+        const customerAppointmentRef = doc(firestore, 'customers', customerId, 'appointments', appointmentId);
+        batch.update(customerAppointmentRef, { status: 'confirmed' });
 
-      // 2. Set the appointment in the admin collection
-      batch.set(confirmedAppointmentRef, confirmedAppointmentData);
+        await batch.commit();
 
-      // 3. Set the appointment in the stylist's subcollection
-      const stylistAppointmentRef = doc(firestore, 'stylists', pendingAppointment.stylistId, 'appointments', confirmedAppointmentId);
-      batch.set(stylistAppointmentRef, confirmedAppointmentData);
-      
-      // 4. Set the new confirmed appointment in the customer's subcollection
-      const customerConfirmedAppointmentRef = doc(firestore, 'customers', customerId, 'appointments', confirmedAppointmentId);
-      batch.set(customerConfirmedAppointmentRef, confirmedAppointmentData);
-
-      // 5. Delete the original pending appointment from the customer's subcollection
-      const originalCustomerAppointmentRef = doc(firestore, 'customers', customerId, 'appointments', pendingAppointment.id);
-      batch.delete(originalCustomerAppointmentRef);
-
-      await batch.commit();
-
-      toast({
-        title: '¡Cita Confirmada!',
-        description: `La cita de ${pendingAppointment.customerName} ha sido confirmada y añadida al calendario.`,
-      });
+        toast({
+            title: '¡Cita Confirmada!',
+            description: `La cita de ${pendingAppointment.customerName} ha sido confirmada y actualizada en el calendario.`,
+        });
 
     } catch (error) {
-      console.error('Error confirming appointment:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error al Confirmar',
-        description: 'No se pudo confirmar la cita. Revisa los permisos e inténtalo de nuevo.',
-      });
+        console.error('Error confirming appointment:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Error al Confirmar',
+            description: 'No se pudo confirmar la cita. Revisa los permisos e inténtalo de nuevo.',
+        });
     } finally {
-      setIsConfirming(null);
+        setIsConfirming(null);
     }
   };
 
