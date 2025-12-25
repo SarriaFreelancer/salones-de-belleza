@@ -36,7 +36,7 @@ function HomePageContent() {
     const isLoading = !isClient || isLoadingServices || isLoadingStylists || isLoadingGallery;
 
   return (
-    <div className="flex min-h-dvh w-full flex-col">
+    <>
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
         <Link href="#" className="flex items-center gap-2 font-semibold">
           <Logo />
@@ -243,7 +243,7 @@ function HomePageContent() {
           </nav>
         </div>
       </footer>
-    </div>
+    </>
   );
 }
 
