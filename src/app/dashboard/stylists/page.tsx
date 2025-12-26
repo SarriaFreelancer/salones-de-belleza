@@ -72,7 +72,7 @@ function StylistsPage() {
     return collection(firestore, 'admin_appointments');
   }, [firestore]);
 
-  const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection);
+  const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection, true);
 
   const handleSaveAvailability = (updatedStylist: Stylist) => {
     updateStylist(updatedStylist);
