@@ -27,10 +27,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = useCallback(async (email: string, pass: string): Promise<void> => {
     // This is for the ADMIN login
-    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-    if (userCredential.user.email === 'admin@divas.com') {
-        window.location.href = '/dashboard';
-    }
+    await signInWithEmailAndPassword(auth, email, pass);
   }, [auth]);
 
   const signupAndAssignAdminRole = useCallback(async (email: string, pass: string): Promise<void> => {
@@ -40,9 +37,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (newUser && firestore) {
       const adminRoleDoc = doc(firestore, 'roles_admin', newUser.uid);
       await setDoc(adminRoleDoc, {});
-       if (newUser.email === 'admin@divas.com') {
-        window.location.href = '/dashboard';
-       }
     } else {
       throw new Error('No se pudo crear el usuario o la instancia de Firestore no está disponible.');
     }
