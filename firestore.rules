@@ -19,8 +19,8 @@ service cloud.firestore {
     
     // --- Customer Data ---
     match /customers/{customerId} {
-      allow read: if isAdmin() || isOwner(customerId);
-      allow create, update: if isAdmin() || isOwner(customerId);
+      allow read, update: if isAdmin() || isOwner(customerId);
+      allow create: if isOwner(customerId);
       allow delete: if isAdmin();
     }
 
@@ -49,9 +49,9 @@ service cloud.firestore {
     }
     
     // This subcollection is for appointment slots for a given stylist.
-    // Allow any signed-in user to read to check for availability.
+    // Allow any user (signed in or not) to read to check for availability.
     match /stylists/{stylistId}/appointments/{appointmentId} {
-        allow read: if isSignedIn();
+        allow read: if true;
         allow write: if isAdmin();
     }
 
