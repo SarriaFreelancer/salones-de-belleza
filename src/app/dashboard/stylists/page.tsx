@@ -72,7 +72,7 @@ function StylistsPage() {
     return collection(firestore, 'admin_appointments');
   }, [firestore]);
 
-  const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection, true);
+  const { data: allAppointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection, true);
 
   const handleSaveAvailability = (updatedStylist: Stylist) => {
     updateStylist(updatedStylist);
@@ -143,7 +143,7 @@ function StylistsPage() {
         </div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {stylists.map((stylist) => {
-             const todaysAppointments = (appointments || [])
+             const todaysAppointments = (allAppointments || [])
               .filter(
                 (a) => {
                   const appointmentDate = a.start instanceof Date ? a.start : a.start.toDate();
