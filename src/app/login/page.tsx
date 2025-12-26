@@ -44,6 +44,7 @@ export default function LoginPage() {
   }, [searchParams, toast]);
   
   React.useEffect(() => {
+    // If a user is loaded, and they are an admin, redirect them.
     if (!isUserLoading && user && isAdmin) {
       router.replace('/dashboard');
     }
@@ -117,7 +118,7 @@ export default function LoginPage() {
       </div>
   );
 
-  if (isUserLoading) {
+  if (isUserLoading || (user && isAdmin)) {
     return <LoginSkeleton />;
   }
   
@@ -136,6 +137,9 @@ export default function LoginPage() {
                     <Button variant="outline" onClick={() => logout()}>
                         <LogOut className="mr-2 h-4 w-4" />
                         Cerrar Sesión
+                    </Button>
+                     <Button asChild>
+                        <a href="/">Volver al Inicio</a>
                     </Button>
                 </CardContent>
             </Card>
