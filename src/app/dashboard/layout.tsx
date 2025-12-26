@@ -251,21 +251,30 @@ export default function DashboardLayout({
   const router = useRouter();
   const { user, isUserLoading } = useAuth();
   
-  const isAdmin = user?.email === 'admin@divas.com';
+  // This state will be derived from the auth state.
+  const [isAuthorized, setIsAuthorized] = React.useState(false);
 
   React.useEffect(() => {
+    // If auth state is still loading, we can't make a decision.
     if (isUserLoading) {
       return;
     }
-    if (!user || !isAdmin) {
+    // If there is no user, or the user is not the admin, redirect.
+    if (!user || user.email !== 'admin@divas.com') {
       router.replace('/login?error=access-denied');
+    } else {
+      // Only if the user is loaded and is the admin, we authorize rendering.
+      setIsAuthorized(true);
     }
-  }, [user, isAdmin, isUserLoading, router]);
+  }, [user, isUserLoading, router]);
 
-  if (isUserLoading || !user || !isAdmin) {
+  // While loading or if not authorized, show a loading screen.
+  // This prevents any of the children from attempting to render and fetch data.
+  if (!isAuthorized) {
     return <LoadingScreen message="Verificando permisos..." />;
   }
 
+  // Only render the full dashboard layout and its children if authorized.
   return (
     <StylistsProvider>
       <ServicesProvider>
