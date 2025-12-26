@@ -121,7 +121,10 @@ export function useCollection<T = any>(
   }, [memoizedTargetRefOrQuery, user, isUserLoading, waitForUser]);
   
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
+    const path = memoizedTargetRefOrQuery.type === 'collection'
+            ? (memoizedTargetRefOrQuery as CollectionReference).path
+            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
+    throw new Error(`Query for '${path}' was not properly memoized using useMemoFirebase.`);
   }
   return { data, isLoading, error };
 }
