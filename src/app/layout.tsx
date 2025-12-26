@@ -4,11 +4,26 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase';
 import { AuthProvider } from '@/hooks/use-auth';
+import { Alegreya, Belleza } from 'next/font/google';
 
 export const metadata: Metadata = {
   title: 'Divas A&A',
   description: 'Gestión y agendamiento de citas en línea para el salón de belleza Divas A&A.',
 };
+
+const fontBody = Alegreya({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-body',
+});
+
+const fontHeadline = Belleza({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-headline',
+  weight: '400',
+});
+
 
 export default function RootLayout({
   children,
@@ -17,12 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="!scroll-smooth">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&family=Belleza&display=swap" rel="stylesheet" />
-      </head>
-      <body className={cn('font-body antialiased', 'min-h-screen bg-background font-sans')} suppressHydrationWarning>
+      <body className={cn(fontBody.variable, fontHeadline.variable, 'font-body antialiased', 'min-h-screen bg-background font-sans')} suppressHydrationWarning>
         <FirebaseClientProvider>
           <AuthProvider>
             {children}
