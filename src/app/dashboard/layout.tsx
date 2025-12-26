@@ -88,24 +88,8 @@ function LoadingScreen({ message }: { message: string }) {
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, isUserLoading, logout } = useAuth();
+  const { user, logout } = useAuth();
   
-  const isAdmin = user?.email === 'admin@divas.com';
-
-  React.useEffect(() => {
-    if (isUserLoading) {
-      return;
-    }
-    if (!user || !isAdmin) {
-      router.replace('/login?error=access-denied');
-    }
-  }, [user, isAdmin, isUserLoading, router]);
-
-  if (isUserLoading || !user || !isAdmin) {
-    return <LoadingScreen message="Verificando permisos..." />;
-  }
-
   return (
     <SidebarProvider>
         <div className="flex min-h-svh w-full">
@@ -264,6 +248,24 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
+  const { user, isUserLoading } = useAuth();
+  
+  const isAdmin = user?.email === 'admin@divas.com';
+
+  React.useEffect(() => {
+    if (isUserLoading) {
+      return;
+    }
+    if (!user || !isAdmin) {
+      router.replace('/login?error=access-denied');
+    }
+  }, [user, isAdmin, isUserLoading, router]);
+
+  if (isUserLoading || !user || !isAdmin) {
+    return <LoadingScreen message="Verificando permisos..." />;
+  }
+
   return (
     <StylistsProvider>
       <ServicesProvider>
