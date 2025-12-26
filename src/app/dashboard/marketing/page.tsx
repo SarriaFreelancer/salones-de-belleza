@@ -52,6 +52,7 @@ export default function MarketingPage() {
   const [generatedPost, setGeneratedPost] = React.useState('');
   const { toast } = useToast();
   const [isClient, setIsClient] = React.useState(false);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   React.useEffect(() => {
     setIsClient(true);
@@ -87,20 +88,25 @@ export default function MarketingPage() {
     }
   };
 
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(generatedPost);
-      toast({
-        title: '¡Copiado!',
-        description: 'La publicación ha sido copiada al portapapeles.',
-      });
-    } catch (err) {
-       console.error('Failed to copy text: ', err);
-       toast({
-        variant: 'destructive',
-        title: 'Error al Copiar',
-        description: 'Tu navegador podría bloquear la copia automática. Por favor, copia el texto manualmente.',
-      });
+  const copyToClipboard = () => {
+    if (textareaRef.current) {
+        textareaRef.current.select();
+        try {
+            document.execCommand('copy');
+            toast({
+                title: '¡Copiado!',
+                description: 'La publicación ha sido copiada al portapapeles.',
+            });
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+            toast({
+                variant: 'destructive',
+                title: 'Error al Copiar',
+                description: 'No se pudo copiar el texto. Por favor, copia el texto manualmente.',
+            });
+        }
+        // Deselect text after copying
+        window.getSelection()?.removeAllRanges();
     }
   };
 
@@ -263,7 +269,9 @@ export default function MarketingPage() {
                   <Copy className="h-4 w-4" />
                 </Button>
                 <Textarea
+                  ref={textareaRef}
                   value={generatedPost}
+                  readOnly
                   className="h-96 w-full text-base whitespace-pre-wrap bg-muted/50"
                 />
               </div>
