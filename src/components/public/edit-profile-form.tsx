@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -13,107 +14,137 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
+import { useDoc } from '@/firebase/firestore/use-doc';
 import { doc, updateDoc } from 'firebase/firestore';
 import type { Customer } from '@/lib/types';
-import { Loader2 } from 'lucide-react';
+import { Skeleton } from '../ui/skeleton';
 
-const profileSchema = z.object({
-  firstName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres.'),
-  lastName: z.string().min(2, 'El apellido debe tener al menos 2 caracteres.'),
-  phone: z.string().min(7, 'El teléfono debe tener al menos 7 dígitos.'),
+const formSchema = z.object({
+  firstName: z
+    .string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres.'),
+  lastName: z
+    .string()
+    .min(2, 'El apellido debe tener al menos 2 caracteres.'),
+  phone: z
+    .string()
+    .min(7, 'El teléfono debe tener al menos 7 caracteres.'),
 });
 
-type ProfileFormValues = z.infer<typeof profileSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
 interface EditProfileFormProps {
-  customer: Customer;
-  onUpdate: () => void;
+  customerId: string;
+  onSave?: () => void;
 }
 
-export default function EditProfileForm({ customer, onUpdate }: EditProfileFormProps) {
-  const [isLoading, setIsLoading] = React.useState(false);
+function EditProfileForm({ customerId, onSave }: EditProfileFormProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const [isSaving, setIsSaving] = React.useState(false);
 
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
+  const customerDocRef = React.useMemo(() => {
+    if (!firestore || !customerId) return null;
+    return doc(firestore, 'customers', customerId);
+  }, [firestore, customerId]);
+
+  const { data: customer, isLoading: isLoadingCustomer } = useDoc<Customer>(customerDocRef);
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      firstName: customer.firstName || '',
-      lastName: customer.lastName || '',
-      phone: customer.phone || '',
+      firstName: '',
+      lastName: '',
+      phone: '',
     },
   });
-  
+
   React.useEffect(() => {
-    form.reset({
-      firstName: customer.firstName || '',
-      lastName: customer.lastName || '',
-      phone: customer.phone || '',
-    })
+    if (customer) {
+      form.reset({
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        phone: customer.phone,
+      });
+    }
   }, [customer, form]);
 
-  const onSubmit = async (values: ProfileFormValues) => {
-    if (!firestore) return;
-    setIsLoading(true);
-
+  const onSubmit = async (values: FormValues) => {
+    if (!customerDocRef) return;
+    setIsSaving(true);
     try {
-      const customerRef = doc(firestore, 'customers', customer.id);
-      await updateDoc(customerRef, {
-        firstName: values.firstName,
-        lastName: values.lastName,
-        phone: values.phone,
-      });
+      await updateDoc(customerDocRef, values);
       toast({
         title: '¡Perfil Actualizado!',
         description: 'Tu información ha sido guardada correctamente.',
       });
-      onUpdate();
+      if (onSave) {
+        onSave();
+      }
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
         variant: 'destructive',
-        title: 'Error',
+        title: 'Error al Guardar',
         description: 'No se pudo actualizar tu perfil. Inténtalo de nuevo.',
       });
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
+
+  if (isLoadingCustomer) {
+    return (
+        <div className="space-y-4">
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full" />
+            </div>
+            <Skeleton className="h-10 w-full" />
+        </div>
+    );
+  }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField
-            control={form.control}
-            name="firstName"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Nombre</FormLabel>
-                <FormControl>
-                    <Input {...field} />
-                </FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-            <FormField
-            control={form.control}
-            name="lastName"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Apellido</FormLabel>
-                <FormControl>
-                    <Input {...field} />
-                </FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-        </div>
+        <FormField
+          control={form.control}
+          name="firstName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nombre</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="lastName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Apellido</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="phone"
@@ -121,22 +152,25 @@ export default function EditProfileForm({ customer, onUpdate }: EditProfileFormP
             <FormItem>
               <FormLabel>Teléfono</FormLabel>
               <FormControl>
-                <Input type="tel" {...field} />
+                <Input {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <div className="text-sm text-muted-foreground">
-            <p><strong>Correo Electrónico:</strong> {customer.email} (no se puede cambiar).</p>
-        </div>
-        <div className="flex justify-end">
-          <Button type="submit" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Guardar Cambios
-          </Button>
-        </div>
+        <Button type="submit" className="w-full" disabled={isSaving}>
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Guardando...
+            </>
+          ) : (
+            'Guardar Cambios'
+          )}
+        </Button>
       </form>
     </Form>
   );
 }
+
+export default EditProfileForm;
