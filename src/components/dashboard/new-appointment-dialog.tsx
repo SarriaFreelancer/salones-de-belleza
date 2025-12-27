@@ -58,7 +58,7 @@ import {
   writeBatch,
   updateDoc,
 } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
 
 const formSchema = z.object({
@@ -103,9 +103,12 @@ export default function NewAppointmentDialog({
   const [isCalculating, setIsCalculating] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<Date[]>([]);
   
-  const { data: allAppointments } = useCollection(
-    firestore ? collection(firestore, 'admin_appointments') : null
-  );
+  const appointmentsCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'admin_appointments');
+  }, [firestore]);
+
+  const { data: allAppointments } = useCollection(appointmentsCollection);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -165,6 +168,11 @@ export default function NewAppointmentDialog({
 
     if (!service || !stylist) {
         setIsCalculating(false);
+        toast({
+            variant: 'destructive',
+            title: 'Error de Datos',
+            description: 'No se pudo encontrar el servicio o estilista seleccionado.',
+        });
         return;
     }
 
@@ -583,5 +591,3 @@ export default function NewAppointmentDialog({
     </Dialog>
   );
 }
-
-    
