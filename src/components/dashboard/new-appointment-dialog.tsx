@@ -371,7 +371,7 @@ export default function NewAppointmentDialog({
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecciona un estilista" />
-                            </Trigger>
+                            </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                             {stylists.map((stylist) => (
