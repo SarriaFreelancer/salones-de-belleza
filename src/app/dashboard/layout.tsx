@@ -258,29 +258,32 @@ export default function DashboardLayout({
   const router = useRouter();
   const { user, isUserLoading } = useAuth();
   
-  // This state will be derived from the auth state.
-  const [isAuthorized, setIsAuthorized] = React.useState(false);
-
   React.useEffect(() => {
-    // If auth state is still loading, we can't make a decision.
+    // Wait until the authentication status is fully resolved.
     if (isUserLoading) {
-      return;
+      return; // Do nothing while loading.
     }
-    // If there is no user, or the user is not the admin, redirect.
-    if (!user || user.email !== 'admin@divas.com') {
-      router.replace('/login?error=access-denied');
-    } else {
-      // Only if the user is loaded and is the admin, we authorize rendering.
-      setIsAuthorized(true);
+
+    // If there is no user, or the user is not the admin, redirect to login.
+    if (!user) {
+        router.replace('/login');
+    } else if (user.email !== 'admin@divas.com') {
+      // If a non-admin user somehow lands here, redirect them to the home page.
+      router.replace('/');
     }
   }, [user, isUserLoading, router]);
-
-  // While loading or if not authorized, show a loading screen.
-  // This prevents any of the children from attempting to render and fetch data.
-  if (!isAuthorized) {
+  
+  // If authentication is loading or there's no user, show the loading screen and stop rendering further.
+  if (isUserLoading || !user) {
     return <LoadingScreen message="Verificando permisos..." />;
   }
 
-  // Only render the full dashboard layout and its children if authorized.
+  // If the user is present but not the admin, show loading while redirecting.
+  // This prevents rendering the dashboard content for non-admins.
+  if (user.email !== 'admin@divas.com') {
+      return <LoadingScreen message="Redirigiendo..." />;
+  }
+
+  // Only render the full dashboard layout and its children if the user is the authenticated admin.
   return <DashboardContent>{children}</DashboardContent>;
 }
