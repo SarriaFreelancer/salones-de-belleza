@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -8,6 +9,7 @@ interface UseSuggestionsProps extends AppointmentSuggestionsInput {
   enabled?: boolean;
 }
 
+// THIS HOOK IS DEPRECATED AND NOT IN USE
 export function useMyAppointmentSuggestions({ serviceId, stylistId, preferredDate, enabled = true }: UseSuggestionsProps) {
   const [suggestions, setSuggestions] = useState<AppointmentSuggestionsOutput['suggestions']>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,8 +25,10 @@ export function useMyAppointmentSuggestions({ serviceId, stylistId, preferredDat
     setIsLoading(true);
     setError(null);
     try {
-      const result = await suggestAppointments({ serviceId, stylistId, preferredDate });
-      setSuggestions(result.suggestions);
+      // THIS IS AN AI FLOW, WE ARE NOT USING IT ANYMORE
+      // const result = await suggestAppointments({ serviceId, stylistId, preferredDate });
+      // setSuggestions(result.suggestions);
+       setSuggestions([]);
     } catch (err: any) {
       console.error('Error fetching appointment suggestions:', err);
       setError(err.message || 'Failed to fetch suggestions.');
@@ -40,13 +44,15 @@ export function useMyAppointmentSuggestions({ serviceId, stylistId, preferredDat
 
   useEffect(() => {
     if (enabled) {
-      fetchSuggestions();
+      // fetchSuggestions();
     }
   }, [fetchSuggestions, enabled]);
   
   const refetch = () => {
-      fetchSuggestions();
+      // fetchSuggestions();
   };
 
   return { suggestions, isLoading, error, refetch };
 }
+
+    

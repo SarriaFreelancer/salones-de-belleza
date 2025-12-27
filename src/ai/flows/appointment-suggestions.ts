@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -10,9 +11,11 @@ import { z } from 'zod';
 import { AppointmentSuggestionsInputSchema, AppointmentSuggestionsOutputSchema } from '@/lib/types';
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, App } from 'firebase-admin/app';
-import { firebaseConfig } from '@/firebase/config';
-import { parse, add, format, set } from 'date-fns';
+import { serviceAccount } from '@/firebase/service-account';
+import { parse, add, set, getDay } from 'date-fns';
 import type { Stylist, Service, Appointment, DayOfWeek } from '@/lib/types';
+import { Credential } from 'firebase-admin/app';
+
 
 // Initialize Firebase Admin SDK if not already initialized
 function getFirebaseAdminApp(): App {
@@ -20,8 +23,7 @@ function getFirebaseAdminApp(): App {
     return getApps()[0];
   }
   return initializeApp({
-    credential: undefined, // Assumes running in a Google Cloud environment
-    ...firebaseConfig
+    credential: serviceAccount as Credential,
   });
 }
 
@@ -109,3 +111,5 @@ const suggestAppointmentsFlow = ai.defineFlow(
 export async function suggestAppointments(input: z.infer<typeof AppointmentSuggestionsInputSchema>) {
     return await suggestAppointmentsFlow(input);
 }
+
+    

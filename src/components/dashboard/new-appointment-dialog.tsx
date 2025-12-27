@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -37,10 +38,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { add, format, parse, set } from 'date-fns';
+import { add, format, parse, set, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import type { Appointment } from '@/lib/types';
+import type { Appointment, DayOfWeek } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
@@ -58,7 +59,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import { useMyAppointmentSuggestions } from '@/hooks/use-my-appointment-suggestions';
+import { useCollection } from '@/firebase/firestore/use-collection';
 
 const formSchema = z.object({
   serviceId: z.string().min(1, 'Debes seleccionar un servicio.'),
@@ -98,8 +99,13 @@ export default function NewAppointmentDialog({
   const { services } = useServices();
   const { stylists } = useStylists();
   const firestore = useFirestore();
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<Date[]>([]);
+  
+  const { data: allAppointments } = useCollection(
+    firestore ? collection(firestore, 'admin_appointments') : null
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -112,17 +118,6 @@ export default function NewAppointmentDialog({
       customerPhone: '',
       preferredDate: new Date(),
     },
-  });
-  
-  const {
-    suggestions: availableSlots,
-    isLoading: isCalculating,
-    refetch,
-  } = useMyAppointmentSuggestions({
-    serviceId: form.watch('serviceId'),
-    stylistId: form.watch('stylistId'),
-    preferredDate: format(form.watch('preferredDate'), 'yyyy-MM-dd'),
-    enabled: step === 2,
   });
 
   const resetDialog = () => {
@@ -145,10 +140,77 @@ export default function NewAppointmentDialog({
     }
   };
 
+  const getDayOfWeek = (date: Date): DayOfWeek => {
+    const dayIndex = getDay(date);
+    const days: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[dayIndex];
+  };
 
-  const findAvailableSlots = () => {
+  const findAvailableSlots = async () => {
+    const { serviceId, stylistId, preferredDate } = form.getValues();
+    if (!serviceId || !stylistId || !preferredDate || !allAppointments) {
+      toast({
+        variant: 'destructive',
+        title: 'Faltan datos',
+        description: 'Por favor, completa todos los campos del cliente, servicio y estilista.'
+      });
+      return;
+    }
+
+    setIsCalculating(true);
+    setAvailableSlots([]);
+
+    const service = services.find(s => s.id === serviceId);
+    const stylist = stylists.find(s => s.id === stylistId);
+
+    if (!service || !stylist) {
+        setIsCalculating(false);
+        return;
+    }
+
+    const dayOfWeek = getDayOfWeek(preferredDate);
+    const availabilityForDay = stylist.availability[dayOfWeek] || [];
+    
+    const startOfDay = set(preferredDate, { hours: 0, minutes: 0, seconds: 0, milliseconds: 0 });
+    const endOfDay = set(preferredDate, { hours: 23, minutes: 59, seconds: 59, milliseconds: 999 });
+
+    const existingAppointments = allAppointments.filter(app => 
+        app.stylistId === stylistId &&
+        (app.start as Timestamp).toDate() >= startOfDay &&
+        (app.start as Timestamp).toDate() <= endOfDay &&
+        app.status !== 'cancelled'
+    );
+    
+    const slots: Date[] = [];
+    const serviceDuration = service.duration;
+
+    availabilityForDay.forEach((availSlot) => {
+      let baseDate = new Date(preferredDate);
+      baseDate = set(baseDate, { hours: 0, minutes: 0, seconds: 0, milliseconds: 0 });
+
+      let currentTime = parse(availSlot.start, 'HH:mm', baseDate);
+      const endTime = parse(availSlot.end, 'HH:mm', baseDate);
+      
+      while (add(currentTime, { minutes: serviceDuration }) <= endTime) {
+        const proposedEndTime = add(currentTime, { minutes: serviceDuration });
+
+        const isOverlapping = existingAppointments.some((existingApp) => {
+            const existingStart = (existingApp.start as Timestamp).toDate();
+            const existingEnd = (existingApp.end as Timestamp).toDate();
+            return currentTime < existingEnd && proposedEndTime > existingStart;
+        });
+
+        if (!isOverlapping) {
+          slots.push(new Date(currentTime));
+        }
+
+        currentTime = add(currentTime, { minutes: 15 });
+      }
+    });
+    
+    setAvailableSlots(slots);
+    setIsCalculating(false);
     setStep(2);
-    refetch();
   };
   
   const getOrCreateCustomer = async (values: FormValues): Promise<string> => {
@@ -173,8 +235,8 @@ export default function NewAppointmentDialog({
         phone: values.customerPhone,
       };
       
-      const newCustomerDocRef = await addDoc(customersRef, newCustomerData);
-      await updateDoc(newCustomerDocRef, { id: newCustomerDocRef.id });
+      const newCustomerDocRef = doc(collection(firestore, 'customers'));
+      await setDoc(newCustomerDocRef, {...newCustomerData, id: newCustomerDocRef.id});
 
       toast({
         title: "Nuevo Perfil de Cliente Creado",
@@ -186,7 +248,7 @@ export default function NewAppointmentDialog({
   };
 
 
-  const selectSlot = async (slot: string) => {
+  const selectSlot = async (slot: Date) => {
     if (!firestore) return;
     const values = form.getValues();
     const service = services.find((s) => s.id === values.serviceId);
@@ -195,7 +257,7 @@ export default function NewAppointmentDialog({
     setIsSubmitting(true);
     try {
       const customerId = await getOrCreateCustomer(values);
-      const startDate = new Date(slot);
+      const startDate = slot;
       const endDate = add(startDate, { minutes: service.duration });
 
       const newAppointmentData: Omit<Appointment, 'id'> = {
@@ -369,9 +431,9 @@ export default function NewAppointmentDialog({
                             defaultValue={field.value}
                         >
                             <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un estilista" />
-                            </SelectTrigger>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona un estilista" />
+                                </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                             {stylists.map((stylist) => (
@@ -484,13 +546,13 @@ export default function NewAppointmentDialog({
                     <Button
                       key={index}
                       variant="outline"
-                      onClick={() => selectSlot(slot.startTime)}
+                      onClick={() => selectSlot(slot)}
                       disabled={isSubmitting}
                     >
                       {isSubmitting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        format(new Date(slot.startTime), 'HH:mm')
+                        format(slot, 'HH:mm')
                       )}
                     </Button>
                   ))}
@@ -521,3 +583,5 @@ export default function NewAppointmentDialog({
     </Dialog>
   );
 }
+
+    
