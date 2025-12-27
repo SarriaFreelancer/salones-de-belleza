@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -58,11 +57,11 @@ service cloud.firestore {
     // --- Centralized Admin Collections ---
     
     match /admin_appointments/{document=**} {
-        allow read, write: if isAdmin();
+        allow read, write: if request.auth.token.email == 'admin@divas.com';
     }
 
     match /roles_admin/{userId} {
-      allow read, write: if isAdmin();
+      allow read, write: if request.auth.token.email == 'admin@divas.com';
     }
   }
 }
