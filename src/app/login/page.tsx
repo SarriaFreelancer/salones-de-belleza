@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -41,10 +42,10 @@ export default function LoginPage() {
   }, [searchParams, toast]);
   
   React.useEffect(() => {
-    // If auth state is not determined yet, do nothing.
+    // If auth state is not determined yet, do nothing to show the skeleton.
     if (isUserLoading) return;
     
-    // If a user is loaded, decide where to redirect.
+    // Once auth state is known, handle redirection.
     if (user) {
         if (user.email === 'admin@divas.com') {
             router.replace('/dashboard');

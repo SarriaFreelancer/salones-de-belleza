@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -18,8 +19,8 @@ service cloud.firestore {
     
     // --- Customer Data ---
     match /customers/{customerId} {
-      allow read, update: if isAdmin() || isOwner(customerId);
-      allow create: if isOwner(customerId);
+      allow read: if isAdmin() || isOwner(customerId);
+      allow create, update: if isAdmin() || isOwner(customerId);
       allow delete: if isAdmin();
     }
 
