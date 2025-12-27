@@ -50,38 +50,9 @@ function getPageTitle(pathname: string): string {
 
 function LoadingScreen({ message }: { message: string }) {
     return (
-        <div className="flex min-h-screen w-full">
-            <div className="hidden md:block border-r border-border p-2">
-                <div className="flex flex-col h-full w-[16rem]">
-                    <div className="flex items-center gap-2 p-2">
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                        <div className="space-y-2">
-                            <Skeleton className="h-4 w-[120px]" />
-                            <Skeleton className="h-3 w-[80px]" />
-                        </div>
-                    </div>
-                    <div className="flex-1 p-2 mt-4 space-y-2">
-                        <Skeleton className="h-8 w-full" />
-                        <Skeleton className="h-8 w-full" />
-                        <Skeleton className="h-8 w-full" />
-                        <Skeleton className="h-8 w-full" />
-                    </div>
-                    <div className="p-2">
-                        <Skeleton className="h-12 w-full" />
-                    </div>
-                </div>
-            </div>
-            <div className="flex-1 flex flex-col">
-                <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
-                    <Skeleton className="h-8 w-8 md:hidden" />
-                    <Skeleton className="h-6 w-48" />
-                    <Skeleton className="h-8 w-32 ml-auto" />
-                </header>
-                <main className="flex-1 flex items-center justify-center p-4 lg:p-6">
-                    <div className="text-center text-muted-foreground">
-                        <p>{message}</p>
-                    </div>
-                </main>
+        <div className="flex min-h-screen w-full items-center justify-center bg-background">
+            <div className="text-center text-muted-foreground">
+                <p>{message}</p>
             </div>
         </div>
     );
@@ -157,7 +128,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                               <Contact />
                               <span>Clientes</span>
                           </Link>
-                          </"SidebarMenuButton>
+                          </SidebarMenuButton>
                       </SidebarMenuItem>
                           <SidebarMenuItem>
                           <SidebarMenuButton
@@ -259,26 +230,19 @@ export default function DashboardLayout({
   const { user, isUserLoading } = useAuth();
   
   React.useEffect(() => {
-    // No hacer nada mientras se carga el estado de autenticación.
     if (isUserLoading) {
       return; 
     }
-
-    // Si el usuario no está autenticado, o no es el administrador, redirigir a login.
     if (!user) {
         router.replace('/login');
     } else if (user.email !== 'admin@divas.com') {
-      // Si un usuario normal llega aquí, lo enviamos de vuelta a la página principal.
       router.replace('/');
     }
   }, [user, isUserLoading, router]);
   
-  // Condición de guarda principal.
-  // No renderizar nada del contenido del dashboard hasta que se confirme que el usuario es el administrador.
   if (isUserLoading || !user || user.email !== 'admin@divas.com') {
     return <LoadingScreen message="Verificando permisos..." />;
   }
 
-  // Solo si se pasan todas las verificaciones, se renderiza el contenido del dashboard.
   return <DashboardContent>{children}</DashboardContent>;
 }
