@@ -28,8 +28,6 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const isAdmin = user?.email === 'admin@divas.com';
-
   React.useEffect(() => {
     const authError = searchParams.get('error');
     if (authError === 'access-denied') {
@@ -48,14 +46,14 @@ export default function LoginPage() {
     
     // If a user is loaded, decide where to redirect.
     if (user) {
-        if (isAdmin) {
+        if (user.email === 'admin@divas.com') {
             router.replace('/dashboard');
         } else {
-            // If a non-admin user lands here, send them away.
+            // If a non-admin user lands here, send them away to the home page.
             router.replace('/');
         }
     }
-  }, [isUserLoading, user, isAdmin, router]);
+  }, [isUserLoading, user, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
