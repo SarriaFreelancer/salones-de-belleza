@@ -27,7 +27,6 @@ import {
   Edit,
   Trash2,
   XCircle,
-  AlertTriangle,
 } from 'lucide-react';
 import type { Appointment } from '@/lib/types';
 import { format } from 'date-fns';
@@ -46,7 +45,7 @@ import NewAppointmentDialog from '@/components/dashboard/new-appointment-dialog'
 import { useStylists } from '@/hooks/use-stylists';
 import { useServices } from '@/hooks/use-services';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, writeBatch } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -60,10 +59,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { doc } from 'firebase/firestore';
 
 type DialogState = 
   | { type: 'delete'; appointment: Appointment }
   | { type: 'cancel'; appointment: Appointment }
+  | { type: 'edit'; appointment: Appointment }
+  | { type: 'new' }
   | null;
 
 
@@ -72,12 +74,6 @@ function AppointmentsPage() {
   const [stylistFilter, setStylistFilter] = React.useState<string>('all');
   const [serviceFilter, setServiceFilter] = React.useState<string>('all');
   const [dialogState, setDialogState] = React.useState<DialogState>(null);
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-
-  React.useEffect(() => {
-    // Open dialog when dialogState is set, close when it's null
-    setIsDialogOpen(!!dialogState);
-  }, [dialogState]);
 
   const { stylists, isLoading: isLoadingStylists } = useStylists();
   const { services, isLoading: isLoadingServices } = useServices();
@@ -91,7 +87,7 @@ function AppointmentsPage() {
   
   const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsCollection, true);
 
-  const handleAppointmentCreated = () => {
+  const handleAppointmentChange = () => {
     // No need to manually update state, useCollection handles it
   };
 
@@ -163,14 +159,6 @@ function AppointmentsPage() {
     }
   };
   
-  const handleEditAppointment = () => {
-    toast({
-        variant: "default",
-        title: "Función en Desarrollo",
-        description: "La edición de citas estará disponible próximamente.",
-    });
-  }
-
   const isLoading = isLoadingAppointments || isLoadingStylists || isLoadingServices;
   
   if (isLoading) {
@@ -205,6 +193,8 @@ function AppointmentsPage() {
       if (serviceFilter === 'all') return true;
       return appointment.serviceId === serviceFilter;
     });
+
+  const appointmentToEdit = dialogState?.type === 'edit' ? dialogState.appointment : null;
 
   return (
     <>
@@ -261,12 +251,10 @@ function AppointmentsPage() {
               </SelectContent>
             </Select>
           </div>
-          <NewAppointmentDialog onAppointmentCreated={handleAppointmentCreated}>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Agendar Cita
-            </Button>
-          </NewAppointmentDialog>
+          <Button onClick={() => setDialogState({ type: 'new' })}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Agendar Cita
+          </Button>
         </div>
 
         <div className="rounded-lg border shadow-sm">
@@ -322,7 +310,7 @@ function AppointmentsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={handleEditAppointment}>
+                            <DropdownMenuItem onSelect={() => setDialogState({ type: 'edit', appointment })}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Editar
                             </DropdownMenuItem>
@@ -352,7 +340,15 @@ function AppointmentsPage() {
           </Table>
         </div>
       </div>
-      <AlertDialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setDialogState(null); }}>
+      
+      <NewAppointmentDialog 
+        open={dialogState?.type === 'new' || dialogState?.type === 'edit'}
+        onOpenChange={(isOpen) => !isOpen && setDialogState(null)}
+        onAppointmentChange={handleAppointmentChange}
+        appointmentToEdit={appointmentToEdit}
+      />
+      
+      <AlertDialog open={dialogState?.type === 'cancel' || dialogState?.type === 'delete'} onOpenChange={(isOpen) => { if (!isOpen) setDialogState(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -361,7 +357,7 @@ function AppointmentsPage() {
             <AlertDialogDescription>
               {dialogState?.type === 'delete' 
                 ? 'Esta acción no se puede deshacer. La cita será eliminada permanentemente de la base de datos.'
-                : 'Esto cambiará el estado de la cita a "Cancelada". Esta acción se puede revertir editando la cita.'}
+                : 'Esto cambiará el estado de la cita a "Cancelada".'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
