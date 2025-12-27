@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -31,10 +32,7 @@ export default function GlobalError({
           </p>
           <Button
             size="lg"
-            onClick={
-              // Intenta recuperar el estado de la aplicación
-              () => reset()
-            }
+            onClick={reset}
             className="mt-8"
           >
             Intentar de Nuevo
