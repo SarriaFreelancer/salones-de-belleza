@@ -1,3 +1,4 @@
+'use client';
 import { z } from 'zod';
 import { Timestamp } from 'firebase/firestore';
 
@@ -24,7 +25,7 @@ export interface Stylist {
 }
 
 export interface Appointment {
-  id: string;
+  id:string;
   customerName: string;
   customerId: string;
   serviceId: string;
@@ -51,29 +52,16 @@ export interface Customer {
 
 
 export const AppointmentSuggestionsInputSchema = z.object({
-  service: z.string().describe('The name of the service to be booked.'),
-  duration: z.number().describe('The duration of the service in minutes.'),
-  preferredDate: z.string().describe('The preferred date for the appointment in ISO format (YYYY-MM-DD).'),
-  stylistAvailability: z.array(z.object({
-    stylistId: z.string().describe('The unique identifier of the stylist.'),
-    availableTimes: z.array(z.object({
-      start: z.string().describe('The start time of the availability slot in HH:mm format.'),
-      end: z.string().describe('The end time of the availability slot in HH:mm format.'),
-    })).describe('The available time slots for the stylist on the preferred date.'),
-  })).describe('The availability of stylists on the preferred date.'),
-  existingAppointments: z.array(z.object({
-    stylistId: z.string().describe('The unique identifier of the stylist.'),
-    start: z.string().describe('The start time of the existing appointment in HH:mm format.'),
-    end: z.string().describe('The end time of the existing appointment in HH:mm format.'),
-  })).describe('The existing appointments scheduled for stylists on the preferred date.'),
+  serviceId: z.string().describe("The ID of the service to be booked."),
+  stylistId: z.string().describe("The ID of the stylist to book with."),
+  preferredDate: z.string().describe("The preferred date for the appointment in ISO format (YYYY-MM-DD)."),
 });
 export type AppointmentSuggestionsInput = z.infer<typeof AppointmentSuggestionsInputSchema>;
 
+
 export const AppointmentSuggestionsOutputSchema = z.object({
   suggestions: z.array(z.object({
-    stylistId: z.string().describe('The unique identifier of the suggested stylist.'),
-    startTime: z.string().describe('The suggested start time for the appointment in HH:mm format.'),
-    endTime: z.string().describe('The suggested end time for the appointment in HH:mm format.'),
-  })).describe('A list of suggested appointment times and stylist assignments. This should be an empty array if no slots are available.'),
+    startTime: z.string().describe("The suggested start time for the appointment in ISO 8601 format."),
+  })).describe("A list of suggested appointment start times. This should be an empty array if no slots are available."),
 });
 export type AppointmentSuggestionsOutput = z.infer<typeof AppointmentSuggestionsOutputSchema>;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -40,7 +40,7 @@ import {
 import { add, format, parse, set } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import type { Appointment, DayOfWeek } from '@/lib/types';
+import type { Appointment } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
@@ -54,12 +54,11 @@ import {
   getDocs,
   addDoc,
   doc,
-  setDoc,
   writeBatch,
   updateDoc,
 } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase } from '@/firebase';
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { useFirestore } from '@/firebase';
+import { useMyAppointmentSuggestions } from '@/hooks/use-my-appointment-suggestions';
 
 const formSchema = z.object({
   serviceId: z.string().min(1, 'Debes seleccionar un servicio.'),
@@ -95,19 +94,12 @@ export default function NewAppointmentDialog({
 }: NewAppointmentDialogProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [availableSlots, setAvailableSlots] = useState<Date[]>([]);
   const { toast } = useToast();
   const { services } = useServices();
   const { stylists } = useStylists();
   const firestore = useFirestore();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const appointmentsCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'admin_appointments') : null),
-    [firestore]
-  );
-  
-  const { data: appointments } = useCollection<Appointment>(appointmentsCollection);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -121,6 +113,17 @@ export default function NewAppointmentDialog({
       preferredDate: new Date(),
     },
   });
+  
+  const {
+    suggestions: availableSlots,
+    isLoading: isCalculating,
+    refetch,
+  } = useMyAppointmentSuggestions({
+    serviceId: form.watch('serviceId'),
+    stylistId: form.watch('stylistId'),
+    preferredDate: format(form.watch('preferredDate'), 'yyyy-MM-dd'),
+    enabled: step === 2,
+  });
 
   const resetDialog = () => {
     form.reset({
@@ -133,8 +136,6 @@ export default function NewAppointmentDialog({
       preferredDate: new Date(),
     });
     setStep(1);
-    setIsCalculating(false);
-    setAvailableSlots([]);
   };
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -144,101 +145,10 @@ export default function NewAppointmentDialog({
     }
   };
 
-  const getDayOfWeek = (date: Date): DayOfWeek => {
-    const dayIndex = date.getDay();
-    const days: DayOfWeek[] = [
-      'sunday',
-      'monday',
-      'tuesday',
-      'wednesday',
-      'thursday',
-      'friday',
-      'saturday',
-    ];
-    return days[dayIndex];
-  };
 
-  const findAvailableSlots = (values: FormValues) => {
-    setIsCalculating(true);
-    setAvailableSlots([]);
-    const { preferredDate, stylistId, serviceId } = values;
-
-    const stylist = stylists.find((s) => s.id === stylistId);
-    const service = services.find((s) => s.id === serviceId);
-
-    if (!stylist || !service) {
-      toast({
-        title: 'Error',
-        description: 'Estilista o servicio no válido.',
-        variant: 'destructive',
-      });
-      setIsCalculating(false);
-      return;
-    }
-
-    const dayOfWeek = getDayOfWeek(preferredDate);
-    const availabilityForDay = stylist.availability[dayOfWeek] || [];
-
-    const existingAppointments = (appointments || []).filter((app) => {
-      const appDate = app.start instanceof Date ? app.start : app.start.toDate();
-      return (
-        app.stylistId === stylistId &&
-        format(appDate, 'yyyy-MM-dd') === format(preferredDate, 'yyyy-MM-dd') &&
-        app.status !== 'cancelled'
-      );
-    });
-
-    const slots: Date[] = [];
-    const serviceDuration = service.duration;
-
-    availabilityForDay.forEach((availSlot) => {
-      let baseDate = new Date(preferredDate);
-      baseDate = set(baseDate, {
-        hours: 0,
-        minutes: 0,
-        seconds: 0,
-        milliseconds: 0,
-      });
-
-      let currentTime = parse(availSlot.start, 'HH:mm', baseDate);
-      const endTime = parse(availSlot.end, 'HH:mm', baseDate);
-
-      while (add(currentTime, { minutes: serviceDuration }) <= endTime) {
-        const proposedEndTime = add(currentTime, { minutes: serviceDuration });
-
-        const isOverlapping = existingAppointments.some((existingApp) => {
-          const existingStart =
-            existingApp.start instanceof Date
-              ? existingApp.start
-              : existingApp.start.toDate();
-          const existingEnd =
-            existingApp.end instanceof Date
-              ? existingApp.end
-              : existingApp.end.toDate();
-          return currentTime < existingEnd && proposedEndTime > existingStart;
-        });
-
-        if (!isOverlapping) {
-          slots.push(new Date(currentTime));
-        }
-
-        currentTime = add(currentTime, { minutes: 15 });
-      }
-    });
-
-    setAvailableSlots(slots);
-
-    if (slots.length === 0) {
-      toast({
-        variant: 'destructive',
-        title: 'No hay disponibilidad',
-        description:
-          'No se encontraron horarios disponibles para este estilista en la fecha seleccionada.',
-      });
-    }
-
-    setIsCalculating(false);
+  const findAvailableSlots = () => {
     setStep(2);
+    refetch();
   };
   
   const getOrCreateCustomer = async (values: FormValues): Promise<string> => {
@@ -251,13 +161,11 @@ export default function NewAppointmentDialog({
     
     if (!querySnapshot.empty) {
         const customerDoc = querySnapshot.docs[0];
-        // Ensure the ID field is consistent.
         if (!customerDoc.data().id || customerDoc.data().id !== customerDoc.id) {
             await updateDoc(customerDoc.ref, { id: customerDoc.id });
         }
         return customerDoc.id;
     } else {
-      // Create a new customer profile in Firestore, but NO auth user.
       const newCustomerData = {
         firstName: values.customerFirstName,
         lastName: values.customerLastName,
@@ -266,7 +174,6 @@ export default function NewAppointmentDialog({
       };
       
       const newCustomerDocRef = await addDoc(customersRef, newCustomerData);
-      // Immediately add the 'id' field to the newly created document.
       await updateDoc(newCustomerDocRef, { id: newCustomerDocRef.id });
 
       toast({
@@ -279,18 +186,16 @@ export default function NewAppointmentDialog({
   };
 
 
-  const selectSlot = async (slot: Date) => {
+  const selectSlot = async (slot: string) => {
     if (!firestore) return;
     const values = form.getValues();
     const service = services.find((s) => s.id === values.serviceId);
     if (!service) return;
 
-    setIsCalculating(true);
+    setIsSubmitting(true);
     try {
-      // This will now only create a Firestore document, not an auth user.
       const customerId = await getOrCreateCustomer(values);
-
-      const startDate = slot;
+      const startDate = new Date(slot);
       const endDate = add(startDate, { minutes: service.duration });
 
       const newAppointmentData: Omit<Appointment, 'id'> = {
@@ -300,7 +205,7 @@ export default function NewAppointmentDialog({
         stylistId: values.stylistId,
         start: Timestamp.fromDate(startDate),
         end: Timestamp.fromDate(endDate),
-        status: 'scheduled',
+        status: 'confirmed', // Admin bookings are auto-confirmed
       };
       
       const batch = writeBatch(firestore);
@@ -336,7 +241,7 @@ export default function NewAppointmentDialog({
         variant: 'destructive',
       });
     } finally {
-      setIsCalculating(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -466,7 +371,7 @@ export default function NewAppointmentDialog({
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecciona un estilista" />
-                            </SelectTrigger>
+                            </Trigger>
                             </FormControl>
                             <SelectContent>
                             {stylists.map((stylist) => (
@@ -579,13 +484,13 @@ export default function NewAppointmentDialog({
                     <Button
                       key={index}
                       variant="outline"
-                      onClick={() => selectSlot(slot)}
-                      disabled={isCalculating}
+                      onClick={() => selectSlot(slot.startTime)}
+                      disabled={isSubmitting}
                     >
-                      {isCalculating ? (
+                      {isSubmitting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        format(slot, 'HH:mm')
+                        format(new Date(slot.startTime), 'HH:mm')
                       )}
                     </Button>
                   ))}
@@ -605,7 +510,6 @@ export default function NewAppointmentDialog({
                 variant="outline"
                 onClick={() => {
                   setStep(1);
-                  setAvailableSlots([]);
                 }}
               >
                 Volver
