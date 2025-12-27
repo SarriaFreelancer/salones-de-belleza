@@ -157,7 +157,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                               <Contact />
                               <span>Clientes</span>
                           </Link>
-                          </SidebarMenuButton>
+                          </"SidebarMenuButton>
                       </SidebarMenuItem>
                           <SidebarMenuItem>
                           <SidebarMenuButton
@@ -259,31 +259,26 @@ export default function DashboardLayout({
   const { user, isUserLoading } = useAuth();
   
   React.useEffect(() => {
-    // Wait until the authentication status is fully resolved.
+    // No hacer nada mientras se carga el estado de autenticación.
     if (isUserLoading) {
-      return; // Do nothing while loading.
+      return; 
     }
 
-    // If there is no user, or the user is not the admin, redirect to login.
+    // Si el usuario no está autenticado, o no es el administrador, redirigir a login.
     if (!user) {
         router.replace('/login');
     } else if (user.email !== 'admin@divas.com') {
-      // If a non-admin user somehow lands here, redirect them to the home page.
+      // Si un usuario normal llega aquí, lo enviamos de vuelta a la página principal.
       router.replace('/');
     }
   }, [user, isUserLoading, router]);
   
-  // If authentication is loading or there's no user, show the loading screen and stop rendering further.
-  if (isUserLoading || !user) {
+  // Condición de guarda principal.
+  // No renderizar nada del contenido del dashboard hasta que se confirme que el usuario es el administrador.
+  if (isUserLoading || !user || user.email !== 'admin@divas.com') {
     return <LoadingScreen message="Verificando permisos..." />;
   }
 
-  // If the user is present but not the admin, show loading while redirecting.
-  // This prevents rendering the dashboard content for non-admins.
-  if (user.email !== 'admin@divas.com') {
-      return <LoadingScreen message="Redirigiendo..." />;
-  }
-
-  // Only render the full dashboard layout and its children if the user is the authenticated admin.
+  // Solo si se pasan todas las verificaciones, se renderiza el contenido del dashboard.
   return <DashboardContent>{children}</DashboardContent>;
 }
